@@ -1,0 +1,12 @@
+[Unit]
+Description=Sunflower Clocks: sincronização P2P
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=%h/.local/bin/sunflowerd run
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

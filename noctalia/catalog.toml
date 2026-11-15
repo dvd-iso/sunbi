@@ -1,0 +1,12 @@
+[[plugin]]
+id           = "dvd-iso/sunflower-clocks"
+name         = "Sunflower Clocks"
+version      = "0.1.0"
+author       = "dvd-iso"
+license      = "MIT"
+icon         = "plant-2"
+description  = "Daily routine with alarms and a checklist, synced peer-to-peer with Android and Meta Quest."
+deprecated   = false
+plugin_api   = 43
+tags         = ["productivity", "clock", "time"]
+dependencies = ["sunflowerd"]

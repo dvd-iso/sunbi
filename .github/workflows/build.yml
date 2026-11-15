@@ -1,0 +1,65 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.10.2"
+      - name: Build APK
+        working-directory: android
+        run: gradle --no-daemon assembleRelease
+      - name: Rename APK
+        run: |
+          mkdir -p dist
+          cp android/app/build/outputs/apk/release/app-release.apk dist/sunflower-clocks.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sunflower-clocks-apk
+          path: dist/sunflower-clocks.apk
+      - name: Release (tags v*)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/sunflower-clocks.apk
+
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install zeroconf
+      - name: Testes do sunflowerd
+        working-directory: linux/sunflowerd
+        run: python -m unittest -v tests/test_sync.py
+      - name: Validar plugin do Noctalia
+        run: |
+          python - <<'PY'
+          import json, pathlib, tomllib
+          d = pathlib.Path("noctalia/sunflower-clocks")
+          m = tomllib.loads((d / "plugin.toml").read_text())
+          for kind in ("widget", "panel", "service"):
+              for e in m.get(kind, []):
+                  assert (d / e["entry"]).exists(), e["entry"]
+          for f in (d / "translations").glob("*.json"):
+              json.loads(f.read_text())
+          print("plugin ok:", m["id"], m["version"])
+          PY

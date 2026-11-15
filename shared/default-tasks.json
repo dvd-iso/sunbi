@@ -1,0 +1,16 @@
+[
+  {"id": "t0700", "time": "07:00", "label": "Comer e tomar remédio", "med": true},
+  {"id": "t0715", "time": "07:15", "label": "Escovar os dentes e se arrumar"},
+  {"id": "t0930", "time": "09:30", "label": "Beber água"},
+  {"id": "t1200", "time": "12:00", "label": "Almoço: pare e coma"},
+  {"id": "t1245", "time": "12:45", "label": "Tomar o remédio (depois do almoço)", "med": true},
+  {"id": "t1400", "time": "14:00", "label": "Beber água"},
+  {"id": "t1530", "time": "15:30", "label": "Lanche e água"},
+  {"id": "t1700", "time": "17:00", "label": "Beber água"},
+  {"id": "t1900", "time": "19:00", "label": "Jantar"},
+  {"id": "t1945", "time": "19:45", "label": "Exercício leve"},
+  {"id": "t2030", "time": "20:30", "label": "Tomar banho"},
+  {"id": "t2100", "time": "21:00", "label": "Hora do Astral (até 22h)"},
+  {"id": "t2230", "time": "22:30", "label": "Desligar telas e tomar remédio", "med": true},
+  {"id": "t2240", "time": "22:40", "label": "Escovar os dentes e ir para a cama"}
+]

@@ -1,0 +1,60 @@
+# Sunflower Clocks para Noctalia v5.
+#
+# service -> conversa com o daemon sunflowerd (127.0.0.1), toca os alarmes
+# bar     -> mostra quantas tarefas do dia estão feitas; vira alarme quando toca
+# panel   -> checklist do dia, humor e anotação
+#
+# IPC: noctalia msg plugin dvd-iso/sunflower-clocks:service all toggle <id>|done|stop|refresh
+
+id = "dvd-iso/sunflower-clocks"
+name = "Sunflower Clocks"
+version = "0.1.0"
+plugin_api = 43
+author = "dvd-iso"
+license = "MIT"
+dependencies = ["sunflowerd"]
+tags = ["productivity", "clock", "time"]
+icon = "plant-2"
+description = "Daily routine with alarms and a checklist, synced peer-to-peer with Android and Meta Quest."
+
+[[setting]]
+key = "port"
+type = "int"
+label_key = "settings.port.label"
+description_key = "settings.port.description"
+default = 47321
+min = 1024
+max = 65535
+
+[[setting]]
+key = "alarms"
+type = "bool"
+label_key = "settings.alarms.label"
+description_key = "settings.alarms.description"
+default = true
+
+[[setting]]
+key = "ring_seconds"
+type = "int"
+label_key = "settings.ring_seconds.label"
+description_key = "settings.ring_seconds.description"
+default = 45
+min = 0
+max = 300
+
+[[widget]]
+id = "bar"
+entry = "bar.luau"
+
+[[panel]]
+id = "panel"
+entry = "panel.luau"
+width = 380
+height = 600
+placement = "attached"
+position = "auto"
+open_near_click = true
+
+[[service]]
+id = "service"
+entry = "service.luau"
