@@ -10,7 +10,7 @@
 
 id = "dvd-iso/sunbi"
 name = "SunBi"
-version = "0.3.0"
+version = "0.4.0"
 plugin_api = 43
 author = "dvd-iso"
 license = "MIT"
