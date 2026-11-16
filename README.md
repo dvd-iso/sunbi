@@ -12,10 +12,10 @@ não pede cadastro.
 
 <p align="center">
   <img src="docs/telas/hoje.png" width="19%" alt="Tela Hoje, com a tarefa da vez e a rotina">
+  <img src="docs/telas/tour.png" width="19%" alt="Uma das perguntas do começo: o que te trouxe aqui">
   <img src="docs/telas/checkin.png" width="19%" alt="Registro do humor do dia">
   <img src="docs/telas/historico.png" width="19%" alt="Gráficos de humor e de sono">
   <img src="docs/telas/plano.png" width="19%" alt="Plano e botão de ajuda">
-  <img src="docs/telas/conquistas.png" width="19%" alt="Níveis e conquistas">
 </p>
 
 ## O que ele faz

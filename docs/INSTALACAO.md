@@ -131,7 +131,9 @@ gradle assembleDebug
 Os testes de tela rodam no JVM com Robolectric (gráficos nativos) e salvam PNGs das abas, do
 tour, das conquistas, do check-in, da assistente, do alarme e do relatório em tema claro, escuro, no
 layout largo (tablet) e num celular pequeno com fonte grande. O CI publica essas imagens no
-artefato **sunbi-telas**; as do README ficam em `docs/telas/`.
+artefato **sunbi-telas**; as do README ficam em `docs/telas/`. O `SizesTest` repete as telas
+principais, o tour e a tela inicial em tamanhos reais de aparelho (celular comum, pequeno com fonte
+grande, deitado e tablet). Rodando o workflow à mão, as capturas também vão para a branch `ci-telas`.
 
 Os sons (`android/app/src/main/res/raw/*.ogg`) são sintetizados
 por `tools/sounds.py`, sem amostras de terceiros. As vibrações são composições do próprio
