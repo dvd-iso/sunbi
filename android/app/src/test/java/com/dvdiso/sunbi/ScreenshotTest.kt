@@ -5,6 +5,8 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.dvdiso.sunbi.ui.Root
@@ -51,7 +53,7 @@ class ScreenshotTest {
         save("$prefix-2-historico")
         rule.onNodeWithText("Plano").performClick()
         save("$prefix-3-plano")
-        rule.onNodeWithText("Ajustes").performClick()
+        rule.onNodeWithContentDescription("Ajustes").performClick()
         save("$prefix-4-ajustes")
     }
 
@@ -74,6 +76,20 @@ class ScreenshotTest {
         rule.onNodeWithText("Plano").performClick()
         rule.onNodeWithText("Preciso de ajuda agora").performClick()
         save("pequeno-5-ajuda")
+    }
+
+    /** Check-in em passos: começa vazio, escolhe o humor e chega aos detalhes. */
+    @Test fun checkin() {
+        Seed.clear()
+        rule.setContent { SunBiTheme { Root() } }
+        save("claro-6-hoje-vazio")
+        rule.onNodeWithText("Registrar").performClick()
+        save("claro-7-checkin-humor")
+        rule.onNodeWithText("Um pouco acelerado").performClick()
+        rule.waitUntil(5000) { rule.onAllNodesWithText("Mais detalhes").fetchSemanticsNodes().isNotEmpty() }
+        save("claro-8-checkin-sono")
+        rule.onNodeWithText("Mais detalhes").performClick()
+        save("claro-9-checkin-detalhes")
     }
 
     @Test fun crisis() {

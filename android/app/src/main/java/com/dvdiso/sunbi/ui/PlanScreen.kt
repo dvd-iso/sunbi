@@ -58,10 +58,10 @@ import com.dvdiso.sunbi.Sign
 import com.dvdiso.sunbi.newId
 
 private val SAFETY_STEPS = listOf(
-    "warn" to "1. Sinais de que uma crise está chegando",
-    "cope" to "2. O que eu faço sozinho para me acalmar",
-    "distract" to "3. Pessoas e lugares que me distraem",
-    "safe" to "6. Deixar o ambiente mais seguro",
+    "warn" to "Sinais de que uma crise está chegando",
+    "cope" to "O que eu faço sozinho para me acalmar",
+    "distract" to "Pessoas e lugares que me distraem",
+    "safe" to "Deixar o ambiente mais seguro",
     "reasons" to "Meus motivos para seguir em frente",
 )
 
@@ -70,9 +70,11 @@ fun dial(ctx: Context, number: String) {
     runCatching { ctx.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$digits"))) }
 }
 
+private enum class PlanSheet { SIGNS, UP, DOWN, SAFETY, CONTACTS, ABOUT }
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun PlanScreen(contentPadding: PaddingValues, openCrisis: Boolean, onCrisisShown: () -> Unit) {
+fun PlanScreen(contentPadding: PaddingValues, openCrisis: Boolean, onCrisisShown: () -> Unit, onSettings: () -> Unit) {
     var crisis by rememberSaveable { mutableStateOf(false) }
     androidx.compose.runtime.LaunchedEffect(openCrisis) {
         if (openCrisis) {
@@ -80,17 +82,14 @@ fun PlanScreen(contentPadding: PaddingValues, openCrisis: Boolean, onCrisisShown
             onCrisisShown()
         }
     }
-    var about by rememberSaveable { mutableStateOf(false) }
+    var sheet by rememberSaveable { mutableStateOf<PlanSheet?>(null) }
+    val signs = Repo.signs()
+    val contacts = Repo.contacts()
+    fun steps(n: Int) = if (n == 1) "1 passo" else "$n passos"
 
     LazyColumn(contentPadding = contentPadding, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
-            Column(Modifier.padding(top = 8.dp, bottom = 4.dp)) {
-                Text("Meu plano", style = MaterialTheme.typography.headlineMediumEmphasized)
-                Text(
-                    "Monte com calma, num dia bom, e de preferência junto com sua equipe de saúde. É ele que você vai seguir quando os sinais aparecerem.",
-                    style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            ScreenHeader("Plano", subtitle = "O que fazer quando os sinais aparecem", onSettings = onSettings)
         }
         item {
             val cs = MaterialTheme.colorScheme
@@ -105,97 +104,110 @@ fun PlanScreen(contentPadding: PaddingValues, openCrisis: Boolean, onCrisisShown
                 Text("Preciso de ajuda agora", style = MaterialTheme.typography.titleMediumEmphasized)
             }
         }
-        item { SignsCard("up", "Sinais de que o humor está subindo", "ex.: dormir 4 h e acordar com energia") }
-        item { PlanListCard("up", "Quando o humor sobe, eu vou...") }
-        item { SignsCard("down", "Sinais de que o humor está descendo", "ex.: parar de responder mensagens") }
-        item { PlanListCard("down", "Quando o humor desce, eu vou...") }
-        item { SafetyPlanCard() }
-        item { ContactsCard() }
         item {
-            SectionCard("De onde vêm estes métodos", subtitle = "IPSRT, NIMH Life Chart, psicoeducação de Barcelona, plano de segurança Stanley-Brown e TCC para TDAH.") {
-                FilledTonalButton(onClick = { about = true }, shapes = ButtonDefaults.shapes()) { Text("Ler resumo") }
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                val rows = listOf(
+                    Triple(PlanSheet.SIGNS, "Meus sinais de alerta",
+                        "${signs.count { it.pole == "up" }} de subida · ${signs.count { it.pole == "down" }} de descida"),
+                    Triple(PlanSheet.UP, "Quando o humor sobe", steps(Repo.planList("up").size)),
+                    Triple(PlanSheet.DOWN, "Quando o humor desce", steps(Repo.planList("down").size)),
+                    Triple(PlanSheet.SAFETY, "Plano de segurança", "Para momentos de crise"),
+                    Triple(PlanSheet.CONTACTS, "Pessoas e profissionais",
+                        if (contacts.isEmpty()) "Ninguém ainda" else contacts.joinToString(", ") { it.name }),
+                )
+                rows.forEachIndexed { i, (s, t, sub) -> NavRow(t, sub, i, rows.size) { sheet = s } }
             }
+        }
+        item {
+            TextButton(onClick = { sheet = PlanSheet.ABOUT }) { Text("De onde vêm estes métodos") }
         }
         item { Spacer(Modifier.height(24.dp)) }
     }
 
     if (crisis) CrisisSheet { crisis = false }
-    if (about) AboutSheet { about = false }
+    when (sheet) {
+        PlanSheet.SIGNS -> EditorSheet("Meus sinais de alerta", "Os seus, do seu jeito. Eles aparecem no check-in para marcar.", { sheet = null }) {
+            Label("Quando o humor está subindo")
+            SignsEditor("up", "ex.: dormir 4 h e acordar com energia")
+            Spacer(Modifier.height(8.dp))
+            Label("Quando o humor está descendo")
+            SignsEditor("down", "ex.: parar de responder mensagens")
+        }
+        PlanSheet.UP -> EditorSheet("Quando o humor sobe, eu vou...", "Combine estes passos com sua equipe num dia bom.", { sheet = null }) {
+            EditableList(Repo.planList("up"), { Repo.setPlanList("up", it) }, "Adicionar um passo")
+        }
+        PlanSheet.DOWN -> EditorSheet("Quando o humor desce, eu vou...", "Passos pequenos contam.", { sheet = null }) {
+            EditableList(Repo.planList("down"), { Repo.setPlanList("down", it) }, "Adicionar um passo")
+        }
+        PlanSheet.SAFETY -> EditorSheet(
+            "Plano de segurança",
+            "Passos do plano de Stanley e Brown para atravessar uma crise. As pessoas e os profissionais ficam em \"Pessoas e profissionais\".",
+            { sheet = null },
+        ) {
+            for ((key, title) in SAFETY_STEPS) {
+                Label(title)
+                EditableList(Repo.planList(key), { Repo.setPlanList(key, it) }, "Adicionar")
+            }
+        }
+        PlanSheet.CONTACTS -> EditorSheet("Pessoas e profissionais", "Quem você pode chamar: pessoas de confiança, psiquiatra, psicólogo, CAPS.", { sheet = null }) {
+            ContactsEditor()
+        }
+        PlanSheet.ABOUT -> AboutSheet { sheet = null }
+        null -> {}
+    }
 }
 
 @Composable
-private fun SignsCard(pole: String, title: String, hint: String) {
+private fun SignsEditor(pole: String, hint: String) {
     val all = Repo.signs()
     val mine = all.filter { it.pole == pole }
-    SectionCard(title, subtitle = "Os seus, do seu jeito. Eles aparecem no check-in para marcar.") {
-        EditableList(
-            items = mine.map { it.label },
-            onChange = { labels ->
-                val kept = labels.map { l -> mine.firstOrNull { it.label == l } ?: Sign(newId(pole.take(1) + "_"), l, pole) }
-                Repo.setSigns(all.filter { it.pole != pole } + kept)
-            },
-            placeholder = hint,
-        )
-    }
-}
-
-@Composable
-private fun PlanListCard(section: String, title: String) {
-    SectionCard(title) {
-        EditableList(Repo.planList(section), { Repo.setPlanList(section, it) }, "Adicionar um passo")
-    }
-}
-
-@Composable
-private fun SafetyPlanCard() {
-    SectionCard(
-        "Plano de segurança",
-        subtitle = "Os passos do plano de Stanley e Brown, para momentos de crise ou pensamentos de se machucar. Os passos 4 e 5 são seus contatos, logo abaixo.",
-    ) {
-        for ((key, title) in SAFETY_STEPS) {
-            Label(title)
-            EditableList(Repo.planList(key), { Repo.setPlanList(key, it) }, "Adicionar")
-            Spacer(Modifier.height(4.dp))
-        }
-    }
+    EditableList(
+        items = mine.map { it.label },
+        onChange = { labels ->
+            val kept = labels.map { l -> mine.firstOrNull { it.label == l } ?: Sign(newId(pole.take(1) + "_"), l, pole) }
+            Repo.setSigns(all.filter { it.pole != pole } + kept)
+        },
+        placeholder = hint,
+    )
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun ContactsCard() {
+private fun ContactsEditor() {
     val ctx = LocalContext.current
     val list = Repo.contacts()
     var name by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
     var pro by remember { mutableStateOf(false) }
-    SectionCard("4 e 5. Pessoas e profissionais", subtitle = "Quem você pode chamar: pessoas de confiança, psiquiatra, psicólogo, CAPS.") {
-        for ((i, c) in list.withIndex()) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(c.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
-                    Text("${c.role} · ${c.phone}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                IconButton(onClick = { dial(ctx, c.phone) }) { Icon(Icons.Filled.Phone, "Ligar para ${c.name}") }
-                IconButton(onClick = { Repo.setContacts(list.filterIndexed { j, _ -> j != i }) }) { Icon(Icons.Filled.Close, "Remover ${c.name}") }
+    for ((i, c) in list.withIndex()) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(c.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+                Text("${c.role} · ${c.phone}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
+            IconButton(onClick = { dial(ctx, c.phone) }) { Icon(Icons.Filled.Phone, "Ligar para ${c.name}") }
+            IconButton(onClick = { Repo.setContacts(list.filterIndexed { j, _ -> j != i }) }) { Icon(Icons.Filled.Close, "Remover ${c.name}") }
         }
-        HorizontalDivider()
-        OutlinedTextField(name, { name = it }, label = { Text("Nome") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large)
-        OutlinedTextField(
-            phone, { phone = it }, label = { Text("Telefone") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
-            shape = MaterialTheme.shapes.large, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-        )
-        ChoiceGroup(listOf(false to "Pessoa", true to "Profissional"), pro, { pro = it ?: false })
-        Button(
-            onClick = {
-                Repo.setContacts(list + Contact(name.trim(), if (pro) "Profissional" else "Pessoa de confiança", phone.trim()))
-                name = ""; phone = ""
-            },
-            enabled = name.isNotBlank() && phone.isNotBlank(),
-            shapes = ButtonDefaults.shapes(),
-        ) { Text("Adicionar contato") }
     }
+    if (list.isNotEmpty()) HorizontalDivider()
+    Label("Adicionar")
+    OutlinedTextField(name, { name = it }, label = { Text("Nome") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large)
+    OutlinedTextField(
+        phone, { phone = it }, label = { Text("Telefone") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+    )
+    ChoiceGroup(listOf(false to "Pessoa", true to "Profissional"), pro, { pro = it ?: false })
+    Button(
+        onClick = {
+            Repo.setContacts(list + Contact(name.trim(), if (pro) "Profissional" else "Pessoa de confiança", phone.trim()))
+            name = ""; phone = ""
+        },
+        enabled = name.isNotBlank() && phone.isNotBlank(),
+        shapes = ButtonDefaults.shapes(),
+        modifier = Modifier.fillMaxWidth(),
+    ) { Text("Adicionar contato") }
 }
+
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable

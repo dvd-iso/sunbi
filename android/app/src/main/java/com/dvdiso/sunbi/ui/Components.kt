@@ -35,6 +35,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -513,4 +519,78 @@ fun minutesLabel(m: Long): String = when {
     m < 60 -> "em $m min"
     m % 60 == 0L -> "em ${m / 60} h"
     else -> "em ${m / 60} h ${m % 60} min"
+}
+
+// ── estrutura simples das telas ─────────────────────────────────────────────
+
+/** Cabeçalho de tela: título grande, linha de apoio opcional e a engrenagem de Ajustes. */
+@Composable
+fun ScreenHeader(
+    title: String,
+    subtitle: String? = null,
+    onSettings: (() -> Unit)? = null,
+    leading: (@Composable () -> Unit)? = null,
+) {
+    Row(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        if (leading != null) {
+            leading()
+            Spacer(Modifier.width(12.dp))
+        }
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.headlineMediumEmphasized, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (subtitle != null) {
+                Text(subtitle, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
+        if (onSettings != null) {
+            IconButton(onClick = onSettings) { Icon(Icons.Filled.Settings, contentDescription = "Ajustes") }
+        }
+    }
+}
+
+/** Linha de lista que abre outra coisa (folha, tela). */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun NavRow(
+    title: String,
+    subtitle: String?,
+    index: Int,
+    count: Int,
+    icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+    onClick: () -> Unit,
+) {
+    androidx.compose.material3.SegmentedListItem(
+        onClick = onClick,
+        shapes = androidx.compose.material3.ListItemDefaults.segmentedShapes(index, count),
+        leadingContent = icon?.let { { Icon(it, null, tint = MaterialTheme.colorScheme.primary) } },
+        supportingContent = subtitle?.let { { Text(it, maxLines = 2, overflow = TextOverflow.Ellipsis) } },
+        trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null) },
+    ) { Text(title, style = MaterialTheme.typography.bodyLarge) }
+}
+
+/** Folha de baixo para editar ou ver um assunto, com título e rolagem. */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+fun EditorSheet(title: String, subtitle: String? = null, onDismiss: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
+    androidx.compose.material3.ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = androidx.compose.material3.rememberBottomSheetState(
+            androidx.compose.material3.SheetValue.Hidden,
+            enabledValues = setOf(androidx.compose.material3.SheetValue.Hidden, androidx.compose.material3.SheetValue.Expanded),
+        ),
+    ) {
+        Column(
+            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp)
+                .navigationBarsPadding().imePadding(),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(title, style = MaterialTheme.typography.headlineSmallEmphasized)
+            if (subtitle != null) {
+                Text(subtitle, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            content()
+            Spacer(Modifier.height(24.dp))
+        }
+    }
 }

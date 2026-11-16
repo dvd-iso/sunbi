@@ -26,6 +26,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Refresh
@@ -57,6 +58,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -78,25 +80,48 @@ import java.time.LocalTime
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun SettingsScreen(contentPadding: PaddingValues) {
+fun SettingsScreen(contentPadding: PaddingValues, onBack: () -> Unit) {
+    var sheet by rememberSaveable { mutableStateOf<String?>(null) } // "routine" | "sync"
+    val peers by SyncManager.peers.collectAsState()
     LazyColumn(contentPadding = contentPadding, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
-            Text("Ajustes", style = MaterialTheme.typography.headlineMediumEmphasized, modifier = Modifier.padding(top = 8.dp, bottom = 4.dp))
+            ScreenHeader("Ajustes", leading = {
+                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Voltar") }
+            })
         }
-        item { LookCard() }
-        item { SoundsCard() }
-        item { AlarmsCard() }
-        item { TaskEditor() }
-        item { SyncCard() }
+        item { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { PermissionHints() } }
+        item { GeneralCard() }
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                NavRow("Rotina e horários", "${Repo.tasks().size} tarefas · alarmes, primeiro passo, âncoras", 0, 2) { sheet = "routine" }
+                NavRow(
+                    "Sincronização",
+                    "Código ${Prefs.key} · " + when (peers.size) { 0 -> "nenhum aparelho"; 1 -> "1 aparelho"; else -> "${peers.size} aparelhos" },
+                    1, 2,
+                ) { sheet = "sync" }
+            }
+        }
         item {
             Text(
-                "SunBi ${BuildConfig.VERSION_NAME} · aparelho ${Prefs.device}\n" +
-                    "O SunBi organiza e observa; não diagnostica nem substitui seu tratamento.",
+                "SunBi ${BuildConfig.VERSION_NAME}\nO SunBi organiza e observa; não diagnostica nem substitui seu tratamento.",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(8.dp),
             )
         }
         item { Spacer(Modifier.height(24.dp)) }
+    }
+    when (sheet) {
+        "routine" -> EditorSheet(
+            "Rotina e horários",
+            "Âncoras são os horários que mais protegem o humor (levantar, primeiro contato, começar o dia, jantar, deitar). " +
+                "O primeiro passo é a ação mínima para começar.",
+            { sheet = null },
+        ) { TaskEditor() }
+        "sync" -> EditorSheet(
+            "Sincronização",
+            "Seus aparelhos se encontram na rede de casa e trocam os dados direto entre si, sem servidor.",
+            { sheet = null },
+        ) { SyncCard() }
     }
 }
 
@@ -112,69 +137,50 @@ private fun SwitchRow(title: String, subtitle: String?, checked: Boolean, onChan
     }
 }
 
+/** Tudo o que é liga/desliga num cartão só. */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun LookCard() {
+private fun GeneralCard() {
+    val ctx = LocalContext.current
     var dyn by remember { mutableStateOf(Prefs.dynamicColor) }
-    SectionCard("Aparência") {
-        SwitchRow(
-            "Cores do sistema",
-            if (Build.VERSION.SDK_INT >= 31 && !isQuest()) "Usa as cores do seu papel de parede (Material You)" else "Neste aparelho a paleta Girassol fica mais bonita",
-            dyn,
-        ) {
+    var ui by remember { mutableStateOf(Prefs.uiSounds) }
+    var alarms by remember { mutableStateOf(Prefs.alarmsEnabled) }
+    var tone by remember { mutableStateOf(Prefs.alarmSound) }
+    var preview by remember { mutableStateOf<MediaPlayer?>(null) }
+    DisposableEffect(Unit) { onDispose { preview?.release() } }
+    SectionCard("Geral") {
+        SwitchRow("Cores do sistema", "Acompanha o papel de parede (Material You)", dyn) {
             dyn = it
             Prefs.dynamicColor = it
             ThemeState.load()
         }
-    }
-}
-
-@Composable
-private fun SoundsCard() {
-    val ctx = LocalContext.current
-    var ui by remember { mutableStateOf(Prefs.uiSounds) }
-    var tone by remember { mutableStateOf(Prefs.alarmSound) }
-    var preview by remember { mutableStateOf<MediaPlayer?>(null) }
-    DisposableEffect(Unit) { onDispose { preview?.release() } }
-    SectionCard("Sons") {
-        SwitchRow("Sons da interface", "Sonzinhos e vibração leve ao marcar tarefas, escolher o humor e no foco", ui) {
+        SwitchRow("Sons e vibração", "Ao marcar tarefas, no humor e no foco", ui) {
             ui = it
             Prefs.uiSounds = it
             if (it) Sfx.play(Sfx.S.POP)
         }
-        Label("Toque do alarme")
-        ChoiceGroup(listOf("amanhecer" to "Amanhecer", "girassol" to "Girassol"), tone, { v ->
-            if (v == null) return@ChoiceGroup
-            tone = v
-            Prefs.alarmSound = v
-            preview?.release()
-            preview = MediaPlayer.create(ctx, RingService.soundRes())?.apply {
-                setOnCompletionListener { it.release(); if (preview === it) preview = null }
-                start()
-            }
-        })
-        Text(
-            "Amanhecer é uma kalimba suave. O alarme começa baixo e sobe aos poucos em 30 segundos.",
-            style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun AlarmsCard() {
-    val ctx = LocalContext.current
-    var alarms by remember { mutableStateOf(Prefs.alarmsEnabled) }
-    SectionCard("Alarmes", subtitle = "Tocam na hora de cada tarefa ainda não feita, sem soneca.") {
-        SwitchRow("Tocar alarmes neste aparelho", if (isQuest()) "No Quest só toca com o headset ligado" else null, alarms) {
+        SwitchRow("Alarmes neste aparelho", if (isQuest()) "No Quest só toca com o headset ligado" else "Sem soneca: só Feito ou Parar", alarms) {
             alarms = it
             Prefs.alarmsEnabled = it
             AlarmScheduler.scheduleAll(ctx)
         }
-        PermissionHints()
-        OutlinedButton(onClick = {
-            val t = Repo.tasks().firstOrNull() ?: return@OutlinedButton
-            ctx.startForegroundService(Intent(ctx, RingService::class.java).setAction(RingService.START).putExtra("task", t.id))
-        }, shapes = ButtonDefaults.shapes()) { Text("Testar alarme") }
+        if (alarms) {
+            Label("Toque do alarme")
+            ChoiceGroup(listOf("amanhecer" to "Amanhecer", "girassol" to "Girassol"), tone, { v ->
+                if (v == null) return@ChoiceGroup
+                tone = v
+                Prefs.alarmSound = v
+                preview?.release()
+                preview = MediaPlayer.create(ctx, RingService.soundRes())?.apply {
+                    setOnCompletionListener { it.release(); if (preview === it) preview = null }
+                    start()
+                }
+            })
+            TextButton(onClick = {
+                val t = Repo.tasks().firstOrNull() ?: return@TextButton
+                ctx.startForegroundService(Intent(ctx, RingService::class.java).setAction(RingService.START).putExtra("task", t.id))
+            }) { Text("Testar o alarme agora") }
+        }
     }
 }
 
@@ -221,11 +227,7 @@ private fun TaskEditor() {
     var picking by remember { mutableStateOf<Int?>(null) }
     val cs = MaterialTheme.colorScheme
 
-    SectionCard(
-        "Rotina",
-        subtitle = "Âncoras são os horários que mais protegem o humor: levantar, primeiro contato, começar o dia, jantar e deitar. " +
-            "O primeiro passo é a ação mínima para começar.",
-    ) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         list.forEachIndexed { i, t ->
             Card(shape = MaterialTheme.shapes.large, colors = CardDefaults.cardColors(containerColor = cs.surfaceContainerHigh)) {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -305,7 +307,7 @@ private fun SyncCard() {
     var manual by remember { mutableStateOf("") }
     val cs = MaterialTheme.colorScheme
 
-    SectionCard("Sincronização", subtitle = "Seus aparelhos se encontram na rede de casa e trocam os dados direto entre si, sem servidor.") {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         SwitchRow("Sincronizar com outros aparelhos", null, sync) {
             sync = it
             Prefs.syncEnabled = it

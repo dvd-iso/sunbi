@@ -15,12 +15,14 @@ com as evidências, os limites e as referências.
 
 ## O que tem
 
-| Aba | Para quê |
-| --- | --- |
-| **Hoje** | Cartão **Agora/Próxima** com o tempo visível ("em 35 min") e botão **Começar** (bloco de foco de 5 a 25 min). Avisos gentis quando o sono cai, o humor muda ou os seus sinais aparecem. **Check-in**: humor de −3 a +3, hora de deitar e acordar, energia, foco, irritação, ansiedade, sinais e acontecimentos. **Rotina** com âncoras, remédios, primeiro passo e duração de cada tarefa. |
-| **Histórico** | Gráfico de humor no estilo Life Chart, barras de sono contra o seu sono habitual, % de remédios marcados, âncoras no horário, grade da semana e **relatório em texto para a consulta**. |
-| **Plano** | Botão **Preciso de ajuda agora**. Seus sinais de subida e de descida, o que fazer em cada caso, plano de segurança em 6 passos e contatos com ligação direta. |
-| **Ajustes** | Cores do sistema (Material You) ou paleta Girassol, alarmes, editor da rotina, sincronização. |
+Cada tela mostra só o essencial; o resto fica a um toque.
+
+| Tela | O que aparece | Um toque abre |
+| --- | --- | --- |
+| **Hoje** | A tarefa da vez com **Começar** (bloco de foco) e **Feito**, no máximo um aviso, o resumo do check-in e as tarefas pendentes | O **check-in em 3 passos** (humor, sono, detalhes opcionais), as tarefas feitas, outros dias |
+| **Histórico** | Gráfico de humor no estilo Life Chart, sono contra o seu normal e três números | O **relatório para a consulta**, pronto para compartilhar |
+| **Plano** | O botão **Preciso de ajuda agora** e uma lista curta | Sinais de alerta, o que fazer quando o humor sobe ou desce, plano de segurança, contatos |
+| **Ajustes** (engrenagem) | Um cartão com cores, sons e alarmes | O editor da rotina e a sincronização |
 
 Design em **Material 3 Expressive** (formas, movimento com mola, grupos de botões conectados,
 indicadores ondulados), com tema claro e escuro, cores dinâmicas do sistema e ícone

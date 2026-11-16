@@ -4,6 +4,7 @@ import android.Manifest
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -105,11 +106,12 @@ class MainActivity : ComponentActivity() {
 
 private data class Dest(val label: String, val icon: ImageVector)
 
+private const val SETTINGS = 3
+
 private val DESTS = listOf(
     Dest("Hoje", Icons.Filled.Home),
     Dest("Histórico", Icons.Filled.DateRange),
     Dest("Plano", Icons.Filled.Favorite),
-    Dest("Ajustes", Icons.Filled.Settings),
 )
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -121,6 +123,11 @@ internal fun Root() {
     var focusTask by remember { mutableStateOf<Task?>(null) }
     var focusOpen by remember { mutableStateOf(false) }
     var crisisRequest by remember { mutableStateOf(false) }
+    // Ajustes é uma tela à parte (índice 3), aberta pela engrenagem; voltar retorna à aba anterior
+    var prevTab by rememberSaveable { mutableIntStateOf(0) }
+    var checkin by remember { mutableStateOf<Pair<String, Int>?>(null) }
+    val openSettings = { prevTab = tab; tab = SETTINGS }
+    BackHandler(enabled = tab == SETTINGS) { tab = prevTab }
     val focusEnd by Focus.end.collectAsState()
     val fb = rememberFeedback()
 
@@ -198,10 +205,13 @@ internal fun Root() {
                         label = "tab",
                     ) { t ->
                         when (t) {
-                            0 -> TodayScreen(now, tick, pad, onFocus = openFocus, onOpenPlan = { tab = 2 })
-                            1 -> HistoryScreen(now, pad)
-                            2 -> PlanScreen(pad, crisisRequest) { crisisRequest = false }
-                            else -> SettingsScreen(pad)
+                            0 -> TodayScreen(
+                                now, tick, pad, onFocus = openFocus, onOpenPlan = { tab = 2 }, onSettings = openSettings,
+                                onCheckin = { d, step -> checkin = d to step },
+                            )
+                            1 -> HistoryScreen(now, pad, onSettings = openSettings)
+                            2 -> PlanScreen(pad, crisisRequest, { crisisRequest = false }, onSettings = openSettings)
+                            else -> SettingsScreen(pad) { tab = prevTab }
                         }
                     }
                 }
@@ -210,6 +220,7 @@ internal fun Root() {
     }
 
     if (focusOpen) FocusSheet(focusTask) { focusOpen = false }
+    checkin?.let { (d, step) -> CheckinSheet(d, step) { checkin = null } }
 }
 
 @Composable

@@ -8,8 +8,8 @@ SunBi app (Android phone and Meta Quest). **Runs entirely inside the plugin: no 
 - Id: `dvd-iso/sunbi`
 - Widget `bar`: flower and tasks done today (`6/13`); the tooltip shows the next task and how long until it.
   During a focus block it shows the countdown; when an alarm rings it shows the task.
-- Panel `panel`: now/next task with its first step, focus timer (5, 15 or 25 min), mood on the
-  −3…+3 scale, today's checklist, a note for the day, and the pairing code and devices.
+- Panel `panel`: kept short on purpose. The task to do now (focus 5 min or done), pending tasks (done ones collapse),
+  mood on the −3…+3 scale, an optional note, and one status line with devices and the pairing code.
 - Service `service`: stores the routine in the plugin data dir, discovers the app on the local
   network, syncs with it, rings the alarms, runs the focus timer and plays the sounds.
 
