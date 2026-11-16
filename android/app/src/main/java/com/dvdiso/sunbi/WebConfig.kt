@@ -149,7 +149,11 @@ object WebConfig {
                 .put("userName", Prefs.userName).put("focusArea", Prefs.focusArea)
                 .put("alarms", Prefs.alarmsEnabled).put("alarmSound", Prefs.alarmSound)
                 .put("uiSounds", Prefs.uiSounds).put("dynamicColor", Prefs.dynamicColor)
-                .put("aiModel", Prefs.aiModel).put("reportName", Prefs.reportName))
+                .put("aiModel", Prefs.aiModel).put("aiProvider", Prefs.aiProvider).put("aiName", Assistant.name())
+                .put("aiBaseUrl", Prefs.aiBaseUrl).put("navLabels", Prefs.navLabels).put("reportName", Prefs.reportName))
+            .put("providers", JSONArray().also { arr ->
+                for (p in Assistant.PROVIDERS) arr.put(JSONObject().put("id", p.id).put("name", p.name).put("models", JSONArray(p.models)))
+            })
             .put("stats", JSONObject().put("xp", st.xp).put("level", st.level).put("levelName", st.levelName)
                 .put("streak", st.streak).put("bestStreak", st.bestStreak).put("badges", JSONArray(st.badges.sorted())))
     }
@@ -231,7 +235,12 @@ object WebConfig {
             if (p.has("alarmSound")) Prefs.alarmSound = if (p.optString("alarmSound") == "girassol") "girassol" else "amanhecer"
             if (p.has("uiSounds")) Prefs.uiSounds = p.optBoolean("uiSounds")
             if (p.has("dynamicColor")) Prefs.dynamicColor = p.optBoolean("dynamicColor")
-            if (p.has("aiModel")) p.optString("aiModel").takeIf { m -> SunAI.MODELS.any { it.first == m } }?.let { Prefs.aiModel = it }
+            // o provedor vem antes: chave e modelo são guardados por provedor
+            if (p.has("aiProvider")) p.optString("aiProvider").takeIf { id -> Assistant.PROVIDERS.any { it.id == id } }?.let { Prefs.aiProvider = it }
+            if (p.has("aiBaseUrl")) Prefs.aiBaseUrl = p.optString("aiBaseUrl")
+            if (p.has("aiModel")) p.optString("aiModel").trim().takeIf { it.isNotEmpty() && it.length <= 120 }?.let { Prefs.aiModel = it }
+            if (p.has("aiName")) Prefs.aiName = p.optString("aiName").trim().takeIf { it != Assistant.DEFAULT_NAME } ?: ""
+            if (p.has("navLabels")) Prefs.navLabels = p.optBoolean("navLabels")
             if (p.has("reportName")) Prefs.reportName = p.optString("reportName")
         }
     }

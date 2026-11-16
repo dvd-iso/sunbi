@@ -5,6 +5,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
@@ -49,11 +50,14 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -62,7 +66,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
@@ -72,12 +81,15 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import com.dvdiso.sunbi.Launcher
 import com.dvdiso.sunbi.Repo
 import com.dvdiso.sunbi.Task
 import com.dvdiso.sunbi.today
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
@@ -91,44 +103,107 @@ private val DATE = DateTimeFormatter.ofPattern("EEEE, d 'de' MMMM", PT)
  * Tela inicial, de propósito quase vazia: relógio, data, uma linha com a tarefa da vez e os apps
  * favoritos em texto, sobre o fundo do tema. Deslizar para cima abre todos os apps.
  * Segurar um app abre as opções.
+ *
+ * A lista de apps acompanha o dedo: [p] vai de 0 (tela inicial) a 1 (lista aberta), o arrasto
+ * mexe nele direto e, ao soltar, uma mola leva até o fim. Uma animação só, sem cascatas por cima.
  */
 @Composable
 fun LauncherScreen(apps: List<Launcher.AppEntry>, homePressed: Long, onOpenSunBi: () -> Unit) {
     val ctx = LocalContext.current
     val cs = MaterialTheme.colorScheme
-    var drawer by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    var p by remember { mutableFloatStateOf(0f) }
+    var opening by remember { mutableStateOf(false) } // para onde a mola está levando
+    var pulling by remember { mutableStateOf(false) } // puxando a lista aberta para baixo
+    var job by remember { mutableStateOf<Job?>(null) }
+    var height by remember { mutableFloatStateOf(0f) }
     var tick by remember { mutableLongStateOf(0L) }
+    // a entrada em cascata da tela inicial acontece uma vez só, não a cada volta da lista
+    var homeEntered by remember { mutableStateOf(false) }
     // estado local dos apps: favoritos, ocultos e nomes mudam na hora, sem esperar recarregar
     var list by remember(apps) { mutableStateOf(apps) }
     var favKeys by remember { mutableStateOf(Launcher.favorites()) }
     var hiddenKeys by remember { mutableStateOf(Launcher.hidden()) }
     var options by remember { mutableStateOf<Launcher.AppEntry?>(null) }
-    LaunchedEffect(homePressed) { drawer = false }
-    LaunchedEffect(Unit) { while (true) { delay(5_000); tick++ } }
-    BackHandler(enabled = drawer) { drawer = false }
 
-    val byKey = list.associateBy { it.key }
-    val favorites = favKeys.mapNotNull { byKey[it] }
-    val visible = list.filter { it.key !in hiddenKeys }
+    fun settle(open: Boolean) {
+        opening = open
+        pulling = false
+        job?.cancel()
+        job = scope.launch {
+            animate(p, if (open) 1f else 0f, animationSpec = spring(dampingRatio = 0.9f, stiffness = 380f)) { v, _ -> p = v.coerceIn(0f, 1f) }
+        }
+    }
+    fun snap(open: Boolean) {
+        job?.cancel()
+        opening = open
+        pulling = false
+        p = if (open) 1f else 0f
+    }
+    // o dedo percorre meia tela para abrir ou fechar por completo
+    fun dragBy(dy: Float) {
+        job?.cancel()
+        p = (p - dy / (height * 0.5f).coerceAtLeast(300f)).coerceIn(0f, 1f)
+    }
+
+    LaunchedEffect(homePressed) { if (p > 0f) settle(false) }
+    LaunchedEffect(Unit) { delay(900); homeEntered = true }
+    LaunchedEffect(Unit) { while (true) { delay(5_000); tick++ } }
+    // a composição só olha para estes três; o valor de [p] quadro a quadro é lido nas camadas
+    // (graphicsLayer), então arrastar não recompõe a tela
+    val showHome by remember { derivedStateOf { p < 1f } }
+    val showDrawer by remember { derivedStateOf { p > 0f } }
+    val opened by remember { derivedStateOf { p >= 1f } }
+    BackHandler(enabled = opening || showDrawer) { Feedback.tap(); settle(false) }
+
+    val favorites = remember(list, favKeys) { val byKey = list.associateBy { it.key }; favKeys.mapNotNull { byKey[it] } }
+    val visible = remember(list, hiddenKeys) { list.filter { it.key !in hiddenKeys } }
     val open: (Launcher.AppEntry) -> Unit = { app ->
         Feedback.tap()
         if (!Launcher.launch(ctx, app)) Feedback.error()
-        drawer = false
+        snap(false)
     }
 
-    Box(Modifier.fillMaxSize().background(cs.surface)) {
-        AnimatedContent(
-            drawer,
-            transitionSpec = {
-                if (targetState) (slideInVertically(spring(dampingRatio = 0.85f, stiffness = 400f)) { it / 3 } + fadeIn()) togetherWith
-                    (slideOutVertically { -it / 8 } + fadeOut())
-                else (slideInVertically { -it / 8 } + fadeIn()) togetherWith
-                    (slideOutVertically(spring(dampingRatio = 0.9f, stiffness = 500f)) { it / 3 } + fadeOut())
-            },
-            label = "drawer",
-        ) { d ->
-            if (d) AppDrawer(visible, hiddenKeys.size, onOpen = open, onLongPress = { options = it }, onClose = { Feedback.tap(); drawer = false })
-            else Home(tick, favorites, onOpenSunBi, onOpenDrawer = { Feedback.tap(); drawer = true }, onOpen = open, onLongPress = { options = it })
+    Box(Modifier.fillMaxSize().background(cs.surface).onSizeChanged { height = it.height.toFloat() }) {
+        if (showHome) {
+            // a tela inicial recua de leve e some enquanto a lista sobe
+            Box(Modifier.fillMaxSize().graphicsLayer {
+                alpha = (1f - p * 1.8f).coerceIn(0f, 1f)
+                translationY = -p * size.height * 0.10f
+                val sc = 1f - 0.05f * p
+                scaleX = sc
+                scaleY = sc
+            }) {
+                Home(
+                    tick, favorites, skipEnter = homeEntered, onOpenSunBi = onOpenSunBi,
+                    onDrag = { dragBy(it) },
+                    onRelease = { last ->
+                        val go = p > 0.3f || (last < -6f && p > 0.04f)
+                        if (go) Feedback.tap()
+                        settle(go)
+                    },
+                    onOpen = open, onLongPress = { options = it },
+                )
+            }
+        }
+        if (showDrawer) {
+            Box(Modifier.fillMaxSize().graphicsLayer {
+                alpha = ((p - 0.1f) / 0.6f).coerceIn(0f, 1f)
+                translationY = (1f - p) * size.height * 0.35f
+            }) {
+                AppDrawer(
+                    visible, hiddenKeys.size, opened = opened, pulling = { pulling },
+                    onDrag = { dy -> if (dy > 0f) pulling = true; dragBy(dy) },
+                    onRelease = { vy ->
+                        if (p < 1f) {
+                            val close = p < 0.78f || vy > 1500f
+                            if (close) Feedback.tap()
+                            settle(!close)
+                        } else pulling = false
+                    },
+                    onOpen = open, onLongPress = { options = it },
+                )
+            }
         }
     }
 
@@ -163,10 +238,10 @@ private fun currentTask(day: String): Task? {
     return pending.lastOrNull { val m = minutes(it.time)!!; m <= now && now - m <= 180 } ?: pending.firstOrNull { minutes(it.time)!! > now }
 }
 
-/** Entra uma vez, deslizando de [fromY] dp e aparecendo, com atraso em ms. */
-private fun Modifier.enter(delayMs: Int, fromY: Float = 18f): Modifier = composed {
-    val a = remember { Animatable(0f) }
-    LaunchedEffect(Unit) { delay(delayMs.toLong()); a.animateTo(1f, spring(dampingRatio = 0.75f, stiffness = 220f)) }
+/** Entra uma vez, deslizando de [fromY] dp e aparecendo, com atraso em ms. Com [skip], já nasce no lugar. */
+private fun Modifier.enter(delayMs: Int, fromY: Float = 18f, skip: Boolean = false): Modifier = composed {
+    val a = remember { Animatable(if (skip) 1f else 0f) }
+    LaunchedEffect(Unit) { if (a.value < 1f) { delay(delayMs.toLong()); a.animateTo(1f, spring(dampingRatio = 0.75f, stiffness = 220f)) } }
     graphicsLayer {
         alpha = a.value.coerceIn(0f, 1f)
         translationY = (1f - a.value) * fromY.dp.toPx()
@@ -176,7 +251,8 @@ private fun Modifier.enter(delayMs: Int, fromY: Float = 18f): Modifier = compose
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun Home(
-    tick: Long, favorites: List<Launcher.AppEntry>, onOpenSunBi: () -> Unit, onOpenDrawer: () -> Unit,
+    tick: Long, favorites: List<Launcher.AppEntry>, skipEnter: Boolean, onOpenSunBi: () -> Unit,
+    onDrag: (Float) -> Unit, onRelease: (Float) -> Unit,
     onOpen: (Launcher.AppEntry) -> Unit, onLongPress: (Launcher.AppEntry) -> Unit,
 ) {
     @Suppress("UNUSED_EXPRESSION") tick
@@ -184,18 +260,24 @@ private fun Home(
     val day = today()
     val task = currentTask(day)
     var turns by remember { mutableFloatStateOf(0f) }
+    val drag by rememberUpdatedState(onDrag)
+    val release by rememberUpdatedState(onRelease)
+    // quem volta da lista de apps encontra a tela já no lugar
+    val skip = remember { skipEnter }
     Column(
         Modifier.fillMaxSize().safeDrawingPadding()
             .pointerInput(Unit) {
-                var total = 0f
-                detectVerticalDragGestures(onDragStart = { total = 0f }, onDragEnd = { if (total < -120f) onOpenDrawer() }) { _, dy -> total += dy }
+                var last = 0f
+                detectVerticalDragGestures(
+                    onDragStart = { last = 0f }, onDragEnd = { release(last) }, onDragCancel = { release(0f) },
+                ) { _, dy -> last = dy; drag(dy) }
             }
             .semantics { contentDescription = "Tela inicial. Deslize para cima para ver todos os apps." }
             .padding(horizontal = 28.dp, vertical = 24.dp),
     ) {
-        Clock(Modifier.enter(0, fromY = -16f))
+        Clock(Modifier.enter(0, fromY = -16f, skip = skip))
         Text(
-            LocalDate.parse(day).format(DATE), Modifier.enter(80, fromY = -10f),
+            LocalDate.parse(day).format(DATE), Modifier.enter(80, fromY = -10f, skip = skip),
             style = MaterialTheme.typography.titleMedium, color = cs.onSurfaceVariant,
         )
 
@@ -208,23 +290,23 @@ private fun Home(
                     (slideOutVertically { -it } + fadeOut())
             },
             contentKey = { it?.id },
-            modifier = Modifier.enter(160),
+            modifier = Modifier.enter(160, skip = skip),
             label = "task",
         ) { t -> if (t != null) TaskLine(day, t) else Spacer(Modifier.height(1.dp)) }
 
         Spacer(Modifier.weight(1f))
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             for ((i, app) in favorites.withIndex()) {
-                AppRow(app, big = true, modifier = Modifier.enter(220 + 50 * i), onOpen = onOpen, onLongPress = onLongPress)
+                AppRow(app, big = true, modifier = Modifier.enter(220 + 50 * i, skip = skip), onOpen = onOpen, onLongPress = onLongPress)
             }
         }
         if (favorites.isEmpty()) {
-            Text("Deslize para cima e segure um app para deixá-lo aqui.", Modifier.enter(220),
+            Text("Deslize para cima e segure um app para deixá-lo aqui.", Modifier.enter(220, skip = skip),
                 style = MaterialTheme.typography.bodyLarge, color = cs.onSurfaceVariant)
         }
         Spacer(Modifier.weight(1f))
         // a flor dá um giro e abre o SunBi
-        Box(Modifier.fillMaxWidth().enter(300, fromY = 24f), contentAlignment = Alignment.Center) {
+        Box(Modifier.fillMaxWidth().enter(300, fromY = 24f, skip = skip), contentAlignment = Alignment.Center) {
             SunBiMark(
                 Modifier.clip(CircleShape).bouncyClick(label = "Abrir o SunBi") { Feedback.tap(); turns += 1f; onOpenSunBi() },
                 size = 40.dp, turns = turns, sunglasses = Repo.isOff(day),
@@ -279,41 +361,76 @@ private fun TaskLine(day: String, task: Task) {
     }
 }
 
+/**
+ * Todos os apps, com busca. [opened] vira true quando a lista terminou de subir (só aí o teclado
+ * abre). Puxar para baixo com a lista no topo, ou pela busca, arrasta a tela de volta: os
+ * arrastos saem por [onDrag] e o soltar por [onRelease] (com a velocidade), e quem decide é a tela.
+ */
 @Composable
 private fun AppDrawer(
-    apps: List<Launcher.AppEntry>, hiddenCount: Int,
-    onOpen: (Launcher.AppEntry) -> Unit, onLongPress: (Launcher.AppEntry) -> Unit, onClose: () -> Unit,
+    apps: List<Launcher.AppEntry>, hiddenCount: Int, opened: Boolean, pulling: () -> Boolean,
+    onDrag: (Float) -> Unit, onRelease: (Float) -> Unit,
+    onOpen: (Launcher.AppEntry) -> Unit, onLongPress: (Launcher.AppEntry) -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
     var query by remember { mutableStateOf("") }
     val focus = remember { FocusRequester() }
     val shown = remember(apps, query) { Launcher.filter(apps, query) }
-    LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
+    val drag by rememberUpdatedState(onDrag)
+    val release by rememberUpdatedState(onRelease)
+    val isPulling by rememberUpdatedState(pulling)
+    LaunchedEffect(opened) { if (opened) runCatching { focus.requestFocus() } }
     // uma só correspondência: abre sozinho (busca de launcher)
     LaunchedEffect(shown.size, query) { if (query.length >= 2 && shown.size == 1) onOpen(shown.single()) }
 
-    Column(
-        Modifier.fillMaxSize().safeDrawingPadding().imePadding()
-            .pointerInput(Unit) {
-                // puxar para baixo fecha a lista
-                var total = 0f
-                detectVerticalDragGestures(onDragStart = { total = 0f }, onDragEnd = { if (total > 160f) onClose() }) { _, dy -> total += dy }
-            },
-    ) {
+    // a lista rola normalmente; só o que sobra no topo (puxar para baixo) vira arrasto da tela
+    val pull = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                // no meio do puxão, voltar o dedo para cima devolve a tela antes de rolar a lista
+                if (source == NestedScrollSource.UserInput && available.y < 0f && isPulling()) {
+                    drag(available.y)
+                    return Offset(0f, available.y)
+                }
+                return Offset.Zero
+            }
+
+            override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+                if (source == NestedScrollSource.UserInput && available.y > 0f) {
+                    drag(available.y)
+                    return Offset(0f, available.y)
+                }
+                return Offset.Zero
+            }
+
+            override suspend fun onPreFling(available: Velocity): Velocity {
+                if (isPulling()) {
+                    release(available.y)
+                    return available
+                }
+                return Velocity.Zero
+            }
+        }
+    }
+
+    Column(Modifier.fillMaxSize().safeDrawingPadding().imePadding()) {
         OutlinedTextField(
             query, { query = it },
             placeholder = { Text("Buscar app") }, singleLine = true,
             leadingIcon = { Icon(Icons.Filled.Search, null) },
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp).focusRequester(focus).enter(0, fromY = -12f),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp).focusRequester(focus)
+                .pointerInput(Unit) {
+                    detectVerticalDragGestures(onDragEnd = { release(0f) }, onDragCancel = { release(0f) }) { _, dy -> drag(dy) }
+                },
             shape = MaterialTheme.shapes.extraLarge,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
             keyboardActions = KeyboardActions(onGo = { shown.firstOrNull()?.let(onOpen) }),
         )
-        LazyColumn(contentPadding = PaddingValues(horizontal = 24.dp, vertical = 4.dp)) {
-            itemsIndexed(shown, key = { _, a -> a.key }) { i, app ->
-                // os primeiros entram em cascata; os de baixo já aparecem prontos
-                AppRow(app, big = false, modifier = Modifier.animateItem().then(if (i < 14) Modifier.enter(30 * i) else Modifier),
-                    onOpen = onOpen, onLongPress = onLongPress)
+        LazyColumn(Modifier.weight(1f).nestedScroll(pull), contentPadding = PaddingValues(horizontal = 24.dp, vertical = 4.dp)) {
+            itemsIndexed(shown, key = { _, a -> a.key }) { _, app ->
+                // sem entrada por item: rolar não pode reanimar o que volta para a tela.
+                // animateItem só reposiciona quando a busca filtra a lista.
+                AppRow(app, big = false, modifier = Modifier.animateItem(), onOpen = onOpen, onLongPress = onLongPress)
             }
             if (shown.isEmpty()) item { Text("Nenhum app com \"$query\"", Modifier.padding(8.dp), style = MaterialTheme.typography.bodyLarge, color = cs.onSurfaceVariant) }
             item {

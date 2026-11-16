@@ -140,15 +140,16 @@ dose por conta própria; siga a orientação do seu médico**.
 - **Primeiro passo:** cada tarefa pode ter a menor ação concreta para começar ("calçar o tênis").
 - **Bloco de foco:** segurando uma tarefa, 5 minutos por padrão (o difícil é começar), ou 10, 15, 25.
   Contagem regressiva visível, aviso no fim mesmo com o app fechado e "+5 min".
-- **Alarmes** para cada tarefa: lembretes externos no celular, no Quest e no PC.
+- **Alarmes** para cada tarefa: lembretes externos no celular e, pela extensão do navegador, no computador.
 
-## 8. SunAI, a assistente
+## 8. A assistente
 
-A SunAI resume semanas e meses, dá ideias e ajusta a rotina com base nos registros e nos
+A assistente (a pessoa escolhe o nome dela) resume semanas e meses, dá ideias e ajusta a rotina com base nos registros e nos
 métodos acima. Regras fixas no app: ela nunca sugere mudar remédio, não apaga tarefas de remédio
 nem muda o horário delas, faz poucas mudanças por vez, sempre com "Desfazer", e em sinal de risco
 orienta CVV 188, SAMU 192 e o plano de segurança. Os registros dos últimos 31 dias são enviados ao
-OpenCode Go a cada pergunta, só depois do consentimento da pessoa.
+provedor de IA escolhido pela pessoa (OpenAI, OpenRouter, OpenCode Go ou outro compatível) a cada
+pergunta, só depois do consentimento dela.
 
 ## 8b. Pontos, níveis e conquistas (gamificação sem culpa)
 

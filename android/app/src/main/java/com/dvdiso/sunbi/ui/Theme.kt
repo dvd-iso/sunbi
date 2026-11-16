@@ -19,13 +19,18 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.dvdiso.sunbi.Prefs
 
-/** Escolha de cor observável (mudar em Ajustes recompõe o app inteiro). */
+/** Escolhas de aparência observáveis (mudar em Ajustes recompõe o app inteiro). */
 object ThemeState {
     val dynamic = mutableStateOf(true)
-    fun load() { dynamic.value = Prefs.dynamicColor }
+    /** Nome de cada aba na barra de baixo. */
+    val navLabels = mutableStateOf(true)
+    fun load() {
+        dynamic.value = Prefs.dynamicColor
+        navLabels.value = Prefs.navLabels
+    }
 }
 
-// Paleta Girassol: tons derivados de #F5B301, usada no Quest e quando a pessoa desliga as cores do sistema.
+// Paleta Girassol: tons derivados de #F5B301, usada quando a pessoa desliga as cores do sistema.
 private val SunLight = lightColorScheme(
     primary = Color(0xFF7A5900), onPrimary = Color(0xFFFFFFFF),
     primaryContainer = Color(0xFFFFDEA1), onPrimaryContainer = Color(0xFF261900),

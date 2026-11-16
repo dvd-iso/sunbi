@@ -42,6 +42,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
@@ -72,7 +73,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.dvdiso.sunbi.Prefs
-import com.dvdiso.sunbi.SunAI
+import com.dvdiso.sunbi.Assistant
 import kotlinx.coroutines.launch
 
 private val SUGGESTIONS = listOf(
@@ -84,25 +85,25 @@ private val SUGGESTIONS = listOf(
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun SunAIScreen(contentPadding: PaddingValues, initial: String? = null, onInitialSent: () -> Unit = {}) {
-    var ready by remember { mutableStateOf(Prefs.aiConsent && Prefs.aiKey.isNotBlank()) }
-    var setup by remember { mutableStateOf(false) }
+fun AssistantScreen(contentPadding: PaddingValues, initial: String? = null, onInitialSent: () -> Unit = {}) {
+    var ready by remember { mutableStateOf(Assistant.ready()) }
     if (!ready) {
-        SunAISetup(contentPadding) { ready = true }
+        AssistantSetup(contentPadding) { ready = true }
         return
     }
-    SunAIChat(contentPadding, initial, onInitialSent, onDisconnect = { ready = false })
+    AssistantChat(contentPadding, initial, onInitialSent, onDisconnect = { ready = false })
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun SunAIChat(contentPadding: PaddingValues, initial: String?, onInitialSent: () -> Unit, onDisconnect: () -> Unit) {
+private fun AssistantChat(contentPadding: PaddingValues, initial: String?, onInitialSent: () -> Unit, onDisconnect: () -> Unit) {
     var setup by remember { mutableStateOf(false) }
 
-    val msgs = remember { mutableStateListOf<SunAI.Msg>().apply { addAll(SunAI.load()) } }
+    val msgs = remember { mutableStateListOf<Assistant.Msg>().apply { addAll(Assistant.load()) } }
     var input by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var menu by remember { mutableStateOf(false) }
+    var name by remember { mutableStateOf(Assistant.name()) }
     val scope = rememberCoroutineScope()
     val list = rememberLazyListState()
     val fb = rememberFeedback()
@@ -111,23 +112,23 @@ private fun SunAIChat(contentPadding: PaddingValues, initial: String?, onInitial
     fun send(q: String) {
         if (q.isBlank() || busy) return
         fb.send()
-        msgs += SunAI.Msg("user", q.trim())
+        msgs += Assistant.Msg("user", q.trim())
         input = ""
         busy = true
         scope.launch {
-            val reply = runCatching { SunAI.ask(msgs.dropLast(1), q.trim()) }
-                .getOrElse { SunAI.Msg("error", it.message ?: "Não consegui falar com o OpenCode Go.") }
+            val reply = runCatching { Assistant.ask(msgs.dropLast(1), q.trim()) }
+                .getOrElse { Assistant.Msg("error", it.message ?: "Não consegui falar com o provedor.") }
             msgs += reply
             when {
                 reply.role == "error" -> fb.error()
                 reply.changes.isNotEmpty() -> fb.toggle(true)
                 else -> fb.tap()
             }
-            SunAI.save(msgs)
+            Assistant.save(msgs)
             busy = false
         }
     }
-    // pergunta que veio do tour inicial ("Refinar com a SunAI")
+    // pergunta que veio do tour inicial ("Refinar com a assistente")
     LaunchedEffect(initial) {
         if (initial != null) { send(initial); onInitialSent() }
     }
@@ -147,13 +148,14 @@ private fun SunAIChat(contentPadding: PaddingValues, initial: String?, onInitial
         Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             SunBiMark(size = 32.dp)
             Spacer(Modifier.width(10.dp))
-            Text("SunAI", style = MaterialTheme.typography.titleLargeEmphasized, modifier = Modifier.weight(1f))
+            Text(name, style = MaterialTheme.typography.titleLargeEmphasized, modifier = Modifier.weight(1f),
+                maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
             Box {
-                IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, "Opções da SunAI") }
+                IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, "Opções da assistente") }
                 DropdownMenu(menu, { menu = false }) {
-                    DropdownMenuItem(text = { Text("Modelo e chave") }, onClick = { menu = false; setup = true })
+                    DropdownMenuItem(text = { Text("Nome, provedor e modelo") }, onClick = { menu = false; setup = true })
                     DropdownMenuItem(text = { Text("Nova conversa") }, enabled = msgs.isNotEmpty(),
-                        onClick = { menu = false; SunAI.clear(); msgs.clear() })
+                        onClick = { menu = false; Assistant.clear(); msgs.clear() })
                 }
             }
         }
@@ -192,9 +194,9 @@ private fun SunAIChat(contentPadding: PaddingValues, initial: String?, onInitial
             ) {
                 itemsIndexed(msgs) { i, m ->
                     Message(m, onUndo = {
-                        SunAI.undo(m)
+                        Assistant.undo(m)
                         msgs[i] = m.copy(undone = true)
-                        SunAI.save(msgs)
+                        Assistant.save(msgs)
                     })
                 }
                 if (busy) {
@@ -212,7 +214,7 @@ private fun SunAIChat(contentPadding: PaddingValues, initial: String?, onInitial
         // campo de mensagem com o botão de enviar dentro
         OutlinedTextField(
             input, { input = it },
-            placeholder = { Text("Escreva para a SunAI") },
+            placeholder = { Text("Escreva para $name") },
             modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = inputBottom),
             shape = MaterialTheme.shapes.extraLarge, maxLines = 5,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
@@ -226,9 +228,9 @@ private fun SunAIChat(contentPadding: PaddingValues, initial: String?, onInitial
     }
 
     if (setup) {
-        SunAISettingsSheet(
-            onDismiss = { setup = false },
-            onClear = { SunAI.clear(); msgs.clear(); setup = false },
+        AssistantSettingsSheet(
+            onDismiss = { setup = false; name = Assistant.name(); if (!Assistant.ready()) onDisconnect() },
+            onClear = { Assistant.clear(); msgs.clear(); setup = false },
             onDisconnect = { Prefs.aiConsent = false; Prefs.aiKey = ""; setup = false; onDisconnect() },
         )
     }
@@ -253,7 +255,7 @@ private fun richText(text: String): AnnotatedString = buildAnnotatedString {
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun Message(m: SunAI.Msg, onUndo: () -> Unit) {
+private fun Message(m: Assistant.Msg, onUndo: () -> Unit) {
     val cs = MaterialTheme.colorScheme
     if (m.role == "user") {
         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
@@ -298,26 +300,30 @@ private fun Message(m: SunAI.Msg, onUndo: () -> Unit) {
     }
 }
 
-/** Primeira vez: explica o que é enviado, pede a chave e o consentimento. */
+/** Primeira vez: explica o que é enviado, pede o nome, o provedor, a chave e o consentimento. */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun SunAISetup(insets: PaddingValues, onReady: () -> Unit) {
+private fun AssistantSetup(insets: PaddingValues, onReady: () -> Unit) {
     val cs = MaterialTheme.colorScheme
-    var key by remember { mutableStateOf(Prefs.aiKey) }
     var agree by remember { mutableStateOf(false) }
     var more by remember { mutableStateOf(false) }
+    // muda a cada edição da conexão, para reavaliar se já dá para ativar
+    var version by remember { mutableStateOf(0) }
+    val complete = remember(version) {
+        Prefs.aiModel.isNotBlank() && Assistant.baseUrl().isNotBlank() && (Prefs.aiKey.length >= 8 || Prefs.aiProvider == "custom")
+    }
     Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).imePadding()
             .padding(start = 24.dp, end = 24.dp, top = insets.calculateTopPadding() + 12.dp, bottom = insets.calculateBottomPadding() + 24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Row(Modifier.enterFromBelow(0), verticalAlignment = Alignment.CenterVertically) {
             SunBiMark(size = 40.dp)
             Spacer(Modifier.width(12.dp))
-            Text("SunAI", style = MaterialTheme.typography.headlineMediumEmphasized)
+            Text("Assistente", style = MaterialTheme.typography.headlineMediumEmphasized)
         }
         Column(Modifier.enterFromBelow(1), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("A SunAI lê sua rotina e os últimos 31 dias para responder. Tudo vai para o OpenCode Go, com a sua chave.",
+            Text("Ela lê sua rotina e os últimos 31 dias para responder. Tudo vai para o provedor de IA que você escolher, com a sua chave.",
                 style = MaterialTheme.typography.bodyLarge)
             TextButton(onClick = { Feedback.tap(); more = !more }, contentPadding = PaddingValues(0.dp)) {
                 Text(if (more) "Mostrar menos" else "Saiba mais")
@@ -325,18 +331,16 @@ private fun SunAISetup(insets: PaddingValues, onReady: () -> Unit) {
             AnimatedVisibility(more) {
                 Text(
                     "A cada pergunta, o app envia as duas rotinas, o seu plano e os registros dos últimos 31 dias (humor, sono, " +
-                        "remédios marcados, sinais e anotações) ao OpenCode Go e ao modelo escolhido. A chave e a conversa ficam só " +
-                        "neste aparelho e podem ser apagadas. A SunAI não substitui sua equipe de saúde e nunca muda remédios.",
+                        "remédios marcados, sinais e anotações) ao provedor e ao modelo escolhidos. A chave e a conversa ficam só " +
+                        "neste aparelho e podem ser apagadas. A assistente não substitui sua equipe de saúde e nunca muda remédios.",
                     style = MaterialTheme.typography.bodyMedium, color = cs.onSurfaceVariant,
                 )
             }
         }
-        OutlinedTextField(
-            key, { key = it.trim() }, label = { Text("Chave do OpenCode Go") }, singleLine = true,
-            visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth().enterFromBelow(2),
-            shape = MaterialTheme.shapes.large,
-            supportingText = { Text("Pegue em opencode.ai/console") },
-        )
+        Column(Modifier.enterFromBelow(2), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            NameField()
+            ConnectionEditor { version++ }
+        }
         Row(
             Modifier.fillMaxWidth().enterFromBelow(3).clip(MaterialTheme.shapes.large)
                 .bouncyClick { Feedback.tick(); agree = !agree }.padding(vertical = 4.dp),
@@ -348,38 +352,119 @@ private fun SunAISetup(insets: PaddingValues, onReady: () -> Unit) {
         Button(
             onClick = {
                 Feedback.toggle(true)
-                Prefs.aiKey = key
                 Prefs.aiConsent = true
                 onReady()
             },
-            enabled = agree && key.length >= 8,
+            enabled = agree && complete,
             shapes = ButtonDefaults.shapes(), modifier = Modifier.fillMaxWidth().height(56.dp).enterFromBelow(4),
-        ) { Text("Ativar a SunAI", style = MaterialTheme.typography.titleMedium) }
-        Text("O modelo muda depois em ⋮ → Modelo e chave.", style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
+        ) { Text("Ativar", style = MaterialTheme.typography.titleMedium) }
+        Text("Tudo isso muda depois em ⋮ → Nome, provedor e modelo.", style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
     }
 }
 
+/** Como a pessoa quer chamar a assistente. Vazio volta para "Assistente". */
 @Composable
-private fun ModelPicker(selected: String, onPick: (String) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        for ((id, name) in SunAI.MODELS) {
-            Row(
-                Modifier.fillMaxWidth().clip(MaterialTheme.shapes.large).clickable { onPick(id) }.padding(vertical = 2.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                androidx.compose.material3.RadioButton(selected == id, { onPick(id) })
-                Text(name, style = MaterialTheme.typography.bodyLarge)
+private fun NameField() {
+    var name by remember { mutableStateOf(Prefs.aiName) }
+    OutlinedTextField(
+        name, { name = it.take(24); Prefs.aiName = name },
+        label = { Text("Como quer chamar a assistente?") }, placeholder = { Text(Assistant.DEFAULT_NAME) }, singleLine = true,
+        modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large,
+        keyboardOptions = KeyboardOptions(capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Words, imeAction = ImeAction.Next),
+    )
+}
+
+/**
+ * Provedor, endereço (só no "Outro"), chave e modelo. Grava direto nas preferências: cada
+ * provedor lembra a própria chave e o próprio modelo, então trocar e voltar não perde nada.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ConnectionEditor(onChanged: () -> Unit = {}) {
+    val cs = MaterialTheme.colorScheme
+    val scope = rememberCoroutineScope()
+    var provider by remember { mutableStateOf(Prefs.aiProvider) }
+    var key by remember(provider) { mutableStateOf(Prefs.aiKey) }
+    var model by remember(provider) { mutableStateOf(Prefs.aiModel) }
+    var url by remember { mutableStateOf(Prefs.aiBaseUrl) }
+    var fetched by remember(provider) { mutableStateOf<List<String>?>(null) }
+    var fetchMsg by remember(provider) { mutableStateOf<String?>(null) }
+    var loading by remember(provider) { mutableStateOf(false) }
+    val p = Assistant.provider(provider)
+    val custom = p.id == "custom"
+
+    Label("Provedor")
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        for (o in Assistant.PROVIDERS) {
+            FilterChip(
+                selected = o.id == provider,
+                onClick = { Feedback.tick(); Prefs.aiProvider = o.id; provider = o.id; onChanged() },
+                label = { Text(if (o.id == "custom") "Outro" else o.name, Modifier.padding(vertical = 6.dp)) }, shape = MaterialTheme.shapes.large,
+            )
+        }
+    }
+    if (custom) {
+        OutlinedTextField(
+            url, { url = it.trim(); Prefs.aiBaseUrl = url; onChanged() }, label = { Text("Endereço da API") }, singleLine = true,
+            placeholder = { Text("https://exemplo.com/v1") }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large,
+            keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Uri, imeAction = ImeAction.Next),
+            supportingText = { Text("Qualquer serviço no formato da OpenAI: Ollama, LM Studio, LiteLLM, Mistral, Together…") },
+        )
+    }
+    OutlinedTextField(
+        key, { key = it.trim(); Prefs.aiKey = key; onChanged() },
+        label = { Text(if (custom) "Chave (se o servidor pedir)" else "Chave de ${p.name}") }, singleLine = true,
+        visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large,
+        keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Password, imeAction = ImeAction.Next),
+        supportingText = if (p.keyHint.isNotEmpty()) { { Text("Pegue em ${p.keyHint}") } } else null,
+    )
+    OutlinedTextField(
+        model, { model = it.trim(); Prefs.aiModel = model; onChanged() }, label = { Text("Modelo") }, singleLine = true,
+        modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large,
+        keyboardOptions = KeyboardOptions(autoCorrectEnabled = false, imeAction = ImeAction.Done),
+        supportingText = { Text("O id do modelo, como o provedor escreve. Melhor um que aceite ferramentas, para ajustar a rotina.") },
+    )
+    // sugestões: a lista da conta (se já buscou) ou as do provedor; digitar filtra
+    val all = fetched ?: p.models
+    val options = (if (model.isBlank() || model in all) all else all.filter { it.contains(model, ignoreCase = true) }).take(12)
+    if (options.isNotEmpty()) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            for (m in options) {
+                FilterChip(
+                    selected = m == model,
+                    onClick = { Feedback.tick(); model = m; Prefs.aiModel = m; onChanged() },
+                    label = { Text(m) }, shape = MaterialTheme.shapes.large,
+                )
             }
         }
     }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        TextButton(
+            enabled = !loading && Assistant.baseUrl().isNotBlank() && (key.isNotBlank() || custom),
+            onClick = {
+                Feedback.tap()
+                loading = true
+                fetchMsg = null
+                scope.launch {
+                    runCatching { Assistant.listModels() }
+                        .onSuccess { fetched = it; fetchMsg = if (it.isEmpty()) "O provedor não listou nenhum modelo." else "${it.size} modelos na sua conta. Digite para filtrar." }
+                        .onFailure { fetchMsg = it.message ?: "Não consegui buscar os modelos." }
+                    loading = false
+                }
+            },
+            contentPadding = PaddingValues(0.dp),
+        ) { Text(if (loading) "Buscando…" else "Buscar os modelos da minha conta") }
+    }
+    fetchMsg?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant) }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun SunAISettingsSheet(onDismiss: () -> Unit, onClear: () -> Unit, onDisconnect: () -> Unit) {
-    var model by remember { mutableStateOf(Prefs.aiModel) }
+private fun AssistantSettingsSheet(onDismiss: () -> Unit, onClear: () -> Unit, onDisconnect: () -> Unit) {
     var weekly by remember { mutableStateOf(Prefs.weeklySummary) }
     val ctx = androidx.compose.ui.platform.LocalContext.current
-    EditorSheet("SunAI", "Chave, modelo e conversa", onDismiss) {
+    EditorSheet("Assistente", "Nome, provedor, modelo e conversa", onDismiss) {
+        NameField()
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text("Resumo da semana no domingo", style = MaterialTheme.typography.bodyLarge)
@@ -387,9 +472,8 @@ private fun SunAISettingsSheet(onDismiss: () -> Unit, onClear: () -> Unit, onDis
             }
             androidx.compose.material3.Switch(weekly, { weekly = it; Prefs.weeklySummary = it; com.dvdiso.sunbi.Reminders.schedule(ctx); Feedback.tick() })
         }
-        Label("Modelo")
-        ModelPicker(model) { model = it; Prefs.aiModel = it }
+        ConnectionEditor()
         OutlinedButton(onClick = onClear, shapes = ButtonDefaults.shapes(), modifier = Modifier.fillMaxWidth()) { Text("Apagar a conversa") }
-        TextButton(onClick = onDisconnect, modifier = Modifier.fillMaxWidth()) { Text("Desligar a SunAI e apagar a chave") }
+        TextButton(onClick = onDisconnect, modifier = Modifier.fillMaxWidth()) { Text("Desligar a assistente e apagar a chave") }
     }
 }

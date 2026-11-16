@@ -80,11 +80,10 @@ import com.dvdiso.sunbi.RingService
 import com.dvdiso.sunbi.Sfx
 import com.dvdiso.sunbi.SyncManager
 import com.dvdiso.sunbi.WebConfig
-import com.dvdiso.sunbi.isQuest
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun SettingsScreen(contentPadding: PaddingValues, onBack: () -> Unit, onRoutine: () -> Unit, onSunAI: () -> Unit) {
+fun SettingsScreen(contentPadding: PaddingValues, onBack: () -> Unit, onRoutine: () -> Unit, onAssistant: () -> Unit) {
     val ctx = LocalContext.current
     var sheet by rememberSaveable { mutableStateOf<String?>(null) }
     val peers by SyncManager.peers.collectAsState()
@@ -103,10 +102,11 @@ fun SettingsScreen(contentPadding: PaddingValues, onBack: () -> Unit, onRoutine:
         add(Item("look", "Aparência e sons", if (Prefs.uiSounds) "Sons e vibração ligados" else "Sons e vibração desligados") { sheet = "look" })
         add(Item("alarms", "Alarmes e lembretes", if (Prefs.alarmsEnabled) "Alarmes ligados neste aparelho" else "Alarmes desligados neste aparelho") { sheet = "alarms" })
         add(Item("routine", "Rotina e horários", "Semana ${Repo.tasks().size} · folga ${Repo.offTasks().size} tarefas") { onRoutine() })
-        add(Item("ai", "SunAI", if (Prefs.aiKey.isBlank()) "Configurar a chave" else "Ligada · ${Prefs.aiModel}") { onSunAI() })
+        add(Item("ai", com.dvdiso.sunbi.Assistant.name(), if (!com.dvdiso.sunbi.Assistant.ready()) "Configurar provedor e chave"
+            else "${com.dvdiso.sunbi.Assistant.provider().name.substringBefore(" (")} · ${Prefs.aiModel}") { onAssistant() })
         add(Item("sync", "Sincronização", when (peers.size) { 0 -> "Nenhum aparelho"; 1 -> "1 aparelho"; else -> "${peers.size} aparelhos" }) { sheet = "sync" })
         add(Item("web", "Modo avançado", if (Prefs.webConfig) "Ligado" else "Configurar pelo computador") { sheet = "web" })
-        if (!isQuest()) add(Item("launcher", "Tela inicial", if (Launcher.isEnabled(ctx)) "Ligada" else "Usar o SunBi como tela inicial") { sheet = "launcher" })
+        add(Item("launcher", "Tela inicial", if (Launcher.isEnabled(ctx)) "Ligada" else "Usar o SunBi como tela inicial") { sheet = "launcher" })
     }
 
     LazyColumn(contentPadding = contentPadding, verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -156,7 +156,7 @@ fun SettingsScreen(contentPadding: PaddingValues, onBack: () -> Unit, onRoutine:
         "alarms" -> EditorSheet("Alarmes e lembretes", onDismiss = { sheet = null }) { AlarmsCard() }
         "sync" -> EditorSheet(
             "Sincronização",
-            "Seus aparelhos se encontram na rede de casa e trocam os dados direto entre si, sem servidor.",
+            "Seus aparelhos trocam os dados direto entre si pela rede de casa, sem servidor e sem conta.",
             { sheet = null },
         ) { SyncCard() }
         "web" -> EditorSheet(
@@ -270,7 +270,7 @@ private fun WebConfigCard() {
                     }
                 }
                 Text(
-                    "No PC com o plugin do Noctalia, use o botão do globo no painel do SunBi: ele já abre o endereço certo. Em outro computador, digite o endereço inteiro, com http:// no começo (com https:// não abre). Desliga sozinho depois de 1 hora sem uso.",
+                    "Com a extensão do SunBi no navegador, o botão \"Abrir o modo avançado\" (nos ajustes dela) já abre o endereço certo. Sem a extensão, digite o endereço inteiro, com http:// no começo (com https:// não abre). Desliga sozinho depois de 1 hora sem uso.",
                     style = MaterialTheme.typography.bodyMedium, color = cs.onSurfaceVariant,
                 )
                 TextButton(onClick = { Feedback.tick(); Prefs.webPin = WebConfig.newPin(); pin = Prefs.webPin }) { Text("Gerar outro PIN") }
@@ -296,10 +296,17 @@ private fun SwitchRow(title: String, subtitle: String?, checked: Boolean, onChan
 private fun LookCard() {
     var dyn by remember { mutableStateOf(Prefs.dynamicColor) }
     var ui by remember { mutableStateOf(Prefs.uiSounds) }
+    var labels by remember { mutableStateOf(Prefs.navLabels) }
     SwitchRow("Cores do sistema", "Acompanha o papel de parede (Material You)", dyn) {
         Feedback.tick()
         dyn = it
         Prefs.dynamicColor = it
+        ThemeState.load()
+    }
+    SwitchRow("Títulos das abas", "O nome embaixo de cada ícone, na barra de baixo", labels) {
+        Feedback.tick()
+        labels = it
+        Prefs.navLabels = it
         ThemeState.load()
     }
     SwitchRow("Sons e vibração", "Cada ação tem um toque próprio", ui) {
@@ -318,7 +325,7 @@ private fun AlarmsCard() {
     var tone by remember { mutableStateOf(Prefs.alarmSound) }
     var preview by remember { mutableStateOf<MediaPlayer?>(null) }
     DisposableEffect(Unit) { onDispose { preview?.release() } }
-    SwitchRow("Alarmes neste aparelho", if (isQuest()) "No Quest só toca com o headset ligado" else "Sem soneca: só Concluído ou Parar", alarms) {
+    SwitchRow("Alarmes neste aparelho", "Sem soneca: só Concluído ou Parar", alarms) {
         Feedback.tick()
         alarms = it
         Prefs.alarmsEnabled = it
@@ -395,7 +402,7 @@ private fun SyncCard() {
         }
         OutlinedTextField(
             key, { key = it.uppercase() }, singleLine = true, label = { Text("Código de pareamento") },
-            supportingText = { Text("O mesmo em todos os aparelhos. No PC, ele aparece no painel do plugin do Noctalia.") },
+            supportingText = { Text("O mesmo em todos os aparelhos.") },
             modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large,
         )
         OutlinedTextField(name, { name = it }, singleLine = true, label = { Text("Nome deste aparelho") },
@@ -407,11 +414,19 @@ private fun SyncCard() {
             SyncManager.start(ctx)
         }, shapes = ButtonDefaults.shapes()) { Text("Salvar e reconectar") }
 
-        SyncManager.localIp(ctx)?.let { ip ->
-            Text(
-                "Este aparelho: $ip:${SyncManager.PORT}. Se o PC não achar sozinho, coloque esse endereço em Aparelhos manuais no plugin do Noctalia.",
-                style = MaterialTheme.typography.bodyMedium, color = cs.onSurfaceVariant,
-            )
+        // o computador entra pela extensão do navegador: ela só precisa destes dois dados
+        Card(shape = MaterialTheme.shapes.extraLarge, colors = CardDefaults.cardColors(containerColor = cs.primaryContainer, contentColor = cs.onPrimaryContainer)) {
+            Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                val ip = SyncManager.localIp(ctx)
+                Text("Conectar o computador", style = MaterialTheme.typography.titleMediumEmphasized)
+                Text("Instale a extensão do SunBi no navegador e digite nela:", style = MaterialTheme.typography.bodyMedium)
+                Text("Endereço", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 8.dp))
+                Text(if (ip != null) "$ip:${SyncManager.PORT}" else "Conecte este aparelho ao Wi-Fi", style = MaterialTheme.typography.titleLargeEmphasized)
+                Text("Código", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 8.dp))
+                Text(Prefs.key, style = MaterialTheme.typography.titleLargeEmphasized, fontWeight = FontWeight.Bold)
+                Text("A extensão avisa de cada tarefa no computador e reencontra o celular sozinha se o endereço mudar.",
+                    style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp))
+            }
         }
         Label("Aparelhos encontrados")
         if (peers.isEmpty()) {
@@ -420,7 +435,7 @@ private fun SyncCard() {
                     LoadingIndicator(Modifier.size(36.dp))
                     Spacer(Modifier.width(8.dp))
                 }
-                Text("Procurando na mesma rede Wi-Fi...", style = MaterialTheme.typography.bodyMedium, color = cs.onSurfaceVariant)
+                Text(if (sync) "Procurando na mesma rede Wi-Fi..." else "Sincronização desligada.", style = MaterialTheme.typography.bodyMedium, color = cs.onSurfaceVariant)
             }
         }
         for (p in peers.values.sortedBy { it.name }) {

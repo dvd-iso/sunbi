@@ -24,7 +24,7 @@ import java.time.temporal.TemporalAdjusters
 /**
  * Dois lembretes gentis, cada um desligável:
  * - check-in às 21h, só se o dia ainda não tem registro;
- * - resumo da semana pela SunAI no domingo às 19h (precisa da SunAI ligada).
+ * - resumo da semana pela assistente no domingo às 19h (precisa da assistente ligada).
  */
 object Reminders {
     const val CHECKIN = "com.dvdiso.sunbi.REMIND_CHECKIN"
@@ -58,7 +58,7 @@ object Reminders {
             runCatching { am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at.atZone(zone).toInstant().toEpochMilli(), p) }
         }
         set(CHECKIN, Prefs.checkinReminder, nextDaily(now, CHECKIN_AT))
-        set(WEEKLY, Prefs.weeklySummary && SunAI.ready(), nextWeekly(now, WEEKLY_AT))
+        set(WEEKLY, Prefs.weeklySummary && Assistant.ready(), nextWeekly(now, WEEKLY_AT))
     }
 
     fun notifyCheckin(ctx: Context) {
@@ -89,26 +89,26 @@ class ReminderReceiver : BroadcastReceiver() {
     override fun onReceive(ctx: Context, intent: Intent) {
         when (intent.action) {
             Reminders.CHECKIN -> Reminders.notifyCheckin(ctx)
-            Reminders.WEEKLY -> if (Prefs.weeklySummary && SunAI.ready()) Reminders.enqueueWeekly(ctx)
+            Reminders.WEEKLY -> if (Prefs.weeklySummary && Assistant.ready()) Reminders.enqueueWeekly(ctx)
         }
         Reminders.schedule(ctx) // o próximo
     }
 }
 
-/** Pede o resumo à SunAI, guarda na conversa e avisa por notificação. */
+/** Pede o resumo à Assistant, guarda na conversa e avisa por notificação. */
 class WeeklySummaryWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx, params) {
     override suspend fun doWork(): Result {
-        if (!SunAI.ready()) return Result.success()
-        val history = SunAI.load()
-        val reply = runCatching { SunAI.ask(history, Reminders.WEEKLY_PROMPT) }.getOrElse {
+        if (!Assistant.ready()) return Result.success()
+        val history = Assistant.load()
+        val reply = runCatching { Assistant.ask(history, Reminders.WEEKLY_PROMPT) }.getOrElse {
             return if (runAttemptCount < 2) Result.retry() else Result.failure()
         }
-        SunAI.save(history + SunAI.Msg("user", "Resumo da semana") + reply)
+        Assistant.save(history + Assistant.Msg("user", "Resumo da semana") + reply)
         val open = PendingIntent.getActivity(applicationContext, 10, Intent(applicationContext, MainActivity::class.java).putExtra("tab", 2),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val n = NotificationCompat.Builder(applicationContext, Notifications.REMINDER_CHANNEL)
             .setSmallIcon(R.drawable.ic_stat_sunbi)
-            .setContentTitle("Sua semana, pela SunAI")
+            .setContentTitle("Sua semana, por ${Assistant.name()}")
             .setContentText(reply.text.take(120))
             .setStyle(NotificationCompat.BigTextStyle().bigText(reply.text))
             .setContentIntent(open).setAutoCancel(true).setColor(0xFFF5B301.toInt())

@@ -43,16 +43,13 @@ fun today(): String = LocalDate.now().toString()
 
 fun nowHm(): String = LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm"))
 
-fun isQuest(): Boolean =
-    Build.MANUFACTURER.equals("Oculus", true) || Build.MANUFACTURER.equals("Meta", true)
-
 object Prefs {
     private lateinit var sp: SharedPreferences
 
     fun init(ctx: Context) {
         sp = ctx.getSharedPreferences("sunbi", Context.MODE_PRIVATE)
         if (!sp.contains("device")) {
-            val prefix = if (isQuest()) "quest" else "android"
+            val prefix = "android"
             sp.edit()
                 .putString("device", "$prefix-${hex(3)}")
                 .putString("name", Build.MODEL ?: prefix)
@@ -90,7 +87,7 @@ object Prefs {
     var checkinReminder: Boolean
         get() = sp.getBoolean("checkinReminder", true)
         set(v) = sp.edit().putBoolean("checkinReminder", v).apply()
-    /** Resumo da semana pela SunAI no domingo à noite, por notificação. */
+    /** Resumo da semana pela assistente no domingo à noite, por notificação. */
     var weeklySummary: Boolean
         get() = sp.getBoolean("weeklySummary", false)
         set(v) = sp.edit().putBoolean("weeklySummary", v).apply()
@@ -136,17 +133,34 @@ object Prefs {
     var alarmsEnabled: Boolean
         get() = sp.getBoolean("alarms", true)
         set(v) = sp.edit().putBoolean("alarms", v).apply()
-    /** Cores do sistema (Material You). No Quest não há papel de parede, então o padrão é a paleta Girassol. */
+    /** Cores do sistema (Material You). Desligado, vale a paleta Girassol. */
     var dynamicColor: Boolean
-        get() = sp.getBoolean("dynamicColor", !isQuest())
+        get() = sp.getBoolean("dynamicColor", true)
         set(v) = sp.edit().putBoolean("dynamicColor", v).apply()
-    // SunAI: a chave fica só neste aparelho (não sincroniza, sem backup)
+    // Assistente: provedor, chave e modelo ficam só neste aparelho (não sincronizam, sem backup).
+    // Cada provedor guarda a própria chave e o próprio modelo; "opencode" usa os nomes antigos.
+    var aiProvider: String
+        get() = sp.getString("aiProvider", "opencode")!!
+        set(v) = sp.edit().putString("aiProvider", v).apply()
+    private fun perProvider(base: String) = if (aiProvider == "opencode") base else "${base}_$aiProvider"
     var aiKey: String
-        get() = sp.getString("aiKey", "")!!
-        set(v) = sp.edit().putString("aiKey", v.trim()).apply()
+        get() = sp.getString(perProvider("aiKey"), "")!!
+        set(v) = sp.edit().putString(perProvider("aiKey"), v.trim()).apply()
     var aiModel: String
-        get() = sp.getString("aiModel", "kimi-k3")!!
-        set(v) = sp.edit().putString("aiModel", v).apply()
+        get() = sp.getString(perProvider("aiModel"), null) ?: Assistant.provider().models.firstOrNull().orEmpty()
+        set(v) = sp.edit().putString(perProvider("aiModel"), v.trim()).apply()
+    /** Endereço da API quando o provedor é "custom" (qualquer serviço compatível com OpenAI). */
+    var aiBaseUrl: String
+        get() = sp.getString("aiBaseUrl", "")!!
+        set(v) = sp.edit().putString("aiBaseUrl", v.trim()).apply()
+    /** Como a pessoa chama a assistente (vazio = "Assistente"). */
+    var aiName: String
+        get() = sp.getString("aiName", "")!!
+        set(v) = sp.edit().putString("aiName", v.trim().take(24)).apply()
+    /** Mostrar o nome de cada aba na barra de baixo. */
+    var navLabels: Boolean
+        get() = sp.getBoolean("navLabels", true)
+        set(v) = sp.edit().putBoolean("navLabels", v).apply()
     /** A pessoa aceitou enviar os registros ao provedor de IA. */
     var aiConsent: Boolean
         get() = sp.getBoolean("aiConsent", false)
@@ -530,7 +544,7 @@ object Repo {
     fun setSleepTimes(day: String, bed: String?, wake: String?) {
         set("$day/bed", bed)
         set("$day/wake", wake)
-        sleep(day)?.let { set("$day/sleep", it) } // mantém o número para o plugin e versões antigas
+        sleep(day)?.let { set("$day/sleep", it) } // mantém o número para a extensão e versões antigas
     }
 
     fun note(day: String): String = get("$day/note") as? String ?: ""

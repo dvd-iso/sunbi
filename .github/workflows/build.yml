@@ -69,31 +69,35 @@ jobs:
         with:
           files: dist/sunbi.apk
 
-  noctalia:
+  extension:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Validar manifesto e traduções
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Testes do módulo de dados
+        run: node --test extension/tests/store.test.mjs
+      - name: Validar manifesto e arquivos
         run: |
-          python3 - <<'PY'
-          import json, pathlib, tomllib
-          d = pathlib.Path("noctalia/sunbi")
-          m = tomllib.loads((d / "plugin.toml").read_text())
-          for kind in ("widget", "panel", "service"):
-              for e in m.get(kind, []):
-                  assert (d / e["entry"]).exists(), e["entry"]
-          keys = None
-          for f in (d / "translations").glob("*.json"):
-              t = json.loads(f.read_text())
-              k = set(t["ui"]) | {f"settings.{s}" for s in t["settings"]}
-              assert keys is None or k == keys, f"chaves diferentes em {f.name}"
-              keys = k
-          print("plugin ok:", m["id"], m["version"])
-          PY
-      - name: Luau (compilar e testar o módulo de dados)
-        working-directory: noctalia/sunbi
+          node --check extension/background.js
+          node --check extension/popup.js
+          node -e '
+            const fs = require("fs"), m = JSON.parse(fs.readFileSync("extension/manifest.json", "utf8"));
+            const files = [m.background.service_worker, m.action.default_popup, ...Object.values(m.icons)];
+            for (const f of files) if (!fs.existsSync("extension/" + f)) throw new Error("falta " + f);
+            console.log("extensão ok:", m.name, m.version);
+          '
+      - name: Empacotar
         run: |
-          curl -sL -o /tmp/luau.zip https://github.com/luau-lang/luau/releases/latest/download/luau-ubuntu.zip
-          unzip -q -o /tmp/luau.zip -d /tmp/luau
-          for f in *.luau lib/*.luau; do /tmp/luau/luau-compile --null "$f"; done
-          /tmp/luau/luau tests/store_test.luau
+          mkdir -p dist
+          cd extension && zip -qr ../dist/sunbi-extensao.zip . -x "tests/*" "package.json" "README.md"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sunbi-extensao
+          path: dist/sunbi-extensao.zip
+      - name: Release (tags v*)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/sunbi-extensao.zip

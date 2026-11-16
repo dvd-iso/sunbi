@@ -33,7 +33,7 @@ import kotlin.coroutines.resume
 private const val TAG = "SunBiSync"
 
 /**
- * Par de sincronização. [client] = só nos chama (ex.: o plugin do Noctalia no PC, que não tem
+ * Par de sincronização. [client] = só nos chama (ex.: a extensão do navegador no PC, que não tem
  * servidor); a gente não tenta chamá-lo de volta, só mostra quando foi a última troca.
  */
 data class Peer(val device: String, val name: String, val addr: String, val ok: Boolean?, val seen: Long, val client: Boolean = false)
@@ -172,7 +172,7 @@ class PeerServer(private val ctx: Context) : NanoHTTPD(SyncManager.PORT) {
                 val dev = body.optString("device")
                 val name = body.optString("name").ifBlank { dev }
                 if (!body.optBoolean("listen", true)) {
-                    // Cliente sem servidor (plugin do Noctalia): a troca já foi feita nesta chamada.
+                    // Cliente sem servidor (extensão do navegador): a troca já foi feita nesta chamada.
                     if (dev.isNotEmpty()) SyncManager.sawClient(dev, name, s.remoteIpAddress)
                 } else if (dev.isNotEmpty() && dev != Prefs.device && SyncManager.peers.value.values.none { it.device == dev || it.addr.startsWith(s.remoteIpAddress + ":") }) {
                     // Quem nos procurou vira par também (ajuda quando o mDNS só funciona num sentido).

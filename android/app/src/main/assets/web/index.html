@@ -3,94 +3,199 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
 <title>SunBi · Modo avançado</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='20 20 68 68'%3E%3Cg fill='%23FFB300'%3E%3Ccircle cx='54' cy='34.500' r='11'/%3E%3Ccircle cx='67.800' cy='40.200' r='11'/%3E%3Ccircle cx='73.500' cy='54' r='11'/%3E%3Ccircle cx='67.800' cy='67.800' r='11'/%3E%3Ccircle cx='54' cy='73.500' r='11'/%3E%3Ccircle cx='40.200' cy='67.800' r='11'/%3E%3Ccircle cx='34.500' cy='54' r='11'/%3E%3Ccircle cx='40.200' cy='40.200' r='11'/%3E%3C/g%3E%3Ccircle cx='54' cy='54' r='16' fill='%236D4321'/%3E%3C/svg%3E">
 <style>
+/* Paleta Girassol e formas do app (ui/Theme.kt): a página é o SunBi numa tela grande. */
 :root {
-  --bg: #fff8f2; --card: #fcf2e5; --card2: #f1e7d9; --ink: #1f1b13; --muted: #4d4639;
-  --primary: #7a5900; --on-primary: #fff; --pc: #ffdea1; --line: #d0c5b4; --ok: #4a6547; --err: #ba1a1a;
-  --up: #c26a00; --down: #3d6fd6; --r: 18px;
+  --bg: #fff8f2; --surface: #fcf2e5; --surface2: #f6ecdf; --surface3: #ebe1d4; --ink: #1f1b13; --muted: #4d4639;
+  --primary: #7a5900; --on-primary: #fff; --pc: #ffdea1; --on-pc: #261900; --sc: #f5e0bb; --on-sc: #241a04;
+  --tc: #ccebc4; --on-tc: #07200a; --line: #d0c5b4; --ok: #4a6547; --err: #ba1a1a; --errc: #ffdad6;
+  --up: #c26a00; --down: #3d6fd6; --shadow: 0 1px 2px rgb(60 40 0 / .08), 0 6px 20px rgb(60 40 0 / .07);
+  --spring: cubic-bezier(.3, 1.5, .5, 1);
 }
 @media (prefers-color-scheme: dark) {
-  :root { --bg: #17130b; --card: #1f1b13; --card2: #2e2921; --ink: #ebe1d4; --muted: #d0c5b4;
-    --primary: #f8bd2a; --on-primary: #402d00; --pc: #5c4300; --line: #4d4639; --ok: #b0cfa9; --err: #ffb4ab; --up: #ffb866; --down: #8ab4f8; }
+  :root {
+    --bg: #17130b; --surface: #1f1b13; --surface2: #231f17; --surface3: #393429; --ink: #ebe1d4; --muted: #d0c5b4;
+    --primary: #f8bd2a; --on-primary: #402d00; --pc: #5c4300; --on-pc: #ffdea1; --sc: #52452a; --on-sc: #f5e0bb;
+    --tc: #334d31; --on-tc: #ccebc4; --line: #4d4639; --ok: #b0cfa9; --err: #ffb4ab; --errc: #93000a;
+    --up: #ffb866; --down: #8ab4f8; --shadow: 0 1px 2px rgb(0 0 0 / .4), 0 8px 24px rgb(0 0 0 / .3);
+  }
 }
 * { box-sizing: border-box; }
-body { margin: 0; font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--ink); }
-header { display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--bg); z-index: 2; }
-header h1 { font-size: 18px; margin: 0; flex: 1; }
-header .st { color: var(--muted); font-size: 13px; }
-.layout { display: grid; grid-template-columns: 220px 1fr; min-height: calc(100vh - 57px); }
-nav { padding: 16px 12px; border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 4px; }
-nav a { display: block; padding: 10px 14px; border-radius: 999px; color: var(--ink); text-decoration: none; }
-nav a.on, nav a:hover { background: var(--pc); font-weight: 600; }
-main { padding: 20px 24px 60px; max-width: 980px; }
-section { display: none; } section.on { display: block; }
-h2 { font-size: 24px; margin: 4px 0 2px; } .sub { color: var(--muted); margin: 0 0 16px; }
-.card { background: var(--card); border-radius: var(--r); padding: 18px; margin-bottom: 14px; }
-.card h3 { margin: 0 0 10px; font-size: 16px; }
-table { width: 100%; border-collapse: collapse; }
-th { text-align: left; font-size: 12px; color: var(--muted); font-weight: 600; padding: 4px 6px; }
-td { padding: 4px 6px; vertical-align: middle; }
+[hidden] { display: none !important; }
+html { background: var(--bg); }
+body { margin: 0; color: var(--ink); background: var(--bg);
+  font: 15px/1.55 "Google Sans Text", "Roboto Flex", Roboto, system-ui, -apple-system, "Segoe UI", sans-serif; }
+h1, h2, h3 { font-family: "Google Sans", "Roboto Flex", Roboto, system-ui, sans-serif; letter-spacing: -.015em; text-wrap: balance; }
+p { margin: 0; }
+
+/* a flor */
+.petals { fill: var(--primary); } .core { fill: var(--pc); } .face { fill: var(--on-pc); stroke: var(--on-pc); }
+.spin .petals { transform-origin: 54px 54px; animation: spin 18s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } }
+@keyframes pop { 50% { transform: scale(1.06); } }
+
+/* estrutura: trilho à esquerda, conteúdo à direita */
+.layout { display: grid; grid-template-columns: 248px minmax(0, 1fr); min-height: 100vh; }
+nav { position: sticky; top: 0; height: 100vh; padding: 20px 14px; display: flex; flex-direction: column; gap: 4px; background: var(--surface); border-radius: 0 32px 32px 0; }
+.brand { display: flex; align-items: center; gap: 12px; padding: 4px 10px 18px; }
+.brand svg { width: 44px; height: 44px; flex: none; }
+.brand b { font: 700 20px/1.1 "Google Sans", system-ui, sans-serif; display: block; }
+.brand span { font-size: 12.5px; color: var(--muted); }
+nav a { display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-radius: 999px; color: var(--muted); text-decoration: none; font-weight: 600;
+  transition: background .2s, color .2s, padding .3s var(--spring); }
+nav a svg { width: 22px; height: 22px; fill: currentColor; flex: none; }
+nav a:hover { background: var(--surface3); color: var(--ink); }
+nav a.on { background: var(--pc); color: var(--on-pc); padding-left: 22px; }
+nav .foot { margin-top: auto; padding: 12px 14px 4px; font-size: 12.5px; color: var(--muted); }
+nav .foot b { display: block; color: var(--ink); font-size: 14px; }
+.live { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); margin-right: 6px; }
+
+main { padding: 28px clamp(16px, 4vw, 48px) 96px; max-width: 1080px; width: 100%; }
+section { display: none; } section.on { display: block; animation: rise .45s var(--spring) both; }
+.head { margin-bottom: 20px; }
+.kicker { font-size: 13px; font-weight: 700; color: var(--primary); letter-spacing: .03em; text-transform: uppercase; }
+h2 { font-size: clamp(28px, 4vw, 38px); line-height: 1.1; margin: 2px 0 6px; font-weight: 700; }
+.sub { color: var(--muted); max-width: 64ch; }
+h3 { margin: 0 0 12px; font-size: 17px; }
+h3.loose { margin: 22px 0 10px; font-size: 19px; }
+
+.card { background: var(--surface); border-radius: 28px; padding: 22px; margin-bottom: 14px; }
+.card.tint { background: var(--pc); color: var(--on-pc); }
+.card.up { box-shadow: inset 4px 0 0 var(--up); } .card.down { box-shadow: inset 4px 0 0 var(--down); }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+.grid2 > .card { margin: 0; }
+.grid2 + p, .grid2 + h3 { margin-top: 16px; }
+
+/* campos */
 input[type=text], input[type=time], input[type=tel], input[type=number], textarea, select {
-  width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--ink); font: inherit; }
-textarea { min-height: 96px; resize: vertical; }
-input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--primary); }
-button { font: inherit; font-weight: 600; border: 0; border-radius: 999px; padding: 10px 18px; cursor: pointer; background: var(--primary); color: var(--on-primary); }
-button.ghost { background: transparent; color: var(--primary); border: 1px solid var(--line); }
-button.tiny { padding: 4px 10px; font-size: 13px; }
-button.danger { background: var(--err); color: #fff; }
-.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-.tabs { display: inline-flex; background: var(--card2); border-radius: 999px; padding: 4px; margin-bottom: 12px; }
-.tabs button { background: transparent; color: var(--ink); } .tabs button.on { background: var(--primary); color: var(--on-primary); }
-.hint { color: var(--muted); font-size: 13px; }
-.pill { display: inline-block; padding: 2px 10px; border-radius: 999px; background: var(--card2); font-size: 12px; font-weight: 600; }
-.stat { display: inline-block; background: var(--card2); border-radius: 14px; padding: 10px 14px; margin: 0 8px 8px 0; }
-.stat b { display: block; font-size: 22px; color: var(--primary); }
-label.sw { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--line); }
-label.sw:last-child { border: 0; }
-#toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 18px; border-radius: 999px; opacity: 0; transition: opacity .25s; pointer-events: none; }
-#toast.on { opacity: 1; }
-#gate { max-width: 420px; margin: 10vh auto; }
-#gate input { font-size: 28px; letter-spacing: 8px; text-align: center; }
-.humor { width: 72px; } .t { width: 92px; }
-@media (max-width: 720px) { .layout { grid-template-columns: 1fr; } nav { flex-direction: row; flex-wrap: wrap; border: 0; } .grid2 { grid-template-columns: 1fr; } }
+  width: 100%; padding: 10px 14px; border: 1.5px solid var(--line); border-radius: 14px; background: var(--bg); color: var(--ink); font: inherit;
+  transition: border-color .15s, box-shadow .15s; }
+input:focus, textarea:focus, select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 22%, transparent); }
+textarea { min-height: 132px; resize: vertical; line-height: 1.6; border-radius: 18px; }
+label { font-size: 13px; font-weight: 700; color: var(--muted); display: flex; flex-direction: column; gap: 5px; }
+.fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-bottom: 8px; }
+
+/* interruptor do Material no lugar da caixinha */
+input[type=checkbox] { appearance: none; width: 46px; height: 28px; border-radius: 999px; background: var(--surface3); border: 2px solid var(--line); position: relative; cursor: pointer; flex: none; margin: 0; transition: background .2s, border-color .2s; vertical-align: middle; }
+input[type=checkbox]::after { content: ""; position: absolute; top: 5px; left: 5px; width: 14px; height: 14px; border-radius: 50%; background: var(--muted); transition: all .3s var(--spring); }
+input[type=checkbox]:checked { background: var(--primary); border-color: var(--primary); }
+input[type=checkbox]:checked::after { left: 20px; top: 2px; width: 20px; height: 20px; background: var(--on-primary); }
+input[type=checkbox]:focus-visible, button:focus-visible, a:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+label.sw { flex-direction: row; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--line); font-size: 15px; font-weight: 500; color: var(--ink); cursor: pointer; }
+label.sw:last-of-type { border: 0; }
+
+/* botões: pílulas que "apertam" */
+button { font: inherit; font-weight: 700; border: 0; border-radius: 999px; padding: 12px 22px; cursor: pointer; background: var(--primary); color: var(--on-primary);
+  transition: transform .2s var(--spring), border-radius .2s, filter .15s; }
+button:hover { filter: brightness(1.08); }
+button:active { transform: scale(.95); border-radius: 16px; }
+button.ghost { background: var(--sc); color: var(--on-sc); }
+button.tiny { padding: 6px 14px; font-size: 13px; }
+button.del { background: transparent; color: var(--muted); width: 34px; height: 34px; padding: 0; font-size: 15px; }
+button.del:hover { background: var(--errc); color: var(--err); filter: none; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 14px; }
+.spacer { flex: 1; }
+
+.tabs { display: inline-flex; background: var(--surface3); border-radius: 999px; padding: 4px; margin-bottom: 14px; }
+.tabs button { background: transparent; color: var(--muted); padding: 10px 20px; }
+.tabs button.on { background: var(--primary); color: var(--on-primary); animation: pop .3s var(--spring); }
+
+/* tabelas viram listas de linhas arredondadas */
+.scroll { overflow-x: auto; margin: 0 -8px; padding: 0 8px; }
+table { width: 100%; border-collapse: separate; border-spacing: 0 4px; }
+th { text-align: left; font-size: 12px; color: var(--muted); font-weight: 700; padding: 2px 8px 6px; white-space: nowrap; }
+td { padding: 6px; vertical-align: middle; background: var(--surface2); }
+td:first-child { border-radius: 16px 0 0 16px; padding-left: 10px; } td:last-child { border-radius: 0 16px 16px 0; padding-right: 10px; }
+td.empty { border-radius: 16px; padding: 18px; color: var(--muted); text-align: center; }
+td input[type=text], td input[type=time], td input[type=tel], td input[type=number], td select { background: transparent; border-color: transparent; padding: 8px 10px; }
+td input:hover, td select:hover { border-color: var(--line); }
+td input:focus, td select:focus { background: var(--bg); }
+td.c { text-align: center; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.t { width: 104px; font-weight: 700; color: var(--primary) !important; font-variant-numeric: tabular-nums; } .humor { width: 76px; }
+tr.offday td:first-child { box-shadow: inset 4px 0 0 var(--primary); }
+.daycell { white-space: nowrap; font-weight: 700; }
+.mood { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--line); margin-right: 8px; }
+
+.hint { color: var(--muted); font-size: 13px; margin-top: 10px; }
+.pill { display: inline-block; padding: 1px 10px; border-radius: 999px; background: var(--pc); color: var(--on-pc); font-size: 11.5px; font-weight: 700; margin-left: 6px; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); gap: 10px; }
+.stat { background: var(--surface2); border-radius: 22px; padding: 16px; font-size: 13px; color: var(--muted); }
+.stat b { display: block; font: 700 30px/1.1 "Google Sans", system-ui, sans-serif; color: var(--primary); }
+.stat:first-child { background: var(--pc); color: var(--on-pc); border-radius: 22px 22px 22px 6px; } .stat:first-child b { color: inherit; }
+
+#toast { position: fixed; bottom: 28px; left: 50%; transform: translate(-50%, 24px); background: var(--ink); color: var(--bg); padding: 12px 22px; border-radius: 999px; font-weight: 600;
+  opacity: 0; transition: opacity .25s, transform .35s var(--spring); pointer-events: none; box-shadow: var(--shadow); z-index: 5; }
+#toast.on { opacity: 1; transform: translate(-50%, 0); }
+#toast.bad { background: var(--err); color: var(--bg); }
+
+/* entrada: a flor e o PIN */
+#gate { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+.gatebox { width: min(440px, 100%); background: var(--surface); border-radius: 40px; padding: 40px 32px 32px; text-align: center; box-shadow: var(--shadow); animation: rise .5s var(--spring) both; }
+.gatebox svg { width: 112px; height: 112px; }
+.gatebox h1 { font-size: 30px; margin: 12px 0 6px; }
+#pin { font: 700 34px/1 "Google Sans", ui-monospace, monospace; letter-spacing: .38em; text-align: center; padding: 18px 8px 18px calc(8px + .38em); border-radius: 24px; margin: 22px 0 14px; }
+#enter { width: 100%; padding: 16px; font-size: 16px; }
+#gateMsg { color: var(--err); font-weight: 600; min-height: 1.5em; }
+
+@media (max-width: 820px) {
+  .layout { grid-template-columns: minmax(0, 1fr); }
+  .scroll table { min-width: 620px; }
+  nav { position: sticky; height: auto; flex-direction: row; overflow-x: auto; border-radius: 0 0 24px 24px; padding: 8px 10px; z-index: 3; gap: 2px; }
+  .brand span, nav .foot, nav a span { display: none; } .brand { padding: 0 6px 0 2px; } .brand b { display: none; } .brand svg { width: 36px; height: 36px; }
+  nav a { padding: 10px 14px; } nav a.on { padding-left: 14px; } nav a.on span { display: inline; }
+  main { padding-top: 20px; }
+}
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 </style>
 </head>
 <body>
-<header>
-  <span style="font-size:24px">🌻</span>
-  <h1>SunBi · Modo avançado</h1>
-  <span class="st" id="status">conectando…</span>
-</header>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="flower" viewBox="20 20 68 68">
+    <g class="petals"><circle cx="54" cy="34.5" r="11"/><circle cx="67.8" cy="40.2" r="11"/><circle cx="73.5" cy="54" r="11"/><circle cx="67.8" cy="67.8" r="11"/><circle cx="54" cy="73.5" r="11"/><circle cx="40.2" cy="67.8" r="11"/><circle cx="34.5" cy="54" r="11"/><circle cx="40.2" cy="40.2" r="11"/></g>
+    <circle class="core" cx="54" cy="54" r="16"/>
+    <g class="face"><circle cx="48.5" cy="51.7" r="2.4" stroke="none"/><circle cx="59.5" cy="51.7" r="2.4" stroke="none"/><path d="M49.4 57.6a5 5 0 0 0 9.2 0" fill="none" stroke-width="2.2" stroke-linecap="round"/></g>
+  </symbol>
+</svg>
 
-<div id="gate" class="card" style="display:none">
-  <h3>PIN do modo avançado</h3>
-  <p class="hint">O app mostra o PIN em <b>Ajustes → Modo avançado</b>. Cinco erros desligam o modo.</p>
-  <input id="pin" type="text" inputmode="numeric" maxlength="12" placeholder="000 000" autofocus>
-  <p><button id="enter">Entrar</button></p>
-  <p class="hint" id="gateMsg"></p>
+<div id="gate" hidden>
+  <div class="gatebox">
+    <svg class="mark spin" viewBox="20 20 68 68" aria-hidden="true"><g class="petals"><circle cx="54" cy="34.5" r="11"/><circle cx="67.8" cy="40.2" r="11"/><circle cx="73.5" cy="54" r="11"/><circle cx="67.8" cy="67.8" r="11"/><circle cx="54" cy="73.5" r="11"/><circle cx="40.2" cy="67.8" r="11"/><circle cx="34.5" cy="54" r="11"/><circle cx="40.2" cy="40.2" r="11"/></g>
+    <circle class="core" cx="54" cy="54" r="16"/>
+    <g class="face"><circle cx="48.5" cy="51.7" r="2.4" stroke="none"/><circle cx="59.5" cy="51.7" r="2.4" stroke="none"/><path d="M49.4 57.6a5 5 0 0 0 9.2 0" fill="none" stroke-width="2.2" stroke-linecap="round"/></g></svg>
+    <h1>Modo avançado</h1>
+    <p class="sub">O PIN aparece no app, em <b>Ajustes → Modo avançado</b>. Cinco erros desligam o modo.</p>
+    <input id="pin" type="text" inputmode="numeric" maxlength="7" placeholder="000000" autocomplete="off" aria-label="PIN de 6 dígitos" autofocus>
+    <button id="enter">Entrar</button>
+    <p id="gateMsg"></p>
+    <p class="hint" id="status">conectando…</p>
+  </div>
 </div>
 
-<div class="layout" id="app" style="display:none">
+<div class="layout" id="app" hidden>
 <nav>
-  <a href="#rotina" class="on">Rotina</a>
-  <a href="#sinais">Sinais de alerta</a>
-  <a href="#planos">Planos</a>
-  <a href="#contatos">Pessoas</a>
-  <a href="#registros">Registros</a>
-  <a href="#ajustes">Ajustes</a>
-  <a href="#backup">Backup</a>
+  <div class="brand"><svg class="mark"><use href="#flower"/></svg><div><b>SunBi</b><span>Modo avançado</span></div></div>
+  <a href="#rotina" class="on"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16zm.5-13H11v6l5.2 3.2.8-1.3-4.5-2.7z"/></svg><span>Rotina</span></a>
+  <a href="#sinais"><svg viewBox="0 0 24 24"><path d="M1 21h22L12 2zm12-3h-2v-2h2zm0-4h-2v-4h2z"/></svg><span>Sinais de alerta</span></a>
+  <a href="#planos"><svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54z"/></svg><span>Planos</span></a>
+  <a href="#contatos"><svg viewBox="0 0 24 24"><path d="M16 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm-8 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg><span>Pessoas</span></a>
+  <a href="#registros"><svg viewBox="0 0 24 24"><path d="M19 4h-1V2h-2v2H8V2H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 16H5V9h14zM7 11h5v5H7z"/></svg><span>Registros</span></a>
+  <a href="#ajustes"><svg viewBox="0 0 24 24"><path d="M3 17v2h6v-2zM3 5v2h10V5zm10 16v-2h8v-2h-8v-2h-2v6zM7 9v2H3v2h4v2h2V9zm14 4v-2H11v2zm-6-4h2V7h4V5h-4V3h-2z"/></svg><span>Ajustes</span></a>
+  <a href="#backup"><svg viewBox="0 0 24 24"><path d="M19.35 10.04A7.49 7.49 0 0 0 12 4C9.11 4 6.6 5.64 5.35 8.04A5.994 5.994 0 0 0 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4z"/></svg><span>Backup</span></a>
+  <div class="foot"><b id="deviceName"></b><span class="live"></span><span id="version"></span></div>
 </nav>
 <main>
 
 <section id="rotina" class="on">
-  <h2>Rotina</h2>
-  <p class="sub">Horário, o que fazer e o primeiro passo. Marque <b>remédio</b> e <b>âncora</b> (levantar, primeiro contato, começar o dia, jantar, deitar). Os alarmes tocam nesses horários.</p>
+  <div class="head"><p class="kicker" id="hello">Rotina</p><h2>O seu dia, hora por hora</h2>
+  <p class="sub">Horário, o que fazer e o primeiro passo. Marque <b>remédio</b> e <b>âncora</b> (levantar, primeiro contato, começar o dia, jantar, deitar). Os alarmes tocam nesses horários.</p></div>
   <div class="tabs"><button class="on" data-r="tasks">Dias de semana</button><button data-r="tasks_off">Folga e férias</button></div>
   <div class="card">
-    <table id="tasks"><thead><tr><th>Hora</th><th>Tarefa</th><th>Primeiro passo</th><th>Rem.</th><th>Ânc.</th><th></th></tr></thead><tbody></tbody></table>
-    <p class="row"><button class="ghost tiny" id="addTask">+ Tarefa</button><button class="ghost tiny" id="sortTasks">Ordenar por hora</button><span style="flex:1"></span><button id="saveTasks">Salvar rotina</button></p>
+    <div class="scroll"><table id="tasks"><thead><tr><th>Hora</th><th>Tarefa</th><th>Primeiro passo</th><th>Remédio</th><th>Âncora</th><th></th></tr></thead><tbody></tbody></table></div>
+    <p class="row"><button class="ghost tiny" id="addTask">+ Tarefa</button><button class="ghost tiny" id="sortTasks">Ordenar por hora</button><span class="spacer"></span><button id="saveTasks">Salvar rotina</button></p>
   </div>
   <div class="card" id="offCard">
     <h3>Quando usar a folga</h3>
@@ -101,23 +206,23 @@ label.sw:last-child { border: 0; }
 </section>
 
 <section id="sinais">
-  <h2>Sinais de alerta</h2>
-  <p class="sub">Um por linha. Eles aparecem no check-in para marcar e entram no relatório.</p>
+  <div class="head"><p class="kicker">Sinais de alerta</p><h2>O que aparece antes de uma virada</h2>
+  <p class="sub">Um por linha. Eles aparecem no check-in para marcar e entram no relatório.</p></div>
   <div class="grid2">
-    <div class="card"><h3>Quando o humor sobe ↑</h3><textarea id="signsUp"></textarea></div>
-    <div class="card"><h3>Quando o humor desce ↓</h3><textarea id="signsDown"></textarea></div>
+    <div class="card up"><h3>Quando o humor sobe ↑</h3><textarea id="signsUp"></textarea></div>
+    <div class="card down"><h3>Quando o humor desce ↓</h3><textarea id="signsDown"></textarea></div>
   </div>
-  <p><button id="saveSigns">Salvar sinais</button></p>
+  <p class="row"><span class="spacer"></span><button id="saveSigns">Salvar sinais</button></p>
 </section>
 
 <section id="planos">
-  <h2>Planos</h2>
-  <p class="sub">Um passo por linha. Combine com sua equipe num dia bom.</p>
+  <div class="head"><p class="kicker">Planos</p><h2>O que fazer, decidido num dia bom</h2>
+  <p class="sub">Um passo por linha. Combine com sua equipe de saúde.</p></div>
   <div class="grid2">
-    <div class="card"><h3>Quando o humor sobe, eu vou…</h3><textarea id="plan_up"></textarea></div>
-    <div class="card"><h3>Quando o humor desce, eu vou…</h3><textarea id="plan_down"></textarea></div>
+    <div class="card up"><h3>Quando o humor sobe, eu vou…</h3><textarea id="plan_up"></textarea></div>
+    <div class="card down"><h3>Quando o humor desce, eu vou…</h3><textarea id="plan_down"></textarea></div>
   </div>
-  <h3 style="margin:12px 0 6px">Plano de segurança (Stanley e Brown)</h3>
+  <h3 class="loose">Plano de segurança (Stanley e Brown)</h3>
   <div class="grid2">
     <div class="card"><h3>Sinais de que uma crise está chegando</h3><textarea id="plan_warn"></textarea></div>
     <div class="card"><h3>O que eu faço sozinho para me acalmar</h3><textarea id="plan_cope"></textarea></div>
@@ -125,58 +230,73 @@ label.sw:last-child { border: 0; }
     <div class="card"><h3>Deixar o ambiente mais seguro</h3><textarea id="plan_safe"></textarea></div>
     <div class="card"><h3>Meus motivos para seguir em frente</h3><textarea id="plan_reasons"></textarea></div>
   </div>
-  <p><button id="savePlan">Salvar planos</button></p>
+  <p class="row"><span class="spacer"></span><button id="savePlan">Salvar planos</button></p>
 </section>
 
 <section id="contatos">
-  <h2>Pessoas e profissionais</h2>
-  <p class="sub">Quem você pode chamar. O psicólogo recebe o relatório no WhatsApp direto do app.</p>
+  <div class="head"><p class="kicker">Pessoas</p><h2>Quem você pode chamar</h2>
+  <p class="sub">O psicólogo recebe o relatório no WhatsApp direto do app.</p></div>
   <div class="card">
-    <table id="contacts"><thead><tr><th>Nome</th><th>Papel</th><th>Telefone</th><th></th></tr></thead><tbody></tbody></table>
-    <p class="row"><button class="ghost tiny" id="addContact">+ Pessoa</button><span style="flex:1"></span><button id="saveContacts">Salvar pessoas</button></p>
+    <div class="scroll"><table id="contacts"><thead><tr><th>Nome</th><th>Papel</th><th>Telefone</th><th></th></tr></thead><tbody></tbody></table></div>
+    <p class="row"><button class="ghost tiny" id="addContact">+ Pessoa</button><span class="spacer"></span><button id="saveContacts">Salvar pessoas</button></p>
   </div>
 </section>
 
 <section id="registros">
-  <h2>Registros</h2>
-  <p class="sub">Os últimos dias. Corrija aqui o que ficou errado no celular: humor (−3 a +3), horários de sono e a anotação.</p>
+  <div class="head"><p class="kicker">Registros</p><h2>Os últimos dias</h2>
+  <p class="sub">Corrija aqui o que ficou errado no celular: humor (−3 a +3), horários de sono e a anotação.</p></div>
   <div class="card">
-    <table id="days"><thead><tr><th>Dia</th><th>Humor</th><th>Deitei</th><th>Acordei</th><th>Sono</th><th>Rotina</th><th>Anotação</th><th></th></tr></thead><tbody></tbody></table>
+    <div class="scroll"><table id="days"><thead><tr><th>Dia</th><th>Humor</th><th>Deitei</th><th>Acordei</th><th>Sono</th><th>Rotina</th><th>Anotação</th><th></th></tr></thead><tbody></tbody></table></div>
     <p class="row"><button class="ghost tiny" id="moreDays">Ver mais dias</button></p>
   </div>
 </section>
 
 <section id="ajustes">
-  <h2>Ajustes</h2>
-  <p class="sub">O que vale neste aparelho e o seu nome nos relatórios.</p>
+  <div class="head"><p class="kicker">Ajustes</p><h2>Do seu jeito</h2>
+  <p class="sub">O que vale neste aparelho, a assistente e o seu nome nos relatórios.</p></div>
+  <div class="card" id="statsCard"></div>
   <div class="card">
-    <div class="grid2">
+    <h3>Você</h3>
+    <div class="fields">
       <label>Como quer ser chamado<input type="text" id="userName"></label>
       <label>Nome no relatório em PDF<input type="text" id="reportName"></label>
       <label>Eu cuido de<select id="focusArea"><option value="bipolar">Bipolaridade</option><option value="tdah">TDAH</option><option value="both">Os dois</option></select></label>
-      <label>Modelo da SunAI<select id="aiModel"><option>kimi-k3</option><option>glm-5.3</option><option>deepseek-v4-pro</option><option>qwen3.8-max</option><option>deepseek-v4.1-flash</option></select></label>
-      <label>Toque do alarme<select id="alarmSound"><option value="amanhecer">Amanhecer</option><option value="girassol">Girassol</option></select></label>
     </div>
+  </div>
+  <div class="card">
+    <h3>Assistente</h3>
+    <div class="fields">
+      <label>Nome da assistente<input type="text" id="aiName" maxlength="24" placeholder="Assistente"></label>
+      <label>Provedor de IA<select id="aiProvider"></select></label>
+      <label id="aiBaseUrlBox">Endereço da API<input type="text" id="aiBaseUrl" placeholder="https://exemplo.com/v1"></label>
+      <label>Modelo<input type="text" id="aiModel" list="aiModels" spellcheck="false"><datalist id="aiModels"></datalist></label>
+    </div>
+    <p class="hint">A chave de cada provedor é digitada só no app e nunca aparece aqui. Trocar o provedor e salvar mostra o modelo guardado para ele.</p>
+  </div>
+  <div class="card">
+    <h3>Aparelho</h3>
+    <div class="fields"><label>Toque do alarme<select id="alarmSound"><option value="amanhecer">Amanhecer</option><option value="girassol">Girassol</option></select></label></div>
     <label class="sw">Alarmes neste aparelho <input type="checkbox" id="alarms"></label>
     <label class="sw">Sons e vibração <input type="checkbox" id="uiSounds"></label>
     <label class="sw">Cores do sistema (Material You) <input type="checkbox" id="dynamicColor"></label>
-    <p><button id="savePrefs">Salvar ajustes</button></p>
+    <label class="sw">Títulos das abas na barra de baixo <input type="checkbox" id="navLabels"></label>
   </div>
-  <div class="card" id="statsCard"></div>
+  <p class="row"><span class="spacer"></span><button id="savePrefs">Salvar ajustes</button></p>
 </section>
 
 <section id="backup">
-  <h2>Backup</h2>
-  <p class="sub">Tudo o que o app guarda, num arquivo JSON. Importar mescla pelo mais recente, igual à sincronização.</p>
-  <div class="card">
-    <p class="row"><button id="export">Baixar backup</button><input type="file" id="importFile" accept="application/json"><button class="ghost" id="import">Importar</button></p>
-    <p class="hint">A chave da SunAI e o PIN nunca entram no backup.</p>
+  <div class="head"><p class="kicker">Backup</p><h2>Tudo num arquivo</h2>
+  <p class="sub">O que o app guarda, em JSON. Importar mescla pelo mais recente, igual à sincronização.</p></div>
+  <div class="grid2">
+    <div class="card tint"><h3>Guardar uma cópia</h3><p>Baixa rotinas, planos, pessoas e todos os registros.</p><p class="row"><button id="export">Baixar backup</button></p></div>
+    <div class="card"><h3>Trazer de volta</h3><input type="file" id="importFile" accept="application/json"><p class="row"><button class="ghost" id="import">Importar</button></p></div>
   </div>
+  <p class="hint">As chaves da assistente e o PIN nunca entram no backup.</p>
 </section>
 
 </main>
 </div>
-<div id="toast"></div>
+<div id="toast" role="status"></div>
 
 <script>
 const $ = s => document.querySelector(s);
@@ -184,7 +304,8 @@ const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;
 let pin = sessionStorage.getItem('sunbi-pin') || '';
 let cfg = null, routine = 'tasks', dayCount = 30;
 
-function toast(msg, bad) { const t = $('#toast'); t.textContent = msg; t.style.background = bad ? 'var(--err)' : 'var(--ink)'; t.classList.add('on'); setTimeout(() => t.classList.remove('on'), 2200); }
+let toastTimer;
+function toast(msg, bad) { const t = $('#toast'); t.textContent = msg; t.classList.toggle('bad', !!bad); t.classList.add('on'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('on'), 2400); }
 
 async function api(path, body) {
   const r = await fetch(path, { method: body ? 'POST' : 'GET', headers: { 'X-SunBi-Pin': pin, 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
@@ -198,14 +319,17 @@ async function start() {
   if (!pin) return gate('');
   try { cfg = await api('/api/config'); } catch (e) { return gate(e.message === 'pin' ? 'PIN errado.' : e.message); }
   sessionStorage.setItem('sunbi-pin', pin);
-  $('#gate').style.display = 'none'; $('#app').style.display = '';
-  $('#status').textContent = `${cfg.deviceName} · SunBi ${cfg.version}`;
+  $('#gate').hidden = true; $('#app').hidden = false;
+  $('#deviceName').textContent = cfg.deviceName; $('#version').textContent = `SunBi ${cfg.version}`;
+  $('#hello').textContent = cfg.prefs.userName ? `Oi, ${cfg.prefs.userName}` : 'Rotina';
   render();
   loadDays();
 }
-function gate(msg) { $('#gate').style.display = ''; $('#app').style.display = 'none'; $('#gateMsg').textContent = msg; $('#status').textContent = 'aguardando PIN'; }
+function gate(msg) { $('#gate').hidden = false; $('#app').hidden = true; $('#gateMsg').textContent = msg; $('#status').textContent = 'Seus dados não saem da sua rede.'; $('#pin').focus(); }
 $('#enter').onclick = () => { pin = $('#pin').value.replace(/\D/g, ''); start(); };
 $('#pin').addEventListener('keydown', e => { if (e.key === 'Enter') $('#enter').click(); });
+// seis dígitos: entra sozinho
+$('#pin').addEventListener('input', () => { if ($('#pin').value.replace(/\D/g, '').length === 6) $('#enter').click(); });
 
 // ── navegação ──
 document.querySelectorAll('nav a').forEach(a => a.onclick = e => { e.preventDefault(); show(a.getAttribute('href').slice(1)); });
@@ -216,10 +340,10 @@ if (location.hash) show(location.hash.slice(1));
 document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => { routine = b.dataset.r; document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b)); renderTasks(); });
 function taskRow(t) {
   return `<tr data-id="${esc(t.id)}"><td><input class="t" type="time" value="${esc(t.time)}"></td><td><input type="text" value="${esc(t.label)}"></td><td><input type="text" value="${esc(t.step || '')}"></td>
-  <td><input type="checkbox" class="med" ${t.med ? 'checked' : ''}></td><td><input type="checkbox" class="anchor" ${t.anchor ? 'checked' : ''}></td><td><button class="ghost tiny del">✕</button></td></tr>`;
+  <td class="c"><input type="checkbox" class="med" aria-label="Remédio" ${t.med ? 'checked' : ''}></td><td class="c"><input type="checkbox" class="anchor" aria-label="Âncora" ${t.anchor ? 'checked' : ''}></td><td><button class="del" title="Remover" aria-label="Remover">✕</button></td></tr>`;
 }
 function renderTasks() {
-  $('#tasks tbody').innerHTML = (cfg[routine] || []).map(taskRow).join('') || '<tr><td colspan="6" class="hint">Nenhuma tarefa ainda. Adicione a primeira.</td></tr>';
+  $('#tasks tbody').innerHTML = (cfg[routine] || []).map(taskRow).join('') || '<tr><td colspan="6" class="empty">Nenhuma tarefa ainda. Adicione a primeira.</td></tr>';
   $('#offCard').style.display = routine === 'tasks_off' ? '' : 'none';
 }
 function readTasks() {
@@ -228,7 +352,8 @@ function readTasks() {
     return { id: tr.dataset.id, time: i[0].value, label: i[1].value.trim(), step: i[2].value.trim(), med: i[3].checked, anchor: i[4].checked };
   });
 }
-$('#tasks').addEventListener('click', e => { if (e.target.classList.contains('del')) { e.target.closest('tr').remove(); } });
+$('#tasks').addEventListener('click', e => { if (e.target.classList.contains('del')) { e.target.closest('tr').remove(); if (!$('#tasks tbody').children.length) renderEmptyTasks(); } });
+function renderEmptyTasks() { $('#tasks tbody').innerHTML = '<tr><td colspan="6" class="empty">Nenhuma tarefa. Salve assim para esvaziar a rotina ou adicione uma.</td></tr>'; }
 $('#addTask').onclick = () => { const tb = $('#tasks tbody'); if (!tb.querySelector('tr[data-id]')) tb.innerHTML = ''; tb.insertAdjacentHTML('beforeend', taskRow({ id: 'w' + Date.now().toString(36), time: '12:00', label: '' })); tb.lastElementChild.querySelectorAll('input')[1].focus(); };
 $('#sortTasks').onclick = () => { cfg[routine] = readTasks().sort((a, b) => a.time.localeCompare(b.time)); renderTasks(); };
 $('#saveTasks').onclick = () => save({ [routine]: readTasks(), off: { weekends: $('#offWeekends').checked, holidays: $('#offHolidays').checked } }, 'Rotina salva');
@@ -243,12 +368,15 @@ const PLAN = ['up', 'down', 'warn', 'cope', 'distract', 'safe', 'reasons'];
 $('#savePlan').onclick = () => { const plan = {}; for (const s of PLAN) plan[s] = lines($('#plan_' + s).value); save({ plan }, 'Planos salvos'); };
 function contactRow(c) {
   const roles = ['Psicólogo(a)', 'Psiquiatra', 'Pessoa de confiança'];
-  return `<tr><td><input type="text" value="${esc(c.name)}"></td><td><select>${roles.map(r => `<option ${r === c.role ? 'selected' : ''}>${r}</option>`).join('')}</select></td><td><input type="tel" value="${esc(c.phone)}"></td><td><button class="ghost tiny del">✕</button></td></tr>`;
+  return `<tr><td><input type="text" value="${esc(c.name)}"></td><td><select>${roles.map(r => `<option ${r === c.role ? 'selected' : ''}>${r}</option>`).join('')}</select></td><td><input type="tel" value="${esc(c.phone)}"></td><td><button class="del" title="Remover" aria-label="Remover">✕</button></td></tr>`;
 }
 $('#contacts').addEventListener('click', e => { if (e.target.classList.contains('del')) e.target.closest('tr').remove(); });
 $('#addContact').onclick = () => $('#contacts tbody').insertAdjacentHTML('beforeend', contactRow({ name: '', role: 'Psicólogo(a)', phone: '' }));
 $('#saveContacts').onclick = () => save({ contacts: [...$('#contacts tbody').querySelectorAll('tr')].map(tr => { const f = tr.querySelectorAll('input,select'); return { name: f[0].value.trim(), role: f[1].value, phone: f[2].value.trim() }; }) }, 'Pessoas salvas');
-$('#savePrefs').onclick = () => save({ prefs: { userName: $('#userName').value, reportName: $('#reportName').value, focusArea: $('#focusArea').value, aiModel: $('#aiModel').value,
+$('#savePrefs').onclick = () => save({ prefs: { userName: $('#userName').value, reportName: $('#reportName').value, focusArea: $('#focusArea').value,
+  aiName: $('#aiName').value, aiProvider: $('#aiProvider').value, aiBaseUrl: $('#aiBaseUrl').value,
+  // trocou de provedor: o modelo guardado para ele vale mais que o que ficou no campo
+  ...($('#aiProvider').value === cfg.prefs.aiProvider ? { aiModel: $('#aiModel').value } : {}), navLabels: $('#navLabels').checked,
   alarmSound: $('#alarmSound').value, alarms: $('#alarms').checked, uiSounds: $('#uiSounds').checked, dynamicColor: $('#dynamicColor').checked } }, 'Ajustes salvos');
 
 async function save(body, msg) {
@@ -265,20 +393,31 @@ function render() {
   $('#contacts tbody').innerHTML = cfg.contacts.map(contactRow).join('');
   const p = cfg.prefs;
   $('#userName').value = p.userName; $('#reportName').value = p.reportName; $('#focusArea').value = p.focusArea; $('#aiModel').value = p.aiModel;
+  $('#aiName').value = p.aiName === 'Assistente' ? '' : p.aiName; $('#aiBaseUrl').value = p.aiBaseUrl; $('#navLabels').checked = p.navLabels;
+  $('#aiProvider').innerHTML = cfg.providers.map(o => `<option value="${esc(o.id)}">${esc(o.name)}</option>`).join(''); $('#aiProvider').value = p.aiProvider;
+  providerChanged();
   $('#alarmSound').value = p.alarmSound; $('#alarms').checked = p.alarms; $('#uiSounds').checked = p.uiSounds; $('#dynamicColor').checked = p.dynamicColor;
   const st = cfg.stats;
-  $('#statsCard').innerHTML = `<h3>Progresso</h3><div class="stat"><b>${st.level}</b>nível · ${esc(st.levelName)}</div><div class="stat"><b>${st.xp}</b>XP</div><div class="stat"><b>${st.streak}</b>dias seguidos</div><div class="stat"><b>${st.bestStreak}</b>melhor sequência</div><div class="stat"><b>${st.badges.length}</b>conquistas</div>`;
+  $('#statsCard').innerHTML = `<h3>Progresso</h3><div class="stats"><div class="stat"><b>${st.level}</b>nível · ${esc(st.levelName)}</div><div class="stat"><b>${st.xp}</b>XP</div><div class="stat"><b>${st.streak}</b>dias seguidos</div><div class="stat"><b>${st.bestStreak}</b>melhor sequência</div><div class="stat"><b>${st.badges.length}</b>conquistas</div></div>`;
 }
 
+function providerChanged() {
+  const o = cfg.providers.find(x => x.id === $('#aiProvider').value) || { models: [] };
+  $('#aiModels').innerHTML = o.models.map(m => `<option value="${esc(m)}">`).join('');
+  $('#aiBaseUrlBox').hidden = o.id !== 'custom';
+}
+$('#aiProvider').onchange = providerChanged;
+
 // ── registros ──
+const moodColor = h => h == null ? 'var(--line)' : h < 0 ? 'var(--down)' : h > 0 ? 'var(--up)' : 'var(--ok)';
 async function loadDays() {
   try {
     const days = await api('/api/days?n=' + dayCount);
-    $('#days tbody').innerHTML = days.slice().reverse().map(d => `<tr data-day="${d.day}">
-      <td>${d.day.slice(8)}/${d.day.slice(5, 7)} ${d.off ? '<span class="pill">folga</span>' : ''}</td>
+    $('#days tbody').innerHTML = days.slice().reverse().map(d => `<tr data-day="${d.day}" class="${d.off ? 'offday' : ''}">
+      <td class="daycell"><span class="mood" style="background:${moodColor(d.humor)}"></span>${d.day.slice(8)}/${d.day.slice(5, 7)}${d.off ? '<span class="pill">folga</span>' : ''}</td>
       <td><input class="humor" type="number" min="-3" max="3" value="${d.humor ?? ''}"></td>
       <td><input class="t" type="time" value="${d.bed ?? ''}"></td><td><input class="t" type="time" value="${d.wake ?? ''}"></td>
-      <td>${d.sleep != null ? d.sleep.toFixed(1).replace('.', ',') + ' h' : '–'}</td><td>${d.done.length}/${d.total}</td>
+      <td class="c">${d.sleep != null ? d.sleep.toFixed(1).replace('.', ',') + ' h' : '–'}</td><td class="c">${d.done.length}/${d.total}</td>
       <td><input type="text" value="${esc(d.note)}"></td><td><button class="tiny saveDay">Salvar</button></td></tr>`).join('');
   } catch (e) { toast(e.message, true); }
 }

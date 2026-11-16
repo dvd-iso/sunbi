@@ -181,35 +181,68 @@ class LogicTest {
         assertEquals(100, medAdherence(listOf("2026-03-07")))
     }
 
-    // ── SunAI: regras das ferramentas ───────────────────────────────────────
+    // ── Assistente: regras das ferramentas ───────────────────────────────────────
 
     @Test fun sunAiCanAddAndUndo() {
-        val s = SunAI.Session()
+        val s = Assistant.Session()
         val before = Repo.tasks().size
-        val r = SunAI.exec(s, "add_task", JSONObject().put("routine", "semana").put("time", "10:00").put("label", "Alongar"))
+        val r = Assistant.exec(s, "add_task", JSONObject().put("routine", "semana").put("time", "10:00").put("label", "Alongar"))
         assertTrue(r, r.startsWith("ok"))
         assertEquals(before + 1, Repo.tasks().size)
         assertEquals(1, s.changes.size)
-        SunAI.undo(SunAI.Msg("assistant", "", s.changes, s.undo))
+        Assistant.undo(Assistant.Msg("assistant", "", s.changes, s.undo))
         assertEquals(before, Repo.tasks().size)
     }
 
     @Test fun sunAiCannotTouchMedicationTimesOrRemoveThem() {
-        val s = SunAI.Session()
+        val s = Assistant.Session()
         val med = Repo.tasks().first { it.med }
-        val r1 = SunAI.exec(s, "remove_task", JSONObject().put("routine", "semana").put("id", med.id))
+        val r1 = Assistant.exec(s, "remove_task", JSONObject().put("routine", "semana").put("id", med.id))
         assertTrue(r1, r1.startsWith("erro"))
-        val r2 = SunAI.exec(s, "update_task", JSONObject().put("routine", "semana").put("id", med.id).put("time", "11:00"))
+        val r2 = Assistant.exec(s, "update_task", JSONObject().put("routine", "semana").put("id", med.id).put("time", "11:00"))
         assertTrue(r2, r2.startsWith("erro"))
         assertEquals(med.time, Repo.tasks().first { it.id == med.id }.time)
-        val r3 = SunAI.exec(s, "add_task", JSONObject().put("routine", "folga").put("time", "25:00").put("label", "x"))
+        val r3 = Assistant.exec(s, "add_task", JSONObject().put("routine", "folga").put("time", "25:00").put("label", "x"))
         assertTrue(r3, r3.startsWith("erro"))
         assertTrue(s.changes.isEmpty())
     }
 
+    @Test fun assistantBaseUrlAcceptsWhatPeoplePaste() {
+        assertEquals("https://api.openai.com/v1", Assistant.normalizeBaseUrl("https://api.openai.com/v1/"))
+        assertEquals("https://openrouter.ai/api/v1", Assistant.normalizeBaseUrl(" https://openrouter.ai/api/v1/chat/completions "))
+        assertEquals("http://192.168.0.10:11434/v1", Assistant.normalizeBaseUrl("192.168.0.10:11434"))
+        assertEquals("", Assistant.normalizeBaseUrl("  "))
+    }
+
+    @Test fun assistantKeepsKeyAndModelPerProvider() {
+        Prefs.aiProvider = "opencode"
+        Prefs.aiKey = "chave-opencode"
+        Prefs.aiProvider = "openrouter"
+        assertEquals("", Prefs.aiKey)
+        assertEquals(Assistant.provider("openrouter").models.first(), Prefs.aiModel)
+        Prefs.aiKey = "chave-openrouter"
+        Prefs.aiModel = "meta/outro-modelo"
+        assertEquals("https://openrouter.ai/api/v1", Assistant.baseUrl())
+        Prefs.aiProvider = "opencode"
+        assertEquals("chave-opencode", Prefs.aiKey)
+        Prefs.aiProvider = "openrouter"
+        assertEquals("meta/outro-modelo", Prefs.aiModel)
+        Prefs.aiKey = ""
+        Prefs.aiProvider = "opencode"
+        Prefs.aiKey = ""
+    }
+
+    @Test fun assistantNameDefaultsAndCanBeChosen() {
+        Prefs.aiName = ""
+        assertEquals("Assistente", Assistant.name())
+        Prefs.aiName = "  Sol "
+        assertEquals("Sol", Assistant.name())
+        Prefs.aiName = ""
+    }
+
     @Test fun sunAiContextHasRoutinesAndDays() {
         Repo.set("${today()}/humor", 1)
-        val c = SunAI.context()
+        val c = Assistant.context()
         assertTrue(c.contains("ROTINA DE SEMANA"))
         assertTrue(c.contains("ROTINA DE FOLGA"))
         assertTrue(c.contains("humor +1"))
@@ -381,7 +414,7 @@ class LogicTest {
 
     @Test fun alarmDeviceChoosesWhoRings() {
         assertTrue(Repo.ringsHere())
-        Repo.set("alarm_device", "quest-abc")
+        Repo.set("alarm_device", "android-abc")
         assertFalse(Repo.ringsHere())
         Repo.set("alarm_device", Prefs.device)
         assertTrue(Repo.ringsHere())

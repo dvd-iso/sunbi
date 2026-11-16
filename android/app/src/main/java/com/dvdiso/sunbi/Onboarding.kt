@@ -8,6 +8,8 @@ import java.time.LocalTime
  */
 data class Answers(
     val name: String = "",
+    /** Nome que a pessoa quer dar à assistente (vazio = "Assistente"). */
+    val assistant: String = "",
     /** "bipolar", "tdah" ou "both". */
     val focus: String = "both",
     val wake: String = "07:00",
@@ -97,12 +99,13 @@ object RoutineBuilder {
     fun apply(a: Answers) {
         Prefs.userName = a.name
         Prefs.focusArea = a.focus
+        if (a.assistant.isNotBlank()) Prefs.aiName = a.assistant
         if (Prefs.reportName.isBlank()) Prefs.reportName = a.name
         Repo.setTasks(weekdays(a))
         Repo.setOffTasks(offDays(a))
     }
 
-    /** Texto que abre a conversa com a SunAI depois do tour. */
+    /** Texto que abre a conversa com a assistente depois do tour. */
     fun kickoff(a: Answers): String {
         val meds = when (a.meds) { "am" -> "de manhã"; "pm" -> "à noite"; "both" -> "de manhã e à noite"; else -> "nenhum em horário fixo" }
         val day = when (a.dayKind) { "work" -> "trabalho"; "study" -> "estudo"; "both" -> "trabalho e estudo"; else -> "fico em casa" }

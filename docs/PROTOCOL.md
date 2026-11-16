@@ -1,8 +1,8 @@
 # Protocolo de sincronização P2P do SunBi (v1)
 
-O app (Android e Meta Quest) e o plugin do Noctalia falam o mesmo protocolo. Não existe
-servidor central. O app é um par completo (servidor + cliente); o plugin do Noctalia é só
-**cliente**: ele não abre porta, só chama os aparelhos, e cada chamada sincroniza os dois lados.
+O app Android e a extensão de navegador (`extension/`) falam o mesmo protocolo. Não existe
+servidor central. O app é um par completo (servidor + cliente); a extensão é só **cliente**:
+ela não abre porta, só chama o celular, e cada chamada sincroniza os dois lados.
 
 ## Modelo de dados
 
@@ -13,9 +13,9 @@ O estado é um mapa de **registros last-writer-wins (LWW)**:
   "device": "android-3f9c1a",
   "entries": {
     "tasks":                 {"v": [ ...lista de tarefas... ], "t": 1763250000000, "d": "android-3f9c1a"},
-    "2026-11-15/done/wake":  {"v": "07:12", "t": 1763250100000, "d": "linux-glados"},
-    "2026-11-15/humor":      {"v": -1,      "t": 1763250200000, "d": "quest-7a21"},
-    "2026-11-15/bed":        {"v": "23:40", "t": 1763250300000, "d": "quest-7a21"},
+    "2026-11-15/done/wake":  {"v": "07:12", "t": 1763250100000, "d": "pc-a2efaa"},
+    "2026-11-15/humor":      {"v": -1,      "t": 1763250200000, "d": "android-7a21"},
+    "2026-11-15/bed":        {"v": "23:40", "t": 1763250300000, "d": "android-7a21"},
     "2026-11-15/note":       {"v": "...",   "t": 1763250400000, "d": "android-3f9c1a"}
   }
 }
@@ -70,19 +70,22 @@ nesse dia ou antes; senão folga em feriado nacional (com `off/holidays`) ou sá
 Quem não conhece uma chave apenas a guarda e repassa, então versões diferentes convivem.
 
 Um aparelho recém-instalado **não tem `tasks` nem `tasks_off`** até o tour inicial montar a
-rotina (ou até receber a de outro aparelho). O plugin do Noctalia semeia a rotina padrão com
-`t = 1`, que perde para qualquer rotina montada ou editada.
+rotina (ou até receber a de outro aparelho). A extensão nunca cria rotina: enquanto a do
+celular não chega, mostra uma de reserva que não é gravada nem enviada.
 
 ## Descoberta
 
 - DNS-SD/mDNS, tipo `_sunbi._tcp.local.`, porta padrão **47321**.
 - Registro TXT: `id=<device>`, `v=1`, `name=<nome legível>`.
 - Também é possível cadastrar pares manuais (`ip:porta`), útil com Tailscale/VPN.
+- A extensão não usa mDNS (navegadores não têm): a pessoa digita o endereço que o app mostra.
+  Se o endereço parar de responder, ela chama `GET /v1/hello` nos outros endereços da mesma
+  rede /24 (no máximo a cada 15 min) e fica com o que responder com o mesmo `device` e a mesma chave.
 
 ## HTTP
 
 Todas as rotas exigem o cabeçalho `X-SunBi-Key: <código de pareamento>` (sem diferenciar
-maiúsculas). Só o app abre servidor; o plugin do Noctalia é só cliente.
+maiúsculas). Só o app abre servidor; a extensão é só cliente.
 
 | Rota | Descrição |
 | --- | --- |
@@ -93,12 +96,12 @@ maiúsculas). Só o app abre servidor; o plugin do Noctalia é só cliente.
 Corpo do `POST /v1/merge`:
 
 ```json
-{"device": "linux-a2efaa", "name": "nixos", "listen": false, "entries": { ... }}
+{"device": "pc-a2efaa", "name": "Chrome no Linux", "listen": false, "entries": { ... }}
 ```
 
 - `name`: nome legível de quem chama, mostrado na lista de aparelhos.
-- `listen` (padrão `true`): `false` diz que quem chama **não tem servidor** (o plugin do
-  Noctalia). O app então só registra o aparelho como "conectado" e não tenta chamá-lo de volta.
+- `listen` (padrão `true`): `false` diz que quem chama **não tem servidor** (a extensão).
+  O app então só registra o aparelho como "conectado" e não tenta chamá-lo de volta.
   Com `true`, o app adiciona quem chamou como par, o que ajuda quando o mDNS só funciona num sentido.
 
 ## Página do modo avançado (só no app)
@@ -121,8 +124,11 @@ responde com o modo ligado. Cinco PINs errados desligam o modo.
 
 1. Logo após qualquer mudança local: `POST /v1/merge` para todos os pares conhecidos.
 2. Ao descobrir um par novo.
-3. Periodicamente com todos os pares (o app a cada 60 s, o plugin a cada 30 s), o que cobre
-   mudanças perdidas e, para o plugin, traz as mudanças feitas no celular.
+3. Periodicamente com todos os pares (o app e a extensão a cada 60 s), o que cobre mudanças
+   perdidas e, para a extensão, traz as mudanças feitas no celular.
+
+A extensão guarda o estado em `chrome.storage.local` e continua funcionando sem o celular por
+perto: o que for marcado nela segue na próxima chamada que der certo.
 
 ## Segurança
 

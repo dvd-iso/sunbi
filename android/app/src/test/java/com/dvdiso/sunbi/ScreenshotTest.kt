@@ -67,9 +67,9 @@ class ScreenshotTest {
     @Test fun dark() = tabs("escuro")
 
     @Config(qualifiers = "w960dp-h600dp-mdpi")
-    @Test fun questWide() {
+    @Test fun wide() {
         rule.setContent { SunBiTheme { Root() } }
-        save("quest-1-hoje")
+        save("largo-1-hoje")
     }
 
     /** Celular pequeno com fonte do sistema grande: onde o layout costuma quebrar. */
@@ -96,7 +96,7 @@ class ScreenshotTest {
         save("claro-9-checkin-detalhes")
     }
 
-    /** Modo férias (toque na flor), editor de rotina e a SunAI na primeira vez. */
+    /** Modo férias (toque na flor), editor de rotina e a assistente na primeira vez. */
     @Test fun newScreens() {
         rule.setContent { SunBiTheme { Root() } }
         rule.onNodeWithContentDescription("SunBi").performClick()
@@ -111,33 +111,33 @@ class ScreenshotTest {
 
     @Test fun sunAiSetup() {
         rule.setContent { SunBiTheme { Root() } }
-        rule.onNodeWithText("SunAI").performClick()
+        rule.onNodeWithText("Assistente").performClick()
         save("claro-14-sunai")
     }
 
-    /** SunAI com uma conversa (sem rede: as mensagens são gravadas direto). */
+    /** Assistente com uma conversa (sem rede: as mensagens são gravadas direto). */
     @Test fun sunAiChat() {
         Prefs.aiConsent = true
         Prefs.aiKey = "chave-de-teste"
-        SunAI.save(listOf(
-            SunAI.Msg("user", "Como foi minha semana?"),
-            SunAI.Msg("assistant", "Sua semana teve **dois lados**:\n- Começo para baixo (humor -2), com sono longo.\n- Fim acelerado: sono caiu para 4,5 h e energia subiu.\n\nVale seguir o seu plano de subida hoje: deitar no horário e evitar cafeína."),
-            SunAI.Msg("user", "Ajuste minha rotina"),
-            SunAI.Msg("assistant", "Fiz dois ajustes pequenos para proteger o sono.",
-                listOf(SunAI.Change("add", "semana", "21:00 Desligar notificações"), SunAI.Change("update", "semana", "22:30 Deitar → 22:15 Deitar")),
+        Assistant.save(listOf(
+            Assistant.Msg("user", "Como foi minha semana?"),
+            Assistant.Msg("assistant", "Sua semana teve **dois lados**:\n- Começo para baixo (humor -2), com sono longo.\n- Fim acelerado: sono caiu para 4,5 h e energia subiu.\n\nVale seguir o seu plano de subida hoje: deitar no horário e evitar cafeína."),
+            Assistant.Msg("user", "Ajuste minha rotina"),
+            Assistant.Msg("assistant", "Fiz dois ajustes pequenos para proteger o sono.",
+                listOf(Assistant.Change("add", "semana", "21:00 Desligar notificações"), Assistant.Change("update", "semana", "22:30 Deitar → 22:15 Deitar")),
                 org.json.JSONObject()),
         ))
         rule.setContent { SunBiTheme { Root() } }
-        rule.onNodeWithText("SunAI").performClick()
+        rule.onNodeWithText("Assistente").performClick()
         save("claro-16-sunai-conversa")
     }
 
     @Test fun sunAiEmpty() {
         Prefs.aiConsent = true
         Prefs.aiKey = "chave-de-teste"
-        SunAI.clear()
+        Assistant.clear()
         rule.setContent { SunBiTheme { Root() } }
-        rule.onNodeWithText("SunAI").performClick()
+        rule.onNodeWithText("Assistente").performClick()
         save("claro-17-sunai-vazia")
     }
 

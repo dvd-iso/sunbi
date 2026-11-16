@@ -39,7 +39,7 @@ class App : Application() {
         Focus.restore()
         Sfx.init(this)
         Haptics.init(this)
-        SunAI.init(this)
+        Assistant.init(this)
         Notifications.createChannels(this)
         Repo.addListener { keys ->
             // rotina, folga, férias, dia difícil ou aparelho dos alarmes mudaram: reagenda hoje e amanhã

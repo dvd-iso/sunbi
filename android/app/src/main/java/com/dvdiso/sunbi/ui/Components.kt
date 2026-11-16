@@ -210,18 +210,29 @@ fun SunBiMark(modifier: Modifier = Modifier, size: Dp = 40.dp, spin: Boolean = f
             drawCircle(ink, radius = w * 0.075f, center = Offset(w * 0.33f, w * 0.43f))
             drawCircle(ink, radius = w * 0.075f, center = Offset(w * 0.67f, w * 0.43f))
             if (shades > 0.01f) {
-                val glass = Color(0xFF1B1B1F).copy(alpha = shades)
+                // óculos no mesmo desenho do rosto: lentes arredondadas na cor da tinta (a mesma dos
+                // olhos e do sorriso), ponte no traço do sorriso e o reflexo recortado na cor do miolo.
+                // Tudo sai da paleta do tema, então acompanha o Material You.
+                val glass = ink.copy(alpha = shades)
                 val drop = (1f - shades) * -w * 0.35f // desce de cima
-                val lw = w * 0.30f
-                val lh = w * 0.20f
-                val y = w * 0.33f + drop
-                for (x in listOf(w * 0.17f, w * 0.53f)) {
-                    drawRoundRect(glass, Offset(x, y), Size(lw, lh), CornerRadius(lh * 0.45f))
-                    // brilho na lente
-                    drawLine(Color.White.copy(alpha = 0.55f * shades), Offset(x + lw * 0.22f, y + lh * 0.28f),
-                        Offset(x + lw * 0.42f, y + lh * 0.28f), strokeWidth = w * 0.035f, cap = StrokeCap.Round)
+                val lw = w * 0.34f
+                val lh = w * 0.26f
+                val y = w * 0.30f + drop
+                val top = CornerRadius(lh * 0.34f)
+                val bottom = CornerRadius(lh * 0.5f)
+                for (x in listOf(w * 0.12f, w * 0.54f)) {
+                    val lens = Path().apply {
+                        addRoundRect(androidx.compose.ui.geometry.RoundRect(
+                            androidx.compose.ui.geometry.Rect(Offset(x, y), Size(lw, lh)),
+                            topLeft = top, topRight = top, bottomRight = bottom, bottomLeft = bottom,
+                        ))
+                    }
+                    drawPath(lens, glass)
+                    drawLine(cs.primaryContainer.copy(alpha = 0.9f * shades), Offset(x + lw * 0.24f, y + lh * 0.46f),
+                        Offset(x + lw * 0.42f, y + lh * 0.26f), strokeWidth = w * 0.045f, cap = StrokeCap.Round)
                 }
-                drawLine(glass, Offset(w * 0.47f, y + lh * 0.35f), Offset(w * 0.53f, y + lh * 0.35f), strokeWidth = w * 0.05f)
+                drawLine(glass, Offset(w * 0.45f, y + lh * 0.30f), Offset(w * 0.55f, y + lh * 0.30f),
+                    strokeWidth = w * 0.07f, cap = StrokeCap.Round)
             }
             drawArc(
                 ink, startAngle = 20f, sweepAngle = 140f, useCenter = false,

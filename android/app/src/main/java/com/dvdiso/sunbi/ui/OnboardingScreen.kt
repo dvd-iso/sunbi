@@ -76,7 +76,7 @@ private const val LAST = 9
 /**
  * Tour inicial: perguntas curtas que viram a rotina de semana e a de folga.
  * Quem já usa o SunBi em outro aparelho só digita o código de pareamento.
- * [onDone] recebe a pergunta para abrir a SunAI (ou null para ir direto para Hoje).
+ * [onDone] recebe a pergunta para abrir a assistente (ou null para ir direto para Hoje).
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -178,12 +178,20 @@ private fun NameStep(a: Answers, set: (Answers) -> Unit, next: () -> Unit) {
         modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large,
         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
     )
-    Next(if (a.name.isBlank()) "Pular" else "Continuar", onClick = next)
+    // o app tem uma assistente opcional (IA); a pessoa escolhe o nome dela já aqui
+    OutlinedTextField(
+        a.assistant, { set(a.copy(assistant = it.take(24))) }, label = { Text("E a assistente do app, como quer chamar?") },
+        placeholder = { Text(com.dvdiso.sunbi.Assistant.DEFAULT_NAME) }, singleLine = true,
+        modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large,
+        supportingText = { Text("Ela é opcional: resume a semana e ajuda a ajustar a rotina. Em branco, fica \"Assistente\".") },
+        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Done),
+    )
+    Next(if (a.name.isBlank() && a.assistant.isBlank()) "Pular" else "Continuar", onClick = next)
 }
 
 @Composable
 private fun FocusStep(a: Answers, set: (Answers) -> Unit, next: () -> Unit) {
-    Title("2 de 8", "Do que você quer cuidar?", "Isso muda o que a SunAI e os avisos olham primeiro.")
+    Title("2 de 8", "Do que você quer cuidar?", "Isso muda o que a assistente e os avisos olham primeiro.")
     OptionList(
         listOf("bipolar" to "Bipolaridade", "tdah" to "TDAH", "both" to "Os dois"),
         a.focus, { set(a.copy(focus = it)) },
@@ -227,7 +235,7 @@ private fun WeekendStep(a: Answers, set: (Answers) -> Unit, next: () -> Unit) {
 
 @Composable
 private fun MedsStep(a: Answers, set: (Answers) -> Unit, next: () -> Unit) {
-    Title("5 de 8", "Você toma remédio em horário fixo?", "Eles viram alarmes sem soneca e entram no relatório. A SunAI nunca mexe neles.")
+    Title("5 de 8", "Você toma remédio em horário fixo?", "Eles viram alarmes sem soneca e entram no relatório. A assistente nunca mexe neles.")
     OptionList(
         listOf("none" to "Não", "am" to "De manhã", "pm" to "À noite", "both" to "Manhã e noite"),
         a.meds, { set(a.copy(meds = it)) },
@@ -292,10 +300,10 @@ private fun ReviewStep(a: Answers, onFinish: (ai: Boolean) -> Unit) {
     OutlinedButton(onClick = { onFinish(true) }, shapes = ButtonDefaults.shapes(), modifier = Modifier.fillMaxWidth().height(52.dp)) {
         SunBiMark(size = 22.dp)
         Spacer(Modifier.width(10.dp))
-        Text("Refinar com a SunAI")
+        Text("Refinar com ${a.assistant.ifBlank { "a assistente" }}")
     }
     Text(
-        "A SunAI usa a sua chave do OpenCode Go e pede consentimento antes de ver os seus dados.",
+        "A assistente usa a sua chave de um provedor de IA (OpenAI, OpenRouter, OpenCode Go…) e pede consentimento antes de ver os seus dados.",
         style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth(),
     )
 }
@@ -317,7 +325,7 @@ private fun PreviewRow(t: Task, index: Int) {
 private fun PairStep(onDone: () -> Unit) {
     val ctx = LocalContext.current
     var key by remember { mutableStateOf("") }
-    Title("Parear", "Qual é o código de pareamento?", "Ele aparece no outro aparelho em Ajustes → Sincronização (ou no painel do plugin do Noctalia). Os dois precisam estar na mesma rede Wi-Fi.")
+    Title("Parear", "Qual é o código de pareamento?", "Ele aparece no outro aparelho em Ajustes → Sincronização. Os dois precisam estar na mesma rede Wi-Fi.")
     OutlinedTextField(
         key, { key = it.uppercase().take(12) }, label = { Text("Código") }, singleLine = true,
         modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large,

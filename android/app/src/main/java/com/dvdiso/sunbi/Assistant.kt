@@ -13,25 +13,62 @@ import java.time.format.TextStyle
 import java.util.Locale
 
 /**
- * SunAI: assistente do SunBi via OpenCode Go (API compatível com OpenAI Chat Completions).
+ * Assistente do SunBi: conversa por qualquer API compatível com OpenAI Chat Completions
+ * (OpenCode Go, OpenAI, OpenRouter, Groq, DeepSeek, Ollama ou um endereço próprio).
  *
  * A cada pergunta envia um resumo dos registros (últimos 31 dias), as duas rotinas e o plano.
  * Pode mudar a rotina por ferramentas (add/update/remove_task) com regras checadas aqui:
  * remédios não são apagados nem mudam de horário pela IA. Cada resposta guarda um retrato das
  * rotinas de antes, para "Desfazer".
  */
-object SunAI {
-    /** Endpoint OpenAI-compatível do OpenCode Go (var só para os testes apontarem para um servidor falso). */
-    internal var ENDPOINT = "https://opencode.ai/inference/go/openai/v1/chat/completions"
+object Assistant {
+    const val DEFAULT_NAME = "Assistente"
 
-    /** Modelos do OpenCode Go que funcionam bem em português e com ferramentas. */
-    val MODELS = listOf(
-        "kimi-k3" to "Kimi K3",
-        "glm-5.3" to "GLM-5.3",
-        "deepseek-v4-pro" to "DeepSeek V4 Pro",
-        "qwen3.8-max" to "Qwen 3.8 Max",
-        "deepseek-v4.1-flash" to "DeepSeek V4.1 Flash (rápido)",
+    /**
+     * Um provedor: endereço base da API (até o /v1), onde pegar a chave e alguns modelos de
+     * sugestão. A lista de verdade vem de [listModels], e o campo de modelo aceita qualquer id.
+     */
+    data class Provider(val id: String, val name: String, val baseUrl: String, val keyHint: String, val models: List<String>)
+
+    val PROVIDERS = listOf(
+        Provider("opencode", "OpenCode Go", "https://opencode.ai/inference/go/openai/v1", "opencode.ai/console",
+            listOf("kimi-k3", "glm-5.3", "deepseek-v4-pro", "qwen3.8-max", "deepseek-v4.1-flash")),
+        Provider("openai", "OpenAI", "https://api.openai.com/v1", "platform.openai.com/api-keys",
+            listOf("gpt-5-mini", "gpt-5", "gpt-4.1-mini")),
+        Provider("openrouter", "OpenRouter", "https://openrouter.ai/api/v1", "openrouter.ai/keys",
+            listOf("openai/gpt-5-mini", "anthropic/claude-sonnet-4.5", "google/gemini-2.5-flash", "deepseek/deepseek-chat")),
+        Provider("groq", "Groq", "https://api.groq.com/openai/v1", "console.groq.com/keys",
+            listOf("llama-3.3-70b-versatile", "openai/gpt-oss-120b")),
+        Provider("deepseek", "DeepSeek", "https://api.deepseek.com/v1", "platform.deepseek.com",
+            listOf("deepseek-chat")),
+        // qualquer outro serviço ou servidor próprio (Ollama, LM Studio, LiteLLM...) que fale o formato da OpenAI
+        Provider("custom", "Outro (compatível com OpenAI)", "", "", emptyList()),
     )
+
+    fun provider(id: String = Prefs.aiProvider): Provider = PROVIDERS.firstOrNull { it.id == id } ?: PROVIDERS.first()
+
+    /**
+     * Aceita o endereço como a pessoa colar: com ou sem /v1, com /chat/completions no fim, sem
+     * http:// (servidor de casa). Devolve a base, sem barra final.
+     */
+    fun normalizeBaseUrl(raw: String): String {
+        var u = raw.trim().trimEnd('/')
+        if (u.isEmpty()) return ""
+        if (!u.startsWith("http://") && !u.startsWith("https://")) u = "http://$u"
+        u = u.removeSuffix("/chat/completions").removeSuffix("/models").trimEnd('/')
+        // só o servidor, sem caminho: o padrão é /v1
+        if (u.substringAfter("://").none { it == '/' }) u += "/v1"
+        return u
+    }
+
+    fun baseUrl(): String = provider().let { if (it.id == "custom") normalizeBaseUrl(Prefs.aiBaseUrl) else it.baseUrl }
+
+    /** Só para os testes apontarem para um servidor falso. */
+    internal var ENDPOINT: String? = null
+    private fun endpoint(): String = ENDPOINT ?: (baseUrl() + "/chat/completions")
+
+    /** Nome que a pessoa deu à assistente (padrão "Assistente"). */
+    fun name(): String = Prefs.aiName.ifBlank { DEFAULT_NAME }
 
     data class Change(val kind: String, val routine: String, val text: String)
 
@@ -52,11 +89,12 @@ object SunAI {
     }
 
     /** Chave e consentimento dados: dá para perguntar. */
-    fun ready(): Boolean = Prefs.aiConsent && Prefs.aiKey.isNotBlank()
+    fun ready(): Boolean = Prefs.aiConsent && Prefs.aiModel.isNotBlank() && baseUrl().isNotBlank() &&
+        (Prefs.aiKey.isNotBlank() || Prefs.aiProvider == "custom") // servidor próprio pode não pedir chave
 
     /**
      * ID estável da conversa, enviado em x-opencode-session (o OpenCode Go exige: sem ele
-     * responde 400 "MissingSessionID"). Muda quando a pessoa começa uma conversa nova.
+     * responde 400 "MissingSessionID"; os outros provedores ignoram). Muda a cada conversa nova.
      */
     fun sessionId(): String {
         val cur = runCatching { sessionFile.readText().trim() }.getOrNull()
@@ -172,9 +210,12 @@ object SunAI {
         return sb.toString()
     }
 
-    private val SYSTEM = """
-Você é a SunAI, a assistente do app SunBi. A pessoa usa o app para cuidar da rotina com transtorno bipolar e/ou TDAH.
+    private fun system(): String {
+        val who = name().takeIf { it != DEFAULT_NAME }?.let { " A pessoa escolheu te chamar de \"$it\": esse é o seu nome." } ?: ""
+        return "Você é a assistente do app SunBi.$who A pessoa usa o app para cuidar da rotina com transtorno bipolar e/ou TDAH.\n\n$RULES"
+    }
 
+    private val RULES = """
 Como falar:
 - Português do Brasil, tom acolhedor, frases curtas, sem julgamento e sem culpa.
 - Até umas 180 palavras, salvo se pedirem mais. Listas curtas quando ajudar.
@@ -275,7 +316,7 @@ Mudar a rotina:
             "remove_task" -> {
                 val id = args.optString("id")
                 val old = list.firstOrNull { it.id == id } ?: return "erro: não existe tarefa com id $id na rotina $label"
-                if (old.med) return "erro: tarefas de remédio não podem ser removidas pela SunAI"
+                if (old.med) return "erro: tarefas de remédio não podem ser removidas pela assistente"
                 store(list.filterNot { it.id == id })
                 s.changes += Change("remove", label, "${old.time} ${old.label}")
                 "ok: removida"
@@ -286,42 +327,81 @@ Mudar a rotina:
 
     // ── chamada à API ───────────────────────────────────────────────────────
 
-    class ApiError(msg: String) : Exception(msg)
+    class ApiError(msg: String, val code: Int = 0) : Exception(msg)
 
-    private fun post(body: JSONObject): JSONObject {
-        val conn = URL(ENDPOINT).openConnection() as HttpURLConnection
-        conn.requestMethod = "POST"
+    private fun open(url: String): HttpURLConnection {
+        val conn = URL(url).openConnection() as HttpURLConnection
         conn.connectTimeout = 15_000
         conn.readTimeout = 120_000
-        conn.doOutput = true
-        conn.setRequestProperty("Content-Type", "application/json")
-        conn.setRequestProperty("Authorization", "Bearer ${Prefs.aiKey}")
-        // o OpenCode Go pede que o cliente se identifique e mande um ID de sessão estável
+        if (Prefs.aiKey.isNotBlank()) conn.setRequestProperty("Authorization", "Bearer ${Prefs.aiKey}")
         conn.setRequestProperty("User-Agent", "SunBi/${BuildConfig.VERSION_NAME} (Android)")
-        conn.setRequestProperty("x-opencode-session", sessionId())
-        conn.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
-        val code = conn.responseCode
+        when (Prefs.aiProvider) {
+            // o OpenCode Go pede um ID de sessão estável
+            "opencode" -> conn.setRequestProperty("x-opencode-session", sessionId())
+            // o OpenRouter mostra o nome do app no painel da pessoa
+            "openrouter" -> conn.setRequestProperty("X-Title", "SunBi")
+        }
+        return conn
+    }
+
+    /** Lê a resposta; em erro, traduz o código para uma frase com o nome do provedor. */
+    private fun read(conn: HttpURLConnection): JSONObject {
+        val who = provider().name.substringBefore(" (")
+        val code = try { conn.responseCode } catch (e: java.io.IOException) {
+            throw ApiError("Não consegui falar com $who: ${e.message ?: "sem conexão"}. Confira a internet e o endereço.")
+        }
         val text = (if (code in 200..299) conn.inputStream else conn.errorStream)?.use { it.readBytes().toString(Charsets.UTF_8) } ?: ""
         conn.disconnect()
         if (code !in 200..299) {
             // mostra a explicação do próprio servidor, quando houver
-            val detail = runCatching { JSONObject(text).optJSONObject("error")?.optString("message") }.getOrNull()
-                ?.takeIf { it.isNotBlank() } ?: text.take(200)
+            val detail = runCatching {
+                val e = JSONObject(text).opt("error")
+                (e as? JSONObject)?.optString("message") ?: (e as? String)
+            }.getOrNull()?.takeIf { it.isNotBlank() } ?: text.take(200)
             throw ApiError(
                 when (code) {
-                    401, 403 -> "A chave do OpenCode Go não foi aceita. Confira em ⋮ → Modelo e chave."
-                    429 -> "O limite do seu plano OpenCode Go acabou por agora. Tente mais tarde ou troque de modelo."
-                    else -> "O OpenCode Go respondeu com erro $code: $detail"
+                    401, 403 -> "A chave de $who não foi aceita. Confira em ⋮ → Provedor, modelo e chave."
+                    402 -> "Faltam créditos na sua conta de $who."
+                    404 -> "$who não achou o modelo \"${Prefs.aiModel}\" (ou o endereço está errado). $detail"
+                    429 -> "O limite da sua conta de $who acabou por agora. Tente mais tarde ou troque de modelo."
+                    else -> "$who respondeu com erro $code: $detail"
                 },
+                code,
             )
         }
-        return JSONObject(text)
+        return runCatching { JSONObject(text) }.getOrElse { throw ApiError("$who mandou uma resposta que não entendi. Confira o endereço.") }
+    }
+
+    private fun post(body: JSONObject): JSONObject {
+        val conn = open(endpoint())
+        conn.requestMethod = "POST"
+        conn.doOutput = true
+        conn.setRequestProperty("Content-Type", "application/json")
+        try {
+            conn.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
+        } catch (e: java.io.IOException) {
+            throw ApiError("Não consegui falar com ${provider().name.substringBefore(" (")}: ${e.message ?: "sem conexão"}. Confira a internet e o endereço.")
+        }
+        return read(conn)
+    }
+
+    /** Modelos que a chave enxerga no provedor atual (GET /models), em ordem alfabética. */
+    suspend fun listModels(): List<String> = withContext(Dispatchers.IO) {
+        val res = read(open(baseUrl() + "/models"))
+        val arr = res.optJSONArray("data") ?: res.optJSONArray("models") ?: JSONArray()
+        (0 until arr.length()).mapNotNull { i ->
+            when (val m = arr.opt(i)) {
+                is JSONObject -> m.optString("id").ifBlank { m.optString("name") }
+                is String -> m
+                else -> null
+            }?.takeIf { it.isNotBlank() }
+        }.distinct().sorted()
     }
 
     /** Envia a pergunta com o histórico recente. Devolve a resposta (com as mudanças feitas na rotina). */
     suspend fun ask(history: List<Msg>, question: String): Msg = withContext(Dispatchers.IO) {
         val messages = JSONArray()
-        messages.put(JSONObject().put("role", "system").put("content", SYSTEM + "\n\n" + context()))
+        messages.put(JSONObject().put("role", "system").put("content", system() + "\n\n" + context()))
         for (m in history.filter { it.role == "user" || it.role == "assistant" }.takeLast(12)) {
             messages.put(JSONObject().put("role", m.role).put("content", m.text))
         }
@@ -329,12 +409,23 @@ Mudar a rotina:
 
         val session = Session()
         var answer = ""
+        var useTools = true
         for (round in 0 until 6) {
-            // sem "temperature": modelos com raciocínio (Kimi, DeepSeek) recusam valores fora do padrão
-            val body = JSONObject().put("model", Prefs.aiModel).put("messages", messages).put("tools", tools())
-            val res = post(body)
+            // sem "temperature": modelos com raciocínio (Kimi, DeepSeek, GPT-5) recusam valores fora do padrão
+            val body = JSONObject().put("model", Prefs.aiModel).put("messages", messages)
+            if (useTools) body.put("tools", tools())
+            val res = try {
+                post(body)
+            } catch (e: ApiError) {
+                // modelo sem suporte a ferramentas: segue só conversando, sem mexer na rotina
+                val aboutTools = e.message.orEmpty().contains("tool", ignoreCase = true) || e.message.orEmpty().contains("function", ignoreCase = true)
+                if (round == 0 && useTools && e.code in listOf(400, 404, 422) && aboutTools) {
+                    useTools = false
+                    post(body.apply { remove("tools") })
+                } else throw e
+            }
             val msg = res.optJSONArray("choices")?.optJSONObject(0)?.optJSONObject("message")
-                ?: throw ApiError("Resposta vazia do OpenCode Go.")
+                ?: throw ApiError("Resposta vazia de ${provider().name.substringBefore(" (")}.")
             val calls = msg.optJSONArray("tool_calls")
             if (calls == null || calls.length() == 0) {
                 answer = msg.optString("content", "").let { if (it == "null") "" else it }.trim()

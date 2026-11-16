@@ -2,53 +2,63 @@
 
 Guia técnico do SunBi. A apresentação do app está no [README](../README.md).
 
-## 1. Celular e Meta Quest
+## 1. Celular
 
 1. Na aba **Releases** do repositório, baixe o `sunbi.apk` mais recente. (Builds de teste ficam
    na aba **Actions**, no artefato **sunbi-apk**.)
-2. **Celular:** abra o APK e permita instalar de fontes desconhecidas.
-3. **Quest 3/3S:** ative o modo desenvolvedor no app Meta Horizon e instale com SideQuest ou
-   `adb install -r sunbi.apk`. O app aparece em **Biblioteca → Fontes desconhecidas**.
-4. Abra o app: o **tour inicial** monta a sua rotina em oito perguntas. Depois, em
-   **Ajustes**, resolva os avisos de permissão (notificações, alarmes exatos e tela cheia).
+2. Abra o APK e permita instalar de fontes desconhecidas.
+3. Abra o app: o **tour inicial** monta a sua rotina em oito perguntas (e já pergunta como você
+   quer chamar a assistente). Depois, em **Ajustes**, resolva os avisos de permissão
+   (notificações, alarmes exatos e tela cheia).
 
 Todo APK das Releases instala por cima do anterior, porque é assinado sempre com a mesma chave privada.
 
-## 2. PC com Noctalia
+## 2. Computador: extensão do navegador
 
-O plugin não precisa de daemon nem de Python: tudo roda dentro do Noctalia.
+A extensão (`extension/`) mostra a rotina do dia, marca tarefas e humor, e manda **avisos do
+sistema** na hora de cada tarefa, com o navegador em segundo plano. Não tem programa para
+instalar nem serviço para manter rodando.
 
-```sh
-git clone git@github.com:dvd-iso/sunbi.git ~/Projects/sunbi
-mkdir -p ~/.local/share/noctalia/plugins
-ln -s ~/Projects/sunbi/noctalia/sunbi ~/.local/share/noctalia/plugins/sunbi
-noctalia msg plugins enable dvd-iso/sunbi
-```
+**Chrome, Edge, Brave, Vivaldi, Opera:**
 
-Depois adicione o widget `dvd-iso/sunbi:bar` na barra (Settings → Bar). Os dados ficam em
-`~/.local/state/noctalia/plugins/data/dvd-iso/sunbi/`.
+1. Baixe o `sunbi-extensao.zip` da aba **Releases** e descompacte numa pasta que não vá apagar
+   (ou use a pasta `extension/` deste repositório).
+2. Abra `chrome://extensions`, ligue o **Modo do desenvolvedor** e clique em **Carregar sem
+   compactação**. Escolha a pasta.
+3. Fixe o ícone da flor na barra do navegador.
 
-Para achar o celular e o Quest sozinho, o plugin usa o `avahi-browse` (pacote **avahi**; no
-NixOS, `services.avahi.enable = true`). Sem ele, cadastre os aparelhos à mão (abaixo).
+**Firefox:** em `about:debugging#/runtime/this-firefox`, **Carregar extensão temporária** e
+escolha o `manifest.json`. O Firefox comum só mantém extensões assinadas, então ela sai ao
+fechar o navegador; para ficar fixa, use o Firefox Developer Edition ou ESR com
+`xpinstall.signatures.required = false`. No Firefox o aviso não tem botão: clicar nele marca a
+tarefa como feita.
 
-## 3. Parear os aparelhos
+Para os avisos chegarem com todas as janelas fechadas, deixe o navegador continuar em segundo
+plano (Chrome: Configurações → Sistema → "Continuar executando aplicativos em segundo plano").
+Com o navegador totalmente fechado não há aviso no computador; o celular continua tocando.
 
-Todos precisam do **mesmo código de pareamento**. No primeiro aparelho ele é gerado sozinho e
-aparece em **Ajustes → Sincronização**; nos outros, o tour inicial tem a opção
-**"Já uso o SunBi em outro aparelho"**, que pede só o código. No plugin, o código fica em
-**Settings → Plugins → SunBi → Código de pareamento** e no rodapé do painel.
+## 3. Parear
 
-Os aparelhos aparecem no rodapé do painel com uma bolinha. No app, o PC aparece como
-"conectado" depois da primeira troca. Se a rede bloquear a descoberta automática (redes de
-visitante, alguns roteadores), copie o endereço que o app mostra em **Ajustes → Sincronização**
-("Este aparelho: 192.168.0.20:47321") para **Aparelhos manuais** nas configurações do plugin.
-Com Tailscale, o mesmo vale para sincronizar fora de casa.
+**Computador:** no app, abra **Ajustes → Sincronização**. O cartão **Conectar o computador**
+mostra o **endereço** (`192.168.0.20:47321`) e o **código**. Clique na flor no navegador,
+digite os dois e pronto. O computador aparece no app como "conectado".
+
+A extensão chama o celular a cada minuto e logo depois de cada mudança. Se o celular não
+responder (tela apagada em economia de Wi-Fi, fora de casa), ela segue funcionando com o que
+tem e envia tudo quando ele voltar. Se o roteador der outro endereço ao celular, ela procura
+por ele na mesma rede e se reconecta sozinha; o botão **Sincronizar** força essa busca na hora.
+Com Tailscale, use o endereço do celular na tailnet para sincronizar fora de casa.
+
+**Outro celular ou tablet:** todos precisam do **mesmo código de pareamento**. No segundo
+aparelho, o tour inicial tem a opção **"Já uso o SunBi em outro aparelho"**, que pede só o
+código. Eles se acham sozinhos na mesma rede Wi-Fi (mDNS); se a rede bloquear a descoberta
+(redes de visitante, alguns roteadores), adicione o `ip:porta` do outro em Ajustes → Sincronização.
 
 ## 4. Modo avançado (configurar pelo computador)
 
 Em **Ajustes → Modo avançado**, ligue o interruptor. O app mostra um endereço
 (`http://192.168.0.20:47321/`) e um **PIN de 6 dígitos**. Abra o endereço no navegador de um
-computador na mesma rede e digite o PIN. No PC com o plugin do Noctalia, o botão do globo no rodapé do painel abre a página direto. A página edita as duas rotinas, os sinais de alerta,
+computador na mesma rede e digite o PIN. Com a extensão instalada, o botão **Abrir o modo avançado** (nos ajustes dela) abre a página direto. A página edita as duas rotinas, os sinais de alerta,
 os planos, as pessoas, os registros dos últimos dias e os ajustes, e faz **backup** (exportar e
 importar um JSON).
 
@@ -74,8 +84,13 @@ que é GPL-3.0 e por isso não foi copiado.
 - **Sono do relógio:** precisa do app Health Connect (embutido no Android 14+) e de um relógio
   ou pulseira que grave sessões de sono nele. A permissão de leitura é pedida no primeiro
   "Puxar do relógio". Não foi testado em aparelho real nesta versão.
-- **Resumo semanal da SunAI:** roda pelo WorkManager (precisa de rede) no domingo às 19h e
-  usa a chave do OpenCode Go deste aparelho; ligue só num aparelho para não receber dois.
+- **Assistente:** funciona com qualquer API no formato da OpenAI. O app traz OpenCode Go,
+  OpenAI, OpenRouter, Groq e DeepSeek prontos, e a opção **Outro** aceita um endereço próprio
+  (Ollama, LM Studio, LiteLLM, Mistral, Together...). Cada provedor guarda a própria chave e o
+  próprio modelo; "Buscar os modelos da minha conta" lista o que a chave enxerga. Modelos sem
+  suporte a ferramentas conversam, mas não ajustam a rotina.
+- **Resumo semanal da assistente:** roda pelo WorkManager (precisa de rede) no domingo às 19h e
+  usa a chave deste aparelho; ligue só num aparelho para não receber dois.
 - **Lembrete de check-in** e **resumo semanal** usam alarmes inexatos (`setAndAllowWhileIdle`),
   então podem atrasar alguns minutos em modo de economia de bateria.
 
@@ -83,24 +98,27 @@ que é GPL-3.0 e por isso não foi copiado.
 
 Cada registro tem valor, horário e aparelho. Quando dois aparelhos conversam, cada um fica com
 a versão mais recente de cada registro. A ordem das trocas não importa, e um aparelho que ficou
-desligado recebe tudo quando volta. O celular e o Quest têm um pequeno servidor; o plugin do
-Noctalia só chama os dois (a cada 30 s e logo depois de cada mudança feita no PC), e cada
+desligado recebe tudo quando volta. O celular tem um pequeno servidor; a extensão do navegador
+só chama o celular (a cada minuto e logo depois de cada mudança feita no computador), e cada
 chamada troca os dados nos dois sentidos. Detalhes em [PROTOCOL.md](PROTOCOL.md).
 
 ## Limitações conhecidas
 
-- O Quest só toca o alarme se estiver ligado; com o headset dormindo, o celular e o PC cobrem.
-- O Quest não faz ligações: no botão de ajuda, os números aparecem para você ligar de outro aparelho.
 - No celular, a sincronização em segundo plano usa uma notificação fixa ("Sincronizando..."),
   que pode ser silenciada nas configurações de notificação do app.
+- Com a tela apagada, alguns celulares economizam Wi-Fi e demoram a responder ao computador.
+  Nada se perde: a extensão tenta de novo a cada minuto.
+- A extensão pede acesso a endereços `http://` porque o celular atende por HTTP na rede local e
+  o endereço dele não é conhecido de antemão. Ela só chama o endereço que você digitou e, para
+  reencontrar o celular, os vizinhos dele na mesma rede.
 - A rotina, os sinais, o plano, os contatos e o check-in valem para todos os aparelhos. O cronômetro
-  de foco, a chave da SunAI, a conversa com ela e o PIN do modo avançado são de cada aparelho.
+  de foco, as chaves da assistente, a conversa com ela e o PIN do modo avançado são de cada aparelho.
 
 ## Desenvolvimento
 
 ```sh
-# plugin: módulo de dados e testes (luau CLI)
-cd noctalia/sunbi && luau tests/store_test.luau && noctalia plugins lint .
+# extensão: módulo de dados (Node 22+), sem dependências
+node --test extension/tests/store.test.mjs
 
 # app (Android SDK com platforms;android-37.0 e build-tools;37.0.0, Gradle 9)
 cd android
@@ -109,13 +127,21 @@ gradle assembleDebug
 ```
 
 Os testes de tela rodam no JVM com Robolectric (gráficos nativos) e salvam PNGs das abas, do
-tour, das conquistas, do check-in, da SunAI, do alarme e do relatório em tema claro, escuro, no
-layout largo do Quest e num celular pequeno com fonte grande. O CI publica essas imagens no
+tour, das conquistas, do check-in, da assistente, do alarme e do relatório em tema claro, escuro, no
+layout largo (tablet) e num celular pequeno com fonte grande. O CI publica essas imagens no
 artefato **sunbi-telas**; as do README ficam em `docs/telas/`.
 
-Os sons (`android/app/src/main/res/raw/*.ogg` e `noctalia/sunbi/sounds/*.wav`) são sintetizados
+Os sons (`android/app/src/main/res/raw/*.ogg`) são sintetizados
 por `tools/sounds.py`, sem amostras de terceiros. As vibrações são composições do próprio
 Android (`Haptics.kt`).
+
+### Estrutura da extensão
+
+| Arquivo | O que faz |
+| --- | --- |
+| `lib/store.js` | registros LWW e as regras do dia (folga, feriados, dia difícil), iguais às do app; puro e testado |
+| `background.js` | service worker: guarda em `chrome.storage.local`, sincroniza, reencontra o celular e avisa das tarefas |
+| `popup.html`, `popup.js`, `popup.css` | a janela: tarefa da vez, rotina, humor, ajustes |
 
 ### Estrutura do app
 
@@ -125,7 +151,7 @@ Android (`Haptics.kt`).
 | `Onboarding.kt` | respostas do tour e o montador de rotina (`RoutineBuilder`) |
 | `Game.kt` | XP, níveis, sequência e conquistas, tudo derivado dos registros |
 | `Insights.kt` | avisos automáticos (subida, descida, sono, remédios, ritmo) |
-| `SunAI.kt` | assistente via OpenCode Go, com ferramentas de rotina e regras |
+| `Assistant.kt` | assistente por qualquer API compatível com OpenAI, com ferramentas de rotina e regras |
 | `Report.kt`, `ReportPdf.kt`, `Share.kt` | relatório em texto e PDF, envio por WhatsApp |
 | `Sync.kt` | servidor HTTP, mDNS e sincronização; `WebConfig.kt` | API da página do modo avançado (`assets/web/index.html`) |
 | `Alarms.kt` | alarmes, toque, bloco de foco; `Haptics.kt`, `Sfx.kt` | vibrações e sons |
@@ -147,6 +173,6 @@ Em **Settings → Secrets and variables → Actions**, crie `SUNBI_KEYSTORE_BASE
 `SUNBI_KEYSTORE_PASSWORD`, `SUNBI_KEY_ALIAS` (`sunbi`) e `SUNBI_KEY_PASSWORD`. Guarde o `.jks`
 num lugar seguro: sem ele, versões futuras não instalam por cima.
 
-Depois, `git tag v0.6.0 && git push --tags` gera a Release com o `sunbi.apk`. Sem os secrets,
+Depois, `git tag v0.6.0 && git push --tags` gera a Release com o `sunbi.apk` e o `sunbi-extensao.zip`. Sem os secrets,
 o CI ainda gera APKs de teste (assinados com a chave pública `dev-debug.keystore`), mas se recusa
 a publicar uma Release.

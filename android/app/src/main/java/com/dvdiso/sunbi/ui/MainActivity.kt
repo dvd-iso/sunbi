@@ -132,7 +132,7 @@ private const val TAB_AI = 2
 private val DESTS = listOf(
     Dest("Hoje", Icons.Filled.Home),
     Dest("Histórico", Icons.Filled.DateRange),
-    Dest("SunAI", Icons.Filled.Star),
+    Dest("Assistente", Icons.Filled.Star),
     Dest("Plano", Icons.Filled.Favorite),
 )
 
@@ -193,17 +193,28 @@ internal fun Root(launch: Launch = Launch()) {
     }
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
-        // Quest, tablets e celular deitado: trilho lateral e conteúdo centralizado.
+        // Tablets e celular deitado: trilho lateral e conteúdo centralizado.
         val wide = maxWidth >= 600.dp
         Scaffold(
             bottomBar = {
                 if (!wide) {
-                    ShortNavigationBar {
-                        DESTS.forEachIndexed { i, d ->
-                            ShortNavigationBarItem(
-                                selected = tab == i, onClick = { if (tab != i) fb.tick(); tab = i },
-                                icon = { Icon(d.icon, null) }, label = { Text(d.label) },
-                            )
+                    // a barra desenha o próprio fundo até a borda; os itens ficam acima da barra de
+                    // gestos do sistema, com uma folga para as duas não encostarem
+                    val labels = ThemeState.navLabels.value
+                    val barColor = MaterialTheme.colorScheme.surfaceContainer
+                    Surface(color = barColor) {
+                        Column(Modifier.navigationBarsPadding()) {
+                            ShortNavigationBar(containerColor = barColor, windowInsets = WindowInsets(0, 0, 0, 0)) {
+                                DESTS.forEachIndexed { i, d ->
+                                    ShortNavigationBarItem(
+                                        selected = tab == i, onClick = { if (tab != i) fb.tick(); tab = i },
+                                        // sem o título, o nome da aba vira a descrição do ícone (leitor de tela)
+                                        icon = { Icon(d.icon, if (labels) null else d.label) },
+                                        label = if (labels) { { Text(d.label) } } else null,
+                                    )
+                                }
+                            }
+                            Spacer(Modifier.height(10.dp))
                         }
                     }
                 }
@@ -238,7 +249,7 @@ internal fun Root(launch: Launch = Launch()) {
                         top = inner.calculateTopPadding() + 8.dp,
                         bottom = inner.calculateBottomPadding() + 88.dp,
                     )
-                    // a conversa da SunAI cuida das próprias margens e do teclado
+                    // a conversa da assistente cuida das próprias margens e do teclado
                     val chatPad = PaddingValues(top = inner.calculateTopPadding() + 4.dp, bottom = inner.calculateBottomPadding())
                     val enter = MaterialTheme.motionScheme.defaultEffectsSpec<Float>()
                     val exit = MaterialTheme.motionScheme.fastEffectsSpec<Float>()
@@ -261,11 +272,11 @@ internal fun Root(launch: Launch = Launch()) {
                                 onAchievements = { achievements = true },
                             )
                             1 -> HistoryScreen(now, pad, onSettings = openSettings)
-                            TAB_AI -> SunAIScreen(chatPad, initial = aiKickoff, onInitialSent = { aiKickoff = null })
+                            TAB_AI -> AssistantScreen(chatPad, initial = aiKickoff, onInitialSent = { aiKickoff = null })
                             TAB_PLAN -> PlanScreen(pad, crisisRequest, { crisisRequest = false }, onSettings = openSettings)
                             ROUTINE -> RoutineScreen(pad) { tab = routineBack }
                             else -> SettingsScreen(pad, onBack = { tab = prevTab },
-                                onRoutine = { routineBack = SETTINGS; tab = ROUTINE }, onSunAI = { tab = TAB_AI })
+                                onRoutine = { routineBack = SETTINGS; tab = ROUTINE }, onAssistant = { tab = TAB_AI })
                         }
                     }
                 }

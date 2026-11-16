@@ -17,7 +17,7 @@ import java.net.InetSocketAddress
 /** Conversa com um "OpenCode Go" falso: pedido de ferramenta, execução e resposta final. */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
-class SunAITest {
+class AssistantTest {
     private lateinit var server: HttpServer
     private val bodies = mutableListOf<JSONObject>()
     private var auth = ""
@@ -57,7 +57,7 @@ class SunAITest {
             ex.responseBody.use { it.write(out) }
         }
         server.start()
-        SunAI.ENDPOINT = "http://127.0.0.1:${server.address.port}/v1/chat/completions"
+        Assistant.ENDPOINT = "http://127.0.0.1:${server.address.port}/v1/chat/completions"
     }
 
     @After
@@ -66,7 +66,7 @@ class SunAITest {
     @Test
     fun toolCallChangesRoutineAndAnswers() = runBlocking {
         val before = Repo.tasks().size
-        val m = SunAI.ask(emptyList(), "Ajuste minha rotina")
+        val m = Assistant.ask(emptyList(), "Ajuste minha rotina")
         assertEquals("Bearer chave-de-teste", auth)
         assertTrue(session, session.startsWith("sunbi-"))
         assertTrue(agent, agent.startsWith("SunBi/"))
@@ -81,7 +81,7 @@ class SunAITest {
         // a ferramenta respondeu com sucesso para o modelo
         val toolMsg = bodies[1].getJSONArray("messages").let { it.getJSONObject(it.length() - 1) }
         assertTrue(toolMsg.getString("content").startsWith("ok"))
-        SunAI.undo(m)
+        Assistant.undo(m)
         assertEquals(before, Repo.tasks().size)
     }
 }
