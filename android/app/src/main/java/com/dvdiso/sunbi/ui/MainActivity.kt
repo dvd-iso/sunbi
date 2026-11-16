@@ -10,6 +10,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -119,6 +122,7 @@ internal fun Root() {
     var focusOpen by remember { mutableStateOf(false) }
     var crisisRequest by remember { mutableStateOf(false) }
     val focusEnd by Focus.end.collectAsState()
+    val fb = rememberFeedback()
 
     LaunchedEffect(Unit) {
         while (true) {
@@ -142,7 +146,7 @@ internal fun Root() {
                     ShortNavigationBar {
                         DESTS.forEachIndexed { i, d ->
                             ShortNavigationBarItem(
-                                selected = tab == i, onClick = { tab = i },
+                                selected = tab == i, onClick = { if (tab != i) fb.tick(); tab = i },
                                 icon = { Icon(d.icon, null) }, label = { Text(d.label) },
                             )
                         }
@@ -166,7 +170,7 @@ internal fun Root() {
                         Spacer(Modifier.weight(1f))
                         DESTS.forEachIndexed { i, d ->
                             NavigationRailItem(
-                                selected = tab == i, onClick = { tab = i },
+                                selected = tab == i, onClick = { if (tab != i) fb.tick(); tab = i },
                                 icon = { Icon(d.icon, null) }, label = { Text(d.label) },
                             )
                         }
@@ -181,9 +185,15 @@ internal fun Root() {
                     )
                     val enter = MaterialTheme.motionScheme.defaultEffectsSpec<Float>()
                     val exit = MaterialTheme.motionScheme.fastEffectsSpec<Float>()
+                    val slide = MaterialTheme.motionScheme.defaultSpatialSpec<IntOffset>()
                     AnimatedContent(
                         targetState = tab,
-                        transitionSpec = { fadeIn(enter) togetherWith fadeOut(exit) },
+                        // desliza na direção da aba escolhida, com a mola do Material Expressive
+                        transitionSpec = {
+                            val dir = if (targetState > initialState) 1 else -1
+                            (slideInHorizontally(slide) { it / 5 * dir } + fadeIn(enter)) togetherWith
+                                (slideOutHorizontally(slide) { -it / 5 * dir } + fadeOut(exit))
+                        },
                         modifier = Modifier.widthIn(max = 720.dp),
                         label = "tab",
                     ) { t ->

@@ -85,6 +85,14 @@ object Prefs {
     var dynamicColor: Boolean
         get() = sp.getBoolean("dynamicColor", !isQuest())
         set(v) = sp.edit().putBoolean("dynamicColor", v).apply()
+    /** Sonzinhos e vibração leve ao tocar na interface. */
+    var uiSounds: Boolean
+        get() = sp.getBoolean("uiSounds", true)
+        set(v) = sp.edit().putBoolean("uiSounds", v).apply()
+    /** Toque dos alarmes: "amanhecer" (kalimba suave, padrão) ou "girassol". */
+    var alarmSound: String
+        get() = sp.getString("alarmSound", "amanhecer")!!
+        set(v) = sp.edit().putString("alarmSound", v).apply()
     var manualPeers: Set<String>
         get() = sp.getStringSet("manualPeers", emptySet())!!.toSet()
         set(v) = sp.edit().putStringSet("manualPeers", v).apply()

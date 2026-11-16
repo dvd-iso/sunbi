@@ -1,12 +1,11 @@
 [[plugin]]
 id           = "dvd-iso/sunbi"
 name         = "SunBi"
-version      = "0.2.0"
+version      = "0.3.0"
 author       = "dvd-iso"
 license      = "MIT"
 icon         = "flower"
-description  = "Routine companion for bipolar disorder and ADHD: alarms, checklist, mood and focus timer, synced peer-to-peer with Android and Meta Quest."
+description  = "Routine companion for bipolar disorder and ADHD: alarms, checklist, mood and focus timer, synced peer-to-peer with the Android and Meta Quest app. No daemon needed."
 deprecated   = false
 plugin_api   = 43
 tags         = ["productivity", "health", "time"]
-dependencies = ["sunbid"]

@@ -69,20 +69,13 @@ jobs:
         with:
           files: dist/sunbi.apk
 
-  linux:
+  noctalia:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - run: pip install zeroconf
-      - name: Testes do sunbid
-        working-directory: linux/sunbid
-        run: python -m unittest -v tests/test_sync.py
-      - name: Validar plugin do Noctalia
+      - name: Validar manifesto e traduções
         run: |
-          python - <<'PY'
+          python3 - <<'PY'
           import json, pathlib, tomllib
           d = pathlib.Path("noctalia/sunbi")
           m = tomllib.loads((d / "plugin.toml").read_text())
@@ -97,8 +90,10 @@ jobs:
               keys = k
           print("plugin ok:", m["id"], m["version"])
           PY
-      - name: Compilar Luau
+      - name: Luau (compilar e testar o módulo de dados)
+        working-directory: noctalia/sunbi
         run: |
-          curl -sL -o luau.zip https://github.com/luau-lang/luau/releases/latest/download/luau-ubuntu.zip
-          unzip -q luau.zip
-          for f in noctalia/sunbi/*.luau; do ./luau-compile --null "$f"; done
+          curl -sL -o /tmp/luau.zip https://github.com/luau-lang/luau/releases/latest/download/luau-ubuntu.zip
+          unzip -q -o /tmp/luau.zip -d /tmp/luau
+          for f in *.luau lib/*.luau; do /tmp/luau/luau-compile --null "$f"; done
+          /tmp/luau/luau tests/store_test.luau

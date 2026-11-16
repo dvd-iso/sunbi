@@ -66,6 +66,16 @@ class ScreenshotTest {
         save("quest-1-hoje")
     }
 
+    /** Celular pequeno com fonte do sistema grande: onde o layout costuma quebrar. */
+    @Config(qualifiers = "w320dp-h2400dp-xhdpi")
+    @Test fun smallBigFont() {
+        org.robolectric.RuntimeEnvironment.setFontScale(1.3f)
+        tabs("pequeno")
+        rule.onNodeWithText("Plano").performClick()
+        rule.onNodeWithText("Preciso de ajuda agora").performClick()
+        save("pequeno-5-ajuda")
+    }
+
     @Test fun crisis() {
         rule.setContent { SunBiTheme { Root() } }
         rule.onNodeWithText("Plano").performClick()

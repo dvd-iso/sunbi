@@ -1,6 +1,10 @@
 package com.dvdiso.sunbi.ui
 
 import android.app.NotificationManager
+import android.content.Context
+import android.media.MediaPlayer
+import android.net.ConnectivityManager
+import java.net.Inet4Address
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -47,6 +51,7 @@ import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TimePickerDialog
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -64,6 +69,7 @@ import com.dvdiso.sunbi.BuildConfig
 import com.dvdiso.sunbi.Prefs
 import com.dvdiso.sunbi.Repo
 import com.dvdiso.sunbi.RingService
+import com.dvdiso.sunbi.Sfx
 import com.dvdiso.sunbi.SyncManager
 import com.dvdiso.sunbi.Task
 import com.dvdiso.sunbi.isQuest
@@ -78,6 +84,7 @@ fun SettingsScreen(contentPadding: PaddingValues) {
             Text("Ajustes", style = MaterialTheme.typography.headlineMediumEmphasized, modifier = Modifier.padding(top = 8.dp, bottom = 4.dp))
         }
         item { LookCard() }
+        item { SoundsCard() }
         item { AlarmsCard() }
         item { TaskEditor() }
         item { SyncCard() }
@@ -118,6 +125,37 @@ private fun LookCard() {
             Prefs.dynamicColor = it
             ThemeState.load()
         }
+    }
+}
+
+@Composable
+private fun SoundsCard() {
+    val ctx = LocalContext.current
+    var ui by remember { mutableStateOf(Prefs.uiSounds) }
+    var tone by remember { mutableStateOf(Prefs.alarmSound) }
+    var preview by remember { mutableStateOf<MediaPlayer?>(null) }
+    DisposableEffect(Unit) { onDispose { preview?.release() } }
+    SectionCard("Sons") {
+        SwitchRow("Sons da interface", "Sonzinhos e vibração leve ao marcar tarefas, escolher o humor e no foco", ui) {
+            ui = it
+            Prefs.uiSounds = it
+            if (it) Sfx.play(Sfx.S.POP)
+        }
+        Label("Toque do alarme")
+        ChoiceGroup(listOf("amanhecer" to "Amanhecer", "girassol" to "Girassol"), tone, { v ->
+            if (v == null) return@ChoiceGroup
+            tone = v
+            Prefs.alarmSound = v
+            preview?.release()
+            preview = MediaPlayer.create(ctx, RingService.soundRes())?.apply {
+                setOnCompletionListener { it.release(); if (preview === it) preview = null }
+                start()
+            }
+        })
+        Text(
+            "Amanhecer é uma kalimba suave. O alarme começa baixo e sobe aos poucos em 30 segundos.",
+            style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -162,11 +200,15 @@ private fun PermissionHints() {
 private fun Hint(text: String, fix: () -> Unit) {
     val cs = MaterialTheme.colorScheme
     Card(shape = MaterialTheme.shapes.large, colors = CardDefaults.cardColors(containerColor = cs.errorContainer, contentColor = cs.onErrorContainer)) {
-        Row(Modifier.padding(start = 14.dp, end = 4.dp, top = 4.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Filled.Warning, null, Modifier.size(20.dp))
-            Spacer(Modifier.width(10.dp))
-            Text(text, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-            TextButton(onClick = { runCatching(fix) }) { Text("Resolver", fontWeight = FontWeight.Bold) }
+        Column(Modifier.fillMaxWidth().padding(start = 14.dp, end = 8.dp, top = 12.dp, bottom = 4.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Filled.Warning, null, Modifier.size(20.dp))
+                Spacer(Modifier.width(10.dp))
+                Text(text, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+            }
+            TextButton(onClick = { runCatching(fix) }, modifier = Modifier.align(Alignment.End)) {
+                Text("Resolver", fontWeight = FontWeight.Bold, color = cs.onErrorContainer)
+            }
         }
     }
 }
@@ -188,16 +230,18 @@ private fun TaskEditor() {
             Card(shape = MaterialTheme.shapes.large, colors = CardDefaults.cardColors(containerColor = cs.surfaceContainerHigh)) {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        FilledTonalButton(onClick = { picking = i }, shapes = ButtonDefaults.shapes()) { Text(t.time.ifBlank { "--:--" }) }
-                        Spacer(Modifier.width(8.dp))
-                        OutlinedTextField(
-                            t.label, { list[i] = t.copy(label = it); saved = false }, singleLine = true,
-                            modifier = Modifier.weight(1f), label = { Text("Tarefa") }, shape = MaterialTheme.shapes.large,
-                        )
+                        FilledTonalButton(onClick = { picking = i }, shapes = ButtonDefaults.shapes()) {
+                            Text(t.time.ifBlank { "--:--" }, style = MaterialTheme.typography.titleMedium)
+                        }
+                        Spacer(Modifier.weight(1f))
                         IconButton(onClick = { list.removeAt(i); saved = false }) { Icon(Icons.Filled.Delete, "Apagar ${t.label}") }
                     }
                     OutlinedTextField(
-                        t.step, { list[i] = t.copy(step = it); saved = false }, singleLine = true,
+                        t.label, { list[i] = t.copy(label = it); saved = false },
+                        modifier = Modifier.fillMaxWidth(), label = { Text("Tarefa") }, shape = MaterialTheme.shapes.large,
+                    )
+                    OutlinedTextField(
+                        t.step, { list[i] = t.copy(step = it); saved = false },
                         modifier = Modifier.fillMaxWidth(), label = { Text("Primeiro passo (opcional)") }, shape = MaterialTheme.shapes.large,
                     )
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -207,7 +251,7 @@ private fun TaskEditor() {
                         OutlinedTextField(
                             if (t.min > 0) t.min.toString() else "",
                             { v -> list[i] = t.copy(min = v.filter { it.isDigit() }.take(3).toIntOrNull() ?: 0); saved = false },
-                            singleLine = true, modifier = Modifier.width(120.dp), label = { Text("minutos") },
+                            singleLine = true, modifier = Modifier.width(112.dp), label = { Text("min") },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), shape = MaterialTheme.shapes.large,
                         )
                     }
@@ -269,7 +313,7 @@ private fun SyncCard() {
         }
         OutlinedTextField(
             key, { key = it.uppercase() }, singleLine = true, label = { Text("Código de pareamento") },
-            supportingText = { Text("O mesmo em todos os aparelhos. No PC: sunbid key") },
+            supportingText = { Text("O mesmo em todos os aparelhos. No PC, ele aparece no painel do plugin do Noctalia.") },
             modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large,
         )
         OutlinedTextField(name, { name = it }, singleLine = true, label = { Text("Nome deste aparelho") },
@@ -281,6 +325,12 @@ private fun SyncCard() {
             SyncManager.start(ctx)
         }, shapes = ButtonDefaults.shapes()) { Text("Salvar e reconectar") }
 
+        localIp(ctx)?.let { ip ->
+            Text(
+                "Este aparelho: $ip:${SyncManager.PORT}. Se o PC não achar sozinho, coloque esse endereço em Aparelhos manuais no plugin do Noctalia.",
+                style = MaterialTheme.typography.bodyMedium, color = cs.onSurfaceVariant,
+            )
+        }
         Label("Aparelhos encontrados")
         if (peers.isEmpty()) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -300,7 +350,10 @@ private fun SyncCard() {
                 )
                 Column(Modifier.weight(1f)) {
                     Text(p.name, style = MaterialTheme.typography.bodyLarge)
-                    Text(p.addr + if (p.ok == false) " · código errado ou fora do ar" else "", style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
+                    Text(
+                        if (p.client) "conectado · ${agoLabel(p.seen)}" else p.addr + if (p.ok == false) " · código errado ou fora do ar" else "",
+                        style = MaterialTheme.typography.bodyMedium, color = cs.onSurfaceVariant,
+                    )
                 }
                 if (p.device.startsWith("manual:")) {
                     TextButton(onClick = {
@@ -330,5 +383,21 @@ private fun SyncCard() {
             Spacer(Modifier.width(ButtonDefaults.IconSpacing))
             Text("Sincronizar agora")
         }
+    }
+}
+
+/** IPv4 da rede atual (Wi-Fi), para cadastrar este aparelho manualmente em outro. */
+private fun localIp(ctx: Context): String? = runCatching {
+    val cm = ctx.getSystemService(ConnectivityManager::class.java)
+    cm.getLinkProperties(cm.activeNetwork)?.linkAddresses
+        ?.map { it.address }?.firstOrNull { it is Inet4Address && !it.isLoopbackAddress }?.hostAddress
+}.getOrNull()
+
+private fun agoLabel(ms: Long): String {
+    val m = (System.currentTimeMillis() - ms) / 60_000
+    return when {
+        m < 1 -> "agora"
+        m < 60 -> "há $m min"
+        else -> "há ${m / 60} h"
     }
 }

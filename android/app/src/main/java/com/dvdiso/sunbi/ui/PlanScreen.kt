@@ -185,7 +185,7 @@ private fun ContactsCard() {
             phone, { phone = it }, label = { Text("Telefone") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
             shape = MaterialTheme.shapes.large, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
         )
-        ChoiceGroup(listOf(false to "Pessoa de confiança", true to "Profissional"), pro, { pro = it ?: false })
+        ChoiceGroup(listOf(false to "Pessoa", true to "Profissional"), pro, { pro = it ?: false })
         Button(
             onClick = {
                 Repo.setContacts(list + Contact(name.trim(), if (pro) "Profissional" else "Pessoa de confiança", phone.trim()))

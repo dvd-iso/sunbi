@@ -32,7 +32,11 @@ import kotlin.coroutines.resume
 
 private const val TAG = "SunBiSync"
 
-data class Peer(val device: String, val name: String, val addr: String, val ok: Boolean?, val seen: Long)
+/**
+ * Par de sincronização. [client] = só nos chama (ex.: o plugin do Noctalia no PC, que não tem
+ * servidor); a gente não tenta chamá-lo de volta, só mostra quando foi a última troca.
+ */
+data class Peer(val device: String, val name: String, val addr: String, val ok: Boolean?, val seen: Long, val client: Boolean = false)
 
 object SyncManager {
     const val PORT = 47321
@@ -68,11 +72,18 @@ object SyncManager {
     fun syncAllAsync() = scope.launch { syncAll() }
 
     suspend fun syncAll() {
-        for (d in peers.value.keys.toList()) syncOne(d)
+        for ((d, p) in peers.value.toList()) if (!p.client) syncOne(d)
+    }
+
+    /** Registra um par que só chama a gente (sem servidor próprio). */
+    fun sawClient(device: String, name: String, ip: String) {
+        if (device == Prefs.device) return
+        peers.update { it + (device to Peer(device, name, ip, true, System.currentTimeMillis(), client = true)) }
     }
 
     fun syncOne(device: String): Boolean {
         val peer = peers.value[device] ?: return false
+        if (peer.client) return true
         var ok = false
         try {
             val conn = URL("http://${peer.addr}/v1/merge").openConnection() as HttpURLConnection
@@ -82,7 +93,8 @@ object SyncManager {
             conn.doOutput = true
             conn.setRequestProperty("Content-Type", "application/json; charset=utf-8")
             conn.setRequestProperty("X-SunBi-Key", Prefs.key)
-            conn.outputStream.use { it.write(Repo.snapshot().toString().toByteArray(Charsets.UTF_8)) }
+            val body = Repo.snapshot().put("name", Prefs.name)
+            conn.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
             if (conn.responseCode == 200) {
                 val body = conn.inputStream.use { it.readBytes().toString(Charsets.UTF_8) }
                 Repo.merge(JSONObject(body).optJSONObject("entries"))
@@ -135,10 +147,14 @@ class PeerServer : NanoHTTPD(SyncManager.PORT) {
                 val body = runCatching { JSONObject(String(buf, 0, off, Charsets.UTF_8)) }.getOrNull()
                     ?: return json(Response.Status.BAD_REQUEST, JSONObject().put("error", "JSON inválido"))
                 Repo.merge(body.optJSONObject("entries"))
-                // Quem nos procurou vira par também (ajuda quando o mDNS só funciona num sentido).
                 val dev = body.optString("device")
-                if (dev.isNotEmpty() && dev != Prefs.device && SyncManager.peers.value.values.none { it.device == dev || it.addr.startsWith(s.remoteIpAddress + ":") }) {
-                    SyncManager.addPeer(dev, dev, "${s.remoteIpAddress}:${SyncManager.PORT}")
+                val name = body.optString("name").ifBlank { dev }
+                if (!body.optBoolean("listen", true)) {
+                    // Cliente sem servidor (plugin do Noctalia): a troca já foi feita nesta chamada.
+                    if (dev.isNotEmpty()) SyncManager.sawClient(dev, name, s.remoteIpAddress)
+                } else if (dev.isNotEmpty() && dev != Prefs.device && SyncManager.peers.value.values.none { it.device == dev || it.addr.startsWith(s.remoteIpAddress + ":") }) {
+                    // Quem nos procurou vira par também (ajuda quando o mDNS só funciona num sentido).
+                    SyncManager.addPeer(dev, name, "${s.remoteIpAddress}:${SyncManager.PORT}")
                 }
                 json(Response.Status.OK, Repo.snapshot())
             }

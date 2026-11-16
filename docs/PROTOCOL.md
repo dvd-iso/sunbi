@@ -1,7 +1,8 @@
 # Protocolo de sincronização P2P do SunBi (v1)
 
-Todos os aparelhos (Android, Meta Quest e o daemon `sunbid` do Linux) falam
-o mesmo protocolo. Não existe servidor central: cada aparelho é um par igual aos outros.
+O app (Android e Meta Quest) e o plugin do Noctalia falam o mesmo protocolo. Não existe
+servidor central. O app é um par completo (servidor + cliente); o plugin do Noctalia é só
+**cliente**: ele não abre porta, só chama os aparelhos, e cada chamada sincroniza os dois lados.
 
 ## Modelo de dados
 
@@ -66,8 +67,8 @@ Quem não conhece uma chave apenas a guarda e repassa, então versões diferente
 
 ## HTTP
 
-Todas as rotas exigem o cabeçalho `X-SunBi-Key: <código de pareamento>`,
-exceto chamadas vindas de `127.0.0.1` ao daemon do Linux.
+Todas as rotas exigem o cabeçalho `X-SunBi-Key: <código de pareamento>` (sem diferenciar
+maiúsculas). Só o app abre servidor; o plugin do Noctalia é só cliente.
 
 | Rota | Descrição |
 | --- | --- |
@@ -75,18 +76,23 @@ exceto chamadas vindas de `127.0.0.1` ao daemon do Linux.
 | `GET /v1/state` | estado completo |
 | `POST /v1/merge` | corpo = estado do chamador; o servidor mescla e responde com o estado completo já mesclado. Uma única ida e volta sincroniza os dois lados. |
 
-Rotas só do daemon do Linux, só em `127.0.0.1`, usadas pelo plugin do Noctalia:
+Corpo do `POST /v1/merge`:
 
-| Rota | Descrição |
-| --- | --- |
-| `GET /v1/day?date=AAAA-MM-DD` | dia já resolvido: tarefas, `done`, `doneAt`, `humor`, `humorLabel`, `energy`, `focus`, `sleep`, `bed`, `wake`, `signs`, `events`, `note`, pares |
-| `POST /v1/set` | `{"key", "value"}`: grava com o horário atual e empurra para os pares |
+```json
+{"device": "linux-a2efaa", "name": "nixos", "listen": false, "entries": { ... }}
+```
+
+- `name`: nome legível de quem chama, mostrado na lista de aparelhos.
+- `listen` (padrão `true`): `false` diz que quem chama **não tem servidor** (o plugin do
+  Noctalia). O app então só registra o aparelho como "conectado" e não tenta chamá-lo de volta.
+  Com `true`, o app adiciona quem chamou como par, o que ajuda quando o mDNS só funciona num sentido.
 
 ## Quando sincronizar
 
 1. Logo após qualquer mudança local: `POST /v1/merge` para todos os pares conhecidos.
 2. Ao descobrir um par novo.
-3. A cada 60 segundos, com todos os pares (cobre mudanças perdidas).
+3. Periodicamente com todos os pares (o app a cada 60 s, o plugin a cada 30 s), o que cobre
+   mudanças perdidas e, para o plugin, traz as mudanças feitas no celular.
 
 ## Segurança
 

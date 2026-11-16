@@ -37,6 +37,7 @@ class App : Application() {
         Prefs.init(this)
         Repo.init(this)
         Focus.restore()
+        Sfx.init(this)
         Notifications.createChannels(this)
         Repo.addListener { keys ->
             if ("tasks" in keys) AlarmScheduler.scheduleAll(this)
@@ -49,7 +50,7 @@ class App : Application() {
 object Notifications {
     const val ALARM_CHANNEL = "alarms"
     const val SYNC_CHANNEL = "sync"
-    const val FOCUS_CHANNEL = "focus"
+    const val FOCUS_CHANNEL = "focus2" // "focus" antigo não tinha som próprio
     const val FOCUS_ID = 1003
     const val ALARM_ID = 1001
     const val SYNC_ID = 1002
@@ -61,7 +62,13 @@ object Notifications {
             enableVibration(false)
             lockscreenVisibility = Notification.VISIBILITY_PUBLIC
         })
-        nm.createNotificationChannel(NotificationChannel(FOCUS_CHANNEL, "Fim do tempo de foco", NotificationManager.IMPORTANCE_HIGH))
+        nm.deleteNotificationChannel("focus")
+        nm.createNotificationChannel(NotificationChannel(FOCUS_CHANNEL, "Fim do tempo de foco", NotificationManager.IMPORTANCE_HIGH).apply {
+            setSound(
+                Uri.parse("android.resource://${ctx.packageName}/${R.raw.focus_end}"),
+                AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION).build(),
+            )
+        })
         nm.createNotificationChannel(NotificationChannel(SYNC_CHANNEL, "Sincronização", NotificationManager.IMPORTANCE_MIN).apply {
             setShowBadge(false)
         })
@@ -151,6 +158,10 @@ class RingService : Service() {
         const val DONE = "done"
         const val STOP = "stop"
         const val MAX_MS = 5 * 60_000L
+        /** O volume sobe de 15% a 100% nestes milissegundos: acorda sem susto. */
+        const val RAMP_MS = 30_000L
+
+        fun soundRes(): Int = if (Prefs.alarmSound == "girassol") R.raw.girassol else R.raw.amanhecer
 
         /** Tarefa tocando agora (a tela de alarme observa). */
         val ringing = MutableStateFlow<Task?>(null)
@@ -159,6 +170,16 @@ class RingService : Service() {
     private var player: MediaPlayer? = null
     private val handler = Handler(Looper.getMainLooper())
     private val timeout = Runnable { finish() }
+    private var rampStart = 0L
+    private val ramp = object : Runnable {
+        override fun run() {
+            val p = player ?: return
+            val f = ((System.currentTimeMillis() - rampStart).toFloat() / RAMP_MS).coerceIn(0f, 1f)
+            val v = 0.15f + 0.85f * f * f
+            runCatching { p.setVolume(v, v) }
+            if (f < 1f) handler.postDelayed(this, 500)
+        }
+    }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -213,9 +234,14 @@ class RingService : Service() {
                 .setUsage(AudioAttributes.USAGE_ALARM)
                 .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
                 .build())
-            setDataSource(this@RingService, Uri.parse("android.resource://$packageName/${R.raw.girassol}"))
+            setDataSource(this@RingService, Uri.parse("android.resource://$packageName/${soundRes()}"))
             isLooping = true
-            setOnPreparedListener { it.start() }
+            setVolume(0.15f, 0.15f)
+            setOnPreparedListener {
+                it.start()
+                rampStart = System.currentTimeMillis()
+                handler.post(ramp)
+            }
             prepareAsync()
         }
         vibrate()
@@ -234,6 +260,7 @@ class RingService : Service() {
     @Suppress("DEPRECATION")
     private fun finish() {
         handler.removeCallbacks(timeout)
+        handler.removeCallbacks(ramp)
         runCatching { player?.stop() }
         player?.release()
         player = null
@@ -275,6 +302,7 @@ object Focus {
         Prefs.focusTask = taskId
         end.value = at
         schedule(ctx, at)
+        Sfx.play(Sfx.S.FOCUS_START)
     }
 
     fun extend(ctx: Context, minutes: Int) {

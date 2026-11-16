@@ -1,30 +1,36 @@
 # SunBi para Noctalia v5: rotina, humor e foco para bipolaridade e TDAH.
+# Roda inteiro no plugin, sem daemon: os dados ficam no diretório de dados do plugin e a
+# sincronização com o celular e o Quest é feita direto daqui (mDNS via avahi-browse).
 #
-# service -> conversa com o daemon sunbid (127.0.0.1), toca os alarmes
-# bar     -> mostra quantas tarefas do dia estão feitas; vira alarme quando toca
-# panel   -> agora/próxima, foco, humor, checklist e anotação
+# service -> guarda os dados, sincroniza, toca os alarmes, foco e sons
+# bar     -> flor + feitas/total; vira contagem do foco ou alarme
+# panel   -> agora/próxima, foco, humor, checklist, anotação e aparelhos
 #
-# IPC: noctalia msg plugin dvd-iso/sunbi:service all toggle <id>|done|stop|focus <min>|focus-stop|humor <n>|refresh
+# IPC: noctalia msg plugin dvd-iso/sunbi:service all toggle <id>|done|stop|focus <min> [id]|focus-stop|extend <min>|humor <n>|sync
 
 id = "dvd-iso/sunbi"
 name = "SunBi"
-version = "0.2.0"
+version = "0.3.0"
 plugin_api = 43
 author = "dvd-iso"
 license = "MIT"
-dependencies = ["sunbid"]
 tags = ["productivity", "health", "time"]
 icon = "flower"
-description = "Routine companion for bipolar disorder and ADHD: alarms, checklist, mood and focus timer, synced peer-to-peer with Android and Meta Quest."
+description = "Routine companion for bipolar disorder and ADHD: alarms, checklist, mood and focus timer, synced peer-to-peer with the Android and Meta Quest app. No daemon needed."
 
 [[setting]]
-key = "port"
-type = "int"
-label_key = "settings.port.label"
-description_key = "settings.port.description"
-default = 47321
-min = 1024
-max = 65535
+key = "key"
+type = "string"
+label_key = "settings.key.label"
+description_key = "settings.key.description"
+default = ""
+
+[[setting]]
+key = "peers"
+type = "string_list"
+label_key = "settings.peers.label"
+description_key = "settings.peers.description"
+default = []
 
 [[setting]]
 key = "alarms"
@@ -34,13 +40,31 @@ description_key = "settings.alarms.description"
 default = true
 
 [[setting]]
+key = "alarm_sound"
+type = "select"
+label_key = "settings.alarm_sound.label"
+description_key = "settings.alarm_sound.description"
+default = "amanhecer"
+options = [
+  { value = "amanhecer", label_key = "settings.alarm_sound.amanhecer" },
+  { value = "girassol", label_key = "settings.alarm_sound.girassol" },
+]
+
+[[setting]]
 key = "ring_seconds"
 type = "int"
 label_key = "settings.ring_seconds.label"
 description_key = "settings.ring_seconds.description"
-default = 45
+default = 60
 min = 0
 max = 300
+
+[[setting]]
+key = "sounds"
+type = "bool"
+label_key = "settings.sounds.label"
+description_key = "settings.sounds.description"
+default = true
 
 [[widget]]
 id = "bar"
@@ -49,8 +73,9 @@ entry = "bar.luau"
 [[panel]]
 id = "panel"
 entry = "panel.luau"
-width = 380
-height = 600
+width = 400
+height = "content"
+max_height = 760
 placement = "attached"
 position = "auto"
 open_near_click = true

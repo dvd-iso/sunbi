@@ -70,7 +70,7 @@ local function render()
   if not online then
     barWidget.setTooltip(noctalia.tr("ui.offline"))
     barWidget.render(container({ align = "center" }, {
-      ui.glyph({ name = "flower", color = "outline_variant" }),
+      ui.glyph({ name = "flower", color = "on_surface_variant" }),
     }))
     return
   end

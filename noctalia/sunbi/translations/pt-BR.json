@@ -1,27 +1,34 @@
 {
   "settings": {
-    "port": { "label": "Porta do sunbid", "description": "Porta local do daemon de sincronização (padrão 47321)" },
+    "key": { "label": "Código de pareamento", "description": "O mesmo código em todos os aparelhos. Vazio usa o código gerado por este PC (aparece no painel)." },
+    "peers": { "label": "Aparelhos manuais", "description": "ip:porta do celular ou do Quest, para redes que bloqueiam a descoberta automática ou para usar com Tailscale. Ex.: 192.168.0.20:47321" },
     "alarms": { "label": "Tocar alarmes no PC", "description": "Notificação e som na hora de cada tarefa ainda não feita" },
-    "ring_seconds": { "label": "Duração do alarme (segundos)", "description": "Por quanto tempo o som repete. 0 deixa só a notificação." }
+    "alarm_sound": { "label": "Som do alarme", "description": "Toque usado nos alarmes deste PC", "amanhecer": "Amanhecer (kalimba suave)", "girassol": "Girassol" },
+    "ring_seconds": { "label": "Duração do alarme (segundos)", "description": "Por quanto tempo o som repete. 0 deixa só a notificação." },
+    "sounds": { "label": "Sons da interface", "description": "Sonzinhos ao marcar tarefas, escolher o humor, completar o dia e no foco" }
   },
   "ui": {
-    "offline": "O sunbid não está respondendo. Inicie o daemon para ver e sincronizar sua rotina.",
-    "retry": "Tentar de novo",
+    "offline": "O serviço do SunBi ainda não iniciou. Ative o plugin em Ajustes → Plugins.",
     "progress": "{done} de {total} tarefas feitas hoje",
     "stop": "Parar",
     "done": "Feito",
-    "humor": "Humor de hoje (-3 para baixo · 0 estável · +3 acelerado)",
+    "humor": "Humor de hoje",
+    "humor_hint": "-3 para baixo · 0 estável · +3 acelerado",
     "note_placeholder": "Anotação do dia (Enter salva)",
     "next": "Próxima",
     "now": "Agora",
     "in_min": "em {m} min",
     "late_min": "{m} min atrás",
-    "all_done": "Nada pendente por agora",
+    "all_done": "Tudo certo por agora",
     "focus": "Foco {m} min",
     "focus_left": "Foco: faltam {t}",
     "focus_end": "Tempo de foco acabou",
     "focus_end_body": "Marque como feito ou faça mais um bloco.",
     "first_step": "Primeiro passo: {s}",
-    "sleep": "Sono: {h} h"
+    "sleep": "Sono: {h} h",
+    "devices": "Aparelhos",
+    "code": "Código: {k}",
+    "no_devices": "Nenhum aparelho ainda. Use o mesmo código no app (Ajustes → Sincronização).",
+    "sync_now": "Sincronizar"
   }
 }

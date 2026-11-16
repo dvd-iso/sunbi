@@ -34,8 +34,7 @@ Sem sequências que zeram e sem culpa: um dia sem registro não apaga nada.
 | Parte | Pasta | O que faz |
 | --- | --- | --- |
 | App Android / Quest | `android/` | Tudo acima, com alarmes reais **sem soneca** e o toque Girassol |
-| Daemon Linux | `linux/sunbid/` | Guarda a rotina no PC e sincroniza com os outros aparelhos |
-| Plugin Noctalia v5 | `noctalia/sunbi/` | Barra com `6/13`, próxima tarefa e foco; painel com agora/próxima, foco, humor, checklist e anotação; alarmes no PC |
+| Plugin Noctalia v5 | `noctalia/sunbi/` | Roda inteiro no plugin, **sem daemon**: guarda a rotina, sincroniza com o celular e o Quest, toca os alarmes. Barra com `6/13` e foco; painel com agora/próxima, foco, humor, checklist, anotação e aparelhos |
 | Protocolo | `docs/PROTOCOL.md` | Como os aparelhos se descobrem e mesclam os dados |
 | Métodos | `docs/METODOS.md` | A pesquisa por trás de cada função |
 
@@ -53,55 +52,47 @@ Todo APK das Releases instala por cima do anterior, porque é assinado sempre co
 
 ### Vindo do Sunflower Clocks
 
-O SunBi é um app novo no Android (`com.dvdiso.sunbi`), então ele aparece ao lado do antigo.
-Para não perder nada: atualize o PC primeiro (o `sunbid` copia os dados do `sunflowerd`
-sozinho), instale o SunBi nos outros aparelhos, use o mesmo código de pareamento e espere
-sincronizar. Depois desinstale o Sunflower Clocks. O humor antigo (1 a 5) é lido na escala
-nova (−2 a +2).
+O SunBi é um app novo no Android (`com.dvdiso.sunbi`), então ele aparece ao lado do antigo
+e começa com a rotina padrão. Depois de instalar, desinstale o Sunflower Clocks e, se você
+usava o `sunflowerd` no PC, desative-o: `systemctl --user disable --now sunflowerd`.
 
-## 2. Instalar no PC (NixOS / Fedora)
+## 2. Instalar no PC (Noctalia)
+
+O plugin não precisa de daemon nem de Python: tudo roda dentro do Noctalia.
 
 ```sh
-# daemon
-pipx install ./linux/sunbid            # ou: pip install --user ./linux/sunbid
-# no NixOS sem pipx:
-nix-shell -p 'python3.withPackages (p: [ p.zeroconf ])' --run 'python3 linux/sunbid/sunbid.py'
-
-# serviço de usuário
-mkdir -p ~/.config/systemd/user
-cp linux/sunbid/sunbid.service ~/.config/systemd/user/
-systemctl --user enable --now sunbid
-
-# plugin do Noctalia
+git clone git@github.com:dvd-iso/sunbi.git ~/Projects/sunbi
 mkdir -p ~/.local/share/noctalia/plugins
-ln -s "$PWD/noctalia/sunbi" ~/.local/share/noctalia/plugins/sunbi
+ln -s ~/Projects/sunbi/noctalia/sunbi ~/.local/share/noctalia/plugins/sunbi
+noctalia msg plugins enable dvd-iso/sunbi
 ```
 
-Depois ative o plugin em **Settings → Plugins** e adicione o widget `dvd-iso/sunbi:bar` na barra.
-No NixOS com o serviço declarado no seu config, ajuste o `ExecStart` para o caminho do Nix.
-Se você usava o Sunflower Clocks, desative o serviço antigo: `systemctl --user disable --now sunflowerd`.
+Depois adicione o widget `dvd-iso/sunbi:bar` na barra (Settings → Bar). Os dados ficam em
+`~/.local/state/noctalia/plugins/data/dvd-iso/sunbi/`.
+
+Para achar o celular e o Quest sozinho, o plugin usa o `avahi-browse` (pacote **avahi**; no
+NixOS, `services.avahi.enable = true`). Sem ele, cadastre os aparelhos à mão (abaixo).
 
 ## 3. Parear os aparelhos
 
-Todos precisam do **mesmo código de pareamento**:
+Todos precisam do **mesmo código de pareamento**. O plugin gera um e mostra no rodapé do
+painel; no app, vá em **Ajustes → Sincronização → Código de pareamento**, digite o mesmo
+código e toque em **Salvar e reconectar**. (Ou o contrário: copie o código do app para
+**Settings → Plugins → SunBi → Código de pareamento**.)
 
-```sh
-sunbid key            # mostra o código do PC
-sunbid set-key ABC123 # ou define um novo
-```
-
-No app: **Ajustes → Sincronização → Código de pareamento**, digite o mesmo código e toque em
-**Salvar e reconectar**. Os aparelhos na mesma rede Wi-Fi aparecem com uma bolinha verde.
-
-Se o Wi-Fi bloquear a descoberta automática (redes de visitante, alguns roteadores), adicione o
-par manualmente: no app, `ip:47321`; no PC, `sunbid add-peer 192.168.0.20:47321`.
+Os aparelhos aparecem no rodapé do painel com uma bolinha. No app, o PC aparece como
+"conectado" depois da primeira troca. Se a rede bloquear a descoberta automática (redes de
+visitante, alguns roteadores), copie o endereço que o app mostra em **Ajustes → Sincronização**
+("Este aparelho: 192.168.0.20:47321") para **Aparelhos manuais** nas configurações do plugin.
 Com Tailscale, o mesmo vale para sincronizar fora de casa.
 
 ## Como funciona a sincronização
 
 Cada registro tem valor, horário e aparelho. Quando dois aparelhos conversam, cada um fica com
 a versão mais recente de cada registro. A ordem das trocas não importa, e um aparelho que ficou
-desligado recebe tudo quando volta. Detalhes em [`docs/PROTOCOL.md`](docs/PROTOCOL.md).
+desligado recebe tudo quando volta. O celular e o Quest têm um pequeno servidor; o plugin do
+Noctalia só chama os dois (a cada 30 s e logo depois de cada mudança feita no PC), e cada
+chamada troca os dados nos dois sentidos. Detalhes em [`docs/PROTOCOL.md`](docs/PROTOCOL.md).
 
 **Privacidade:** os dados ficam só nos seus aparelhos. O tráfego na rede local não é
 criptografado; o código de pareamento impede que outros aparelhos leiam ou escrevam, mas use
@@ -119,8 +110,8 @@ Tailscale/WireGuard fora de casa.
 ## Desenvolvimento
 
 ```sh
-# daemon
-cd linux/sunbid && python -m unittest -v tests/test_sync.py
+# plugin: módulo de dados e testes (luau CLI)
+cd noctalia/sunbi && luau tests/store_test.luau && noctalia plugins lint .
 
 # app (Android SDK com platforms;android-37.0 e build-tools;37.0.0, Gradle 9)
 cd android
@@ -129,8 +120,11 @@ gradle assembleDebug
 ```
 
 Os testes de tela rodam no JVM com Robolectric (gráficos nativos) e salvam PNGs das abas em
-tema claro, escuro e no layout largo do Quest. O CI publica essas imagens no artefato
-**sunbi-telas**.
+tema claro, escuro, no layout largo do Quest e num celular pequeno com fonte grande. O CI
+publica essas imagens no artefato **sunbi-telas**.
+
+Os sons (`android/app/src/main/res/raw/*.ogg` e `noctalia/sunbi/sounds/*.wav`) são sintetizados
+por `tools/sounds.py`, sem amostras de terceiros.
 
 ## Publicar uma versão
 
