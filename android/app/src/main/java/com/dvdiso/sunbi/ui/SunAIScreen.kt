@@ -372,7 +372,16 @@ private fun ModelPicker(selected: String, onPick: (String) -> Unit) {
 @Composable
 private fun SunAISettingsSheet(onDismiss: () -> Unit, onClear: () -> Unit, onDisconnect: () -> Unit) {
     var model by remember { mutableStateOf(Prefs.aiModel) }
+    var weekly by remember { mutableStateOf(Prefs.weeklySummary) }
+    val ctx = androidx.compose.ui.platform.LocalContext.current
     EditorSheet("SunAI", "Chave, modelo e conversa", onDismiss) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Resumo da semana no domingo", style = MaterialTheme.typography.bodyLarge)
+                Text("Às 19h, por notificação. Também fica na conversa.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            androidx.compose.material3.Switch(weekly, { weekly = it; Prefs.weeklySummary = it; com.dvdiso.sunbi.Reminders.schedule(ctx); Feedback.tick() })
+        }
         Label("Modelo")
         ModelPicker(model) { model = it; Prefs.aiModel = it }
         OutlinedButton(onClick = onClear, shapes = ButtonDefaults.shapes(), modifier = Modifier.fillMaxWidth()) { Text("Apagar a conversa") }

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- paleta Girassol do widget (tema claro) -->
+    <color name="widget_bg">#F2FFF8F2</color>
+    <color name="widget_ink">#FF1F1B13</color>
+    <color name="widget_muted">#FF4D4639</color>
+    <color name="widget_accent">#FF7A5900</color>
+    <color name="widget_on_accent">#FFFFFFFF</color>
+    <string name="widget_desc">A tarefa da vez com Concluído, a sequência e a rotina do dia</string>
+</resources>

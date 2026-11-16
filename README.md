@@ -136,6 +136,22 @@ rotina de folga. Toque de novo para voltar.
 **Bloco de foco (TDAH):** segurar uma tarefa abre um cronômetro de 5 minutos (o difícil é
 começar), com o primeiro passo da tarefa em destaque.
 
+**Dia difícil:** um toque em **"Só o essencial"** encolhe a rotina do dia para as âncoras e os
+remédios. O resto espera, sem culpa, e volta quando a pessoa quiser.
+
+**Lembretes e companhia:**
+
+- **Widget** de tela inicial com a tarefa da vez, o botão Concluído e a sequência, para quem
+  não usar o launcher.
+- **Lembrete de check-in às 21h**, só se o dia ainda não tiver registro (desligável).
+- **Resumo da semana pela SunAI** no domingo às 19h, por notificação (opcional, na SunAI).
+- **Alarmes só num aparelho:** em Ajustes, "Os alarmes tocam em: só neste" silencia o Quest e
+  o PC e deixa o celular tocar.
+- **Sono do relógio:** no check-in, "Puxar do relógio" copia a noite do Health Connect
+  (só leitura, só quando a pessoa pede).
+- **Travar a tela** com dois toques no fundo da tela inicial do launcher, por um serviço de
+  acessibilidade que só faz isso.
+
 ### Pontos e conquistas, sem culpa
 
 Inspirado no Duolingo, mas desenhado para quem tem oscilação de humor:

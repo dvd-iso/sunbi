@@ -138,7 +138,7 @@ fun TodayScreen(
         if (tasks.isEmpty()) {
             item(key = "empty") { EmptyRoutine(off, onEditRoutine, Modifier.animateItem().enterFromBelow(4)) }
         } else {
-            item(key = "routine-head") { RoutineHeader(tasks.size, done.size, allDone, off, onEditRoutine) }
+            item(key = "routine-head") { RoutineHeader(day, tasks.size, done.size, allDone, off, onEditRoutine) }
         }
         itemsIndexed(pending, key = { _, t -> "task-" + t.id }) { i, t ->
             TaskItem(day, t, i, pending.size, isToday, onFocus, Modifier.animateItem().enterFromBelow(4 + i))
@@ -319,18 +319,28 @@ internal fun CheckinSummary(day: String, modifier: Modifier = Modifier, open: (s
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun RoutineHeader(total: Int, done: Int, allDone: Boolean, off: Repo.OffReason?, onEdit: () -> Unit) {
+private fun RoutineHeader(day: String, total: Int, done: Int, allDone: Boolean, off: Repo.OffReason?, onEdit: () -> Unit) {
     val frac by animateFloatAsState(if (total == 0) 0f else done.toFloat() / total, MaterialTheme.motionScheme.defaultSpatialSpec(), label = "routine")
+    val hard = Repo.isHard(day)
+    val cs = MaterialTheme.colorScheme
     Column(Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text(if (off != null) "Rotina de folga" else "Rotina", style = MaterialTheme.typography.titleLargeEmphasized)
-                Text("$done de $total feitas", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(if (hard) "Só o essencial" else if (off != null) "Rotina de folga" else "Rotina", style = MaterialTheme.typography.titleLargeEmphasized)
+                Text("$done de $total feitas", style = MaterialTheme.typography.bodyMedium, color = cs.onSurfaceVariant)
             }
             TextButton(onClick = onEdit) { Text("Editar") }
             Box(contentAlignment = Alignment.Center) {
                 CircularWavyProgressIndicator(progress = { frac }, modifier = Modifier.size(44.dp))
             }
+        }
+        // dia difícil: um toque encolhe a rotina para âncoras e remédios (e volta quando quiser)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                if (hard) "Dia difícil: só âncoras e remédios hoje. O resto espera." else "Dia difícil? Dá para ficar só com o essencial.",
+                Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = cs.onSurfaceVariant,
+            )
+            TextButton(onClick = { Feedback.toggle(!hard); Repo.setHard(day, !hard) }) { Text(if (hard) "Rotina inteira" else "Só o essencial") }
         }
         AnimatedVisibility(allDone, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer), shape = MaterialTheme.shapes.large) {

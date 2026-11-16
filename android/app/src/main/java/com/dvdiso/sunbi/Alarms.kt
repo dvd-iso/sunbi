@@ -42,13 +42,15 @@ class App : Application() {
         SunAI.init(this)
         Notifications.createChannels(this)
         Repo.addListener { keys ->
-            // rotina, folga ou férias mudaram: reagenda os alarmes de hoje e amanhã
-            if (keys.any { it == "tasks" || it == "tasks_off" || it == "vacation" || it.endsWith("/off") || it.startsWith("off/") }) {
+            // rotina, folga, férias, dia difícil ou aparelho dos alarmes mudaram: reagenda hoje e amanhã
+            if (keys.any { it == "tasks" || it == "tasks_off" || it == "vacation" || it == "alarm_device" || it.endsWith("/off") || it.endsWith("/hard") || it.startsWith("off/") }) {
                 AlarmScheduler.scheduleAll(this)
             }
+            SunBiWidget.update(this)
             SyncManager.pushSoon()
         }
         AlarmScheduler.scheduleAll(this)
+        Reminders.schedule(this)
     }
 }
 
@@ -56,9 +58,12 @@ object Notifications {
     const val ALARM_CHANNEL = "alarms"
     const val SYNC_CHANNEL = "sync"
     const val FOCUS_CHANNEL = "focus2" // "focus" antigo não tinha som próprio
+    const val REMINDER_CHANNEL = "reminders"
     const val FOCUS_ID = 1003
     const val ALARM_ID = 1001
     const val SYNC_ID = 1002
+    const val CHECKIN_ID = 1004
+    const val WEEKLY_ID = 1005
 
     fun createChannels(ctx: Context) {
         val nm = ctx.getSystemService(NotificationManager::class.java)
@@ -76,6 +81,10 @@ object Notifications {
         })
         nm.createNotificationChannel(NotificationChannel(SYNC_CHANNEL, "Sincronização", NotificationManager.IMPORTANCE_MIN).apply {
             setShowBadge(false)
+        })
+        nm.createNotificationChannel(NotificationChannel(REMINDER_CHANNEL, "Lembrete de check-in e resumo semanal", NotificationManager.IMPORTANCE_DEFAULT).apply {
+            setSound(Uri.parse("android.resource://${ctx.packageName}/${R.raw.chime}"),
+                AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION).build())
         })
     }
 
@@ -119,7 +128,7 @@ object AlarmScheduler {
         val zone = ZoneId.systemDefault()
         val now = ZonedDateTime.now(zone).plusSeconds(5)
         val wanted = LinkedHashMap<String, Long>()
-        if (Prefs.alarmsEnabled) {
+        if (Prefs.alarmsEnabled && Repo.ringsHere()) {
             for (offset in 0L..1L) {
                 val date = LocalDate.now(zone).plusDays(offset)
                 val day = date.toString()
@@ -151,8 +160,9 @@ class AlarmReceiver : BroadcastReceiver() {
         val id = intent.getStringExtra("task") ?: return
         val day = intent.getStringExtra("day") ?: today()
         AlarmScheduler.scheduleAll(ctx) // agenda o de amanhã
+        SunBiWidget.update(ctx) // a tarefa da vez mudou
         // a rotina pode ter mudado (férias ligadas depois de agendar): só toca se a tarefa ainda vale
-        if (!Prefs.alarmsEnabled || Repo.done(day, id) || Repo.tasksFor(day).none { it.id == id }) return
+        if (!Prefs.alarmsEnabled || !Repo.ringsHere() || Repo.done(day, id) || Repo.tasksFor(day).none { it.id == id }) return
         val i = Intent(ctx, RingService::class.java).setAction(RingService.START).putExtra("task", id).putExtra("day", day)
         ContextCompat.startForegroundService(ctx, i)
     }
@@ -161,6 +171,8 @@ class AlarmReceiver : BroadcastReceiver() {
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(ctx: Context, intent: Intent) {
         AlarmScheduler.scheduleAll(ctx)
+        Reminders.schedule(ctx)
+        SunBiWidget.update(ctx)
         if (intent.action == Intent.ACTION_BOOT_COMPLETED || intent.action == Intent.ACTION_MY_PACKAGE_REPLACED) {
             runCatching { SyncManager.start(ctx) }
         }

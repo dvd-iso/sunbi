@@ -151,12 +151,16 @@ private fun Home(
     val tasks = Repo.tasksFor(day)
     val stats = Game.stats(day)
     val now = LocalTime.now()
+    var lockHelp by remember { mutableStateOf(false) }
+    val ctx = LocalContext.current
     Column(
         Modifier.fillMaxSize().safeDrawingPadding()
             .pointerInput(Unit) {
                 var total = 0f
                 detectVerticalDragGestures(onDragStart = { total = 0f }, onDragEnd = { if (total < -120f) onOpenDrawer() }) { _, dy -> total += dy }
             }
+            // toque duplo no fundo: trava a tela (com o serviço de acessibilidade ligado)
+            .pointerInput(Unit) { detectTapGestures(onDoubleTap = { if (!com.dvdiso.sunbi.LockService.lock()) lockHelp = true else Feedback.tap() }) }
             .verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
@@ -189,6 +193,14 @@ private fun Home(
             Icon(Icons.Filled.KeyboardArrowUp, null)
             Spacer(Modifier.width(6.dp))
             Text("Todos os apps")
+        }
+    }
+    if (lockHelp) {
+        EditorSheet("Travar a tela com dois toques", "Para isso o Android pede um serviço de acessibilidade. O do SunBi só trava a tela: não lê a tela nem outros apps.", { lockHelp = false }) {
+            Button(onClick = { com.dvdiso.sunbi.LockService.openSettings(ctx); lockHelp = false }, shapes = ButtonDefaults.shapes(), modifier = Modifier.fillMaxWidth()) {
+                Text("Abrir Acessibilidade")
+            }
+            Text("Lá, ligue \"SunBi · travar a tela\". Depois, dois toques no fundo da tela inicial travam o telefone.", style = MaterialTheme.typography.bodyMedium, color = cs.onSurfaceVariant)
         }
     }
 }

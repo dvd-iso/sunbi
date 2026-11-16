@@ -167,6 +167,21 @@ test("fim de semana e feriado usam a rotina de folga", function()
   eq(S.offReason(e, "2026-03-07"), nil)
 end)
 
+test("dia difícil deixa só âncoras e remédios; alarm_device escolhe quem toca", function()
+  local e = {}
+  local all = #S.tasks(e, "2026-03-10")
+  S.set(e, "2026-03-10/hard", true, 1, "x")
+  local hard = S.tasks(e, "2026-03-10")
+  eq(#hard < all, true)
+  for _, t in ipairs(hard) do
+    eq(t.anchor == true or t.med == true, true)
+  end
+  eq(S.ringsHere(e, "linux-1"), true)
+  S.set(e, "alarm_device", "android-2", 2, "x")
+  eq(S.ringsHere(e, "linux-1"), false)
+  eq(S.ringsHere(e, "android-2"), true)
+end)
+
 test("modo férias liga e desliga guardando o histórico", function()
   local e = {}
   local function apply(writes)

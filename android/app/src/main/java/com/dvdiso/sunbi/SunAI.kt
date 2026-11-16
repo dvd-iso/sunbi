@@ -51,6 +51,9 @@ object SunAI {
         sessionFile = File(ctx.filesDir, "sunai.session")
     }
 
+    /** Chave e consentimento dados: dá para perguntar. */
+    fun ready(): Boolean = Prefs.aiConsent && Prefs.aiKey.isNotBlank()
+
     /**
      * ID estável da conversa, enviado em x-opencode-session (o OpenCode Go exige: sem ele
      * responde 400 "MissingSessionID"). Muda quando a pessoa começa uma conversa nova.

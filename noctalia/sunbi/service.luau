@@ -288,7 +288,7 @@ local function ring(task)
 end
 
 local function checkAlarms()
-  if not view or noctalia.getConfig("alarms") == false then
+  if not view or noctalia.getConfig("alarms") == false or not store.ringsHere(entries, ident.device) then
     return
   end
   local hm = os.date("%H:%M")

@@ -86,8 +86,12 @@ import com.dvdiso.sunbi.Task
 import com.dvdiso.sunbi.today
 import kotlinx.coroutines.delay
 
+/** Pedidos que chegam pela intent: abrir o check-in (lembrete), uma aba (resumo semanal) ou a explicação do Health Connect. */
+data class Launch(val checkin: Boolean = false, val tab: Int? = null, val healthRationale: Boolean = false, val n: Long = 0)
+
 class MainActivity : ComponentActivity() {
     private val askNotif = registerForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    private val launch = mutableStateOf(Launch())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -95,7 +99,19 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT >= 33) askNotif.launch(Manifest.permission.POST_NOTIFICATIONS)
         SyncManager.start(this)
         ThemeState.load()
-        setContent { SunBiTheme { Root() } }
+        read(intent)
+        setContent { SunBiTheme { Root(launch.value) } }
+    }
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        read(intent)
+    }
+
+    private fun read(i: android.content.Intent?) {
+        if (i == null) return
+        val rationale = i.action == "androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" || i.action == android.content.Intent.ACTION_VIEW_PERMISSION_USAGE
+        launch.value = Launch(i.getBooleanExtra("checkin", false), i.getIntExtra("tab", -1).takeIf { it >= 0 }, rationale, System.currentTimeMillis())
     }
 
     override fun onResume() {
@@ -122,7 +138,7 @@ private val DESTS = listOf(
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-internal fun Root() {
+internal fun Root(launch: Launch = Launch()) {
     // primeira vez: tour que monta a rotina (ou código de pareamento)
     var onboarded by remember { mutableStateOf(Prefs.onboarded) }
     var aiKickoff by remember { mutableStateOf<String?>(null) }
@@ -132,6 +148,8 @@ internal fun Root() {
     }
     var tab by rememberSaveable { mutableIntStateOf(0) }
     LaunchedEffect(aiKickoff) { if (aiKickoff != null) tab = TAB_AI }
+    var healthRationale by remember { mutableStateOf(false) }
+    if (healthRationale) HealthRationaleSheet { healthRationale = false }
     var now by remember { mutableStateOf(today()) }
     // gamificação: lida a cada mudança nos registros (a leitura observa o Repo)
     val stats = com.dvdiso.sunbi.Game.stats(now)
@@ -152,6 +170,13 @@ internal fun Root() {
     BackHandler(enabled = tab >= SETTINGS) { tab = if (tab == ROUTINE) routineBack else prevTab }
     val focusEnd by Focus.end.collectAsState()
     val fb = rememberFeedback()
+    // pedidos da intent (notificações e Health Connect)
+    LaunchedEffect(launch.n) {
+        if (launch.n == 0L) return@LaunchedEffect
+        if (launch.checkin) checkin = today() to 0
+        launch.tab?.let { if (it in 0..TAB_PLAN) tab = it }
+        if (launch.healthRationale) healthRationale = true
+    }
 
     LaunchedEffect(Unit) {
         while (true) {
@@ -249,6 +274,19 @@ internal fun Root() {
 
     if (focusOpen) FocusSheet(focusTask) { focusOpen = false }
     checkin?.let { (d, step) -> CheckinSheet(d, step) { checkin = null } }
+}
+
+/** Explicação pedida pelo Health Connect sobre a permissão de sono. */
+@Composable
+private fun HealthRationaleSheet(onDismiss: () -> Unit) {
+    EditorSheet("Sono do relógio", "Por que o SunBi pede acesso ao sono no Health Connect", onDismiss) {
+        Text(
+            "Só leitura das sessões de sono, e só quando você toca em \"Puxar do relógio\" no check-in. " +
+                "O horário em que deitou e acordou é copiado para o registro do dia. Nada é lido sozinho, nada é enviado a lugar nenhum: " +
+                "os dados ficam nos seus aparelhos.",
+            style = MaterialTheme.typography.bodyLarge,
+        )
+    }
 }
 
 @Composable

@@ -250,10 +250,24 @@ function M.tasks(entries, day)
     key, default = "tasks_off", M.DEFAULT_OFF_TASKS
   end
   local t = M.get(entries, key)
-  if type(t) ~= "table" or #t == 0 then
-    return sortedTasks(default)
+  local list = sortedTasks(if type(t) ~= "table" or #t == 0 then default else t)
+  -- dia difícil: só âncoras e remédios (mesma regra do app)
+  if day and M.get(entries, day .. "/hard") == true then
+    local essential = {}
+    for _, task in ipairs(list) do
+      if task.anchor or task.med then
+        table.insert(essential, task)
+      end
+    end
+    return essential
   end
-  return sortedTasks(t)
+  return list
+end
+
+--- Este aparelho toca os alarmes? (`alarm_device` vazio = todos tocam.)
+function M.ringsHere(entries, device)
+  local d = M.get(entries, "alarm_device")
+  return type(d) ~= "string" or d == "" or d == device
 end
 
 --- Toque na flor (mesma regra do app). Devolve a lista de (chave, valor) a gravar.

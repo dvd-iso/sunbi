@@ -86,6 +86,15 @@ object Prefs {
         get() = sp.getString("webPin", "")!!
         set(v) = sp.edit().putString("webPin", v).apply()
 
+    /** Lembrete gentil de check-in às 21h, se ainda não registrou (só neste aparelho). */
+    var checkinReminder: Boolean
+        get() = sp.getBoolean("checkinReminder", true)
+        set(v) = sp.edit().putBoolean("checkinReminder", v).apply()
+    /** Resumo da semana pela SunAI no domingo à noite, por notificação. */
+    var weeklySummary: Boolean
+        get() = sp.getBoolean("weeklySummary", false)
+        set(v) = sp.edit().putBoolean("weeklySummary", v).apply()
+
     // Modo launcher: favoritos (em ordem) e apps escondidos, só neste aparelho
     var launcherFavorites: List<String>
         get() = sp.getString("launcherFavorites", "")!!.split('\n').filter { it.isNotBlank() }
@@ -368,8 +377,19 @@ object Repo {
 
     fun setOffTasks(list: List<Task>) = set("tasks_off", tasksToJson(list))
 
-    /** A rotina que vale num dia. */
-    fun tasksFor(day: String): List<Task> = if (isOff(day)) offTasks() else tasks()
+    /** A rotina que vale num dia. Em "dia difícil", só as âncoras e os remédios. */
+    fun tasksFor(day: String): List<Task> {
+        val base = if (isOff(day)) offTasks() else tasks()
+        return if (isHard(day)) base.filter { it.anchor || it.med } else base
+    }
+
+    /** Dia difícil: a rotina encolhe para o essencial (sincroniza, vale em todos os aparelhos). */
+    fun isHard(day: String): Boolean = get("$day/hard") == true
+    fun setHard(day: String, on: Boolean) = set("$day/hard", if (on) true else null)
+
+    /** Aparelho que toca os alarmes (id), ou null = todos. */
+    fun alarmDevice(): String? = (get("alarm_device") as? String)?.ifBlank { null }
+    fun ringsHere(): Boolean = alarmDevice().let { it == null || it == Prefs.device }
 
     private fun parseTasks(arr: JSONArray?): List<Task>? {
         if (arr == null) return null

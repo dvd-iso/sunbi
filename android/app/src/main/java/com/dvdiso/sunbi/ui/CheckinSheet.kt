@@ -64,6 +64,7 @@ import com.dvdiso.sunbi.EVENTS
 import com.dvdiso.sunbi.HUMOR
 import com.dvdiso.sunbi.Repo
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.time.LocalTime
 
 private const val STEPS = 3
@@ -178,6 +179,7 @@ private fun SleepStep(day: String, onBack: () -> Unit, onNext: () -> Unit, onDon
             color = if (short) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
         )
     }
+    HealthButton(day)
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
         TextButton(onClick = onBack) { Text("Voltar") }
         Spacer(Modifier.weight(1f))
@@ -200,6 +202,37 @@ private fun SleepStep(day: String, onBack: () -> Unit, onNext: () -> Unit, onDon
             },
             dismissButton = { TextButton(onClick = { editing = null }) { Text("Cancelar") } },
         ) { TimePicker(state) }
+    }
+}
+
+/** "Puxar do relógio": lê a noite no Health Connect (pede a permissão na primeira vez). */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun HealthButton(day: String) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    if (!remember { com.dvdiso.sunbi.Health.available(ctx) }) return
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    var msg by remember { mutableStateOf<String?>(null) }
+    var busy by remember { mutableStateOf(false) }
+    val fb = rememberFeedback()
+    fun pull() {
+        busy = true
+        scope.launch {
+            val night = com.dvdiso.sunbi.Health.lastNight(ctx, day)
+            busy = false
+            if (night == null) { msg = "Nenhuma noite registrada no Health Connect para esse dia."; fb.error() }
+            else { Repo.setSleepTimes(day, night.first, night.second); msg = "Copiado do relógio: ${night.first} → ${night.second}"; fb.toggle(true) }
+        }
+    }
+    val ask = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.health.connect.client.PermissionController.createRequestPermissionResultContract(),
+    ) { granted -> if (granted.containsAll(com.dvdiso.sunbi.Health.PERMISSIONS)) pull() else msg = "Sem permissão para ler o sono." }
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        OutlinedButton(
+            onClick = { fb.tap(); scope.launch { if (com.dvdiso.sunbi.Health.granted(ctx)) pull() else ask.launch(com.dvdiso.sunbi.Health.PERMISSIONS) } },
+            enabled = !busy, shapes = ButtonDefaults.shapes(),
+        ) { Text(if (busy) "Lendo…" else "Puxar do relógio (Health Connect)") }
+        msg?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
     }
 }
 

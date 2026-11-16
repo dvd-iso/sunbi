@@ -356,6 +356,64 @@ class LogicTest {
         assertTrue(apps[0].key in Launcher.hidden())
     }
 
+    // ── dia difícil, alarme num aparelho só, lembretes, widget, Health Connect ──
+
+    @Test fun hardDayKeepsOnlyAnchorsAndMeds() {
+        val all = Repo.tasksFor(day).size
+        Repo.setHard(day, true)
+        val t = Repo.tasksFor(day)
+        assertTrue(t.size < all)
+        assertTrue(t.all { it.anchor || it.med })
+        assertEquals(0, Repo.percent(day))
+        Repo.setHard(day, false)
+        assertEquals(all, Repo.tasksFor(day).size)
+    }
+
+    @Test fun alarmDeviceChoosesWhoRings() {
+        assertTrue(Repo.ringsHere())
+        Repo.set("alarm_device", "quest-abc")
+        assertFalse(Repo.ringsHere())
+        Repo.set("alarm_device", Prefs.device)
+        assertTrue(Repo.ringsHere())
+        Repo.set("alarm_device", null)
+        assertTrue(Repo.ringsHere())
+    }
+
+    @Test fun reminderTimesRollForward() {
+        val t = java.time.LocalDateTime.of(2026, 3, 10, 21, 30) // terça, depois das 21h
+        assertEquals(java.time.LocalDateTime.of(2026, 3, 11, 21, 0), Reminders.nextDaily(t, Reminders.CHECKIN_AT))
+        assertEquals(java.time.LocalDateTime.of(2026, 3, 10, 21, 0), Reminders.nextDaily(t.minusHours(2), Reminders.CHECKIN_AT))
+        assertEquals(java.time.LocalDateTime.of(2026, 3, 15, 19, 0), Reminders.nextWeekly(t, Reminders.WEEKLY_AT))
+        val sun = java.time.LocalDateTime.of(2026, 3, 15, 20, 0)
+        assertEquals(java.time.LocalDateTime.of(2026, 3, 22, 19, 0), Reminders.nextWeekly(sun, Reminders.WEEKLY_AT))
+    }
+
+    @Test fun widgetShowsLateThenNextTask() {
+        val c1 = SunBiWidget.content(day, 7 * 60 + 10) // 07:10: levantar (07:00) atrasado, remédio ainda não
+        assertEquals("wake", c1.taskId)
+        assertTrue(c1.title, c1.title.startsWith("Agora"))
+        Repo.set("$day/done/wake", "07:05")
+        val c2 = SunBiWidget.content(day, 7 * 60 + 10)
+        assertEquals("medam", c2.taskId)
+        assertTrue(c2.title, c2.title.startsWith("Próxima"))
+        assertTrue(c2.footer, c2.footer.contains("1 de"))
+        Repo.set("tasks", null); Repo.set("tasks_off", null)
+        assertNull(SunBiWidget.content(day, 600).taskId)
+    }
+
+    @Test fun healthPicksLongestSessionInWindow() {
+        val zone = java.time.ZoneId.of("America/Sao_Paulo")
+        val (from, to) = Health.window("2026-03-10", zone)
+        assertEquals(java.time.LocalDateTime.of(2026, 3, 9, 12, 0).atZone(zone).toInstant(), from)
+        assertEquals(java.time.LocalDateTime.of(2026, 3, 10, 14, 0).atZone(zone).toInstant(), to)
+        val nap = java.time.LocalDateTime.of(2026, 3, 9, 14, 0).atZone(zone).toInstant() to java.time.LocalDateTime.of(2026, 3, 9, 14, 40).atZone(zone).toInstant()
+        val night = java.time.LocalDateTime.of(2026, 3, 9, 23, 20).atZone(zone).toInstant() to java.time.LocalDateTime.of(2026, 3, 10, 6, 50).atZone(zone).toInstant()
+        val p = Health.pick(listOf(nap, night))!!
+        assertEquals("23:20", Health.hm(p.first, zone))
+        assertEquals("06:50", Health.hm(p.second, zone))
+        assertNull(Health.pick(emptyList()))
+    }
+
     @Test fun whatsappNumberGetsCountryCode() {
         assertEquals("5511987654321", Share.waNumber("(11) 98765-4321"))
         assertEquals("5511987654321", Share.waNumber("+55 11 98765-4321"))

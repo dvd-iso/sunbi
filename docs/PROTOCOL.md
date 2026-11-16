@@ -44,6 +44,7 @@ Globais (valem para todos os aparelhos):
 | `signs` | lista de `{id, label, pole: "up" \| "down"}`: sinais de alerta pessoais |
 | `plan/<seção>` | lista de textos. Seções: `up`, `down` (plano de ação), `warn`, `cope`, `distract`, `safe`, `reasons` (plano de segurança) |
 | `contacts` | lista de `{name, role, phone}` |
+| `alarm_device` | id do único aparelho que toca os alarmes; ausente ou `null` = todos tocam |
 
 Por dia:
 
@@ -59,6 +60,7 @@ Por dia:
 | `AAAA-MM-DD/events` | lista de acontecimentos: `stress`, `conflict`, `late`, `allnight`, `travel`, `alcohol`, `caffeine`, `screens`, `sick`, `period`, `medchange`, `good` |
 | `AAAA-MM-DD/note` | texto livre |
 | `AAAA-MM-DD/off` | `true`/`false`: força rotina de folga ou de semana nesse dia (vence fim de semana e feriado) |
+| `AAAA-MM-DD/hard` | `true`: dia difícil, a rotina do dia fica só com âncoras e remédios |
 | `AAAA-MM-DD/mood` | escala antiga do Sunflower Clocks (1 a 5); lida como `humor = mood − 3` quando `humor` não existe |
 
 Qual rotina vale num dia: `AAAA-MM-DD/off` se existir; senão folga se o modo férias começou

@@ -81,6 +81,10 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.4")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
     implementation("org.nanohttpd:nanohttpd:2.3.1")
+    // resumo semanal da SunAI em segundo plano (precisa de rede e pode demorar)
+    implementation("androidx.work:work-runtime-ktx:2.10.5")
+    // sono vindo do relógio (Health Connect)
+    implementation("androidx.health.connect:connect-client:1.1.0")
 
     // Testes de tela no JVM (Robolectric com gráficos nativos): geram PNGs para revisar o visual
     testImplementation("junit:junit:4.13.2")

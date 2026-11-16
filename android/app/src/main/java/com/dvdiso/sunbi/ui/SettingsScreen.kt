@@ -70,6 +70,7 @@ import com.dvdiso.sunbi.AlarmScheduler
 import com.dvdiso.sunbi.BuildConfig
 import com.dvdiso.sunbi.Launcher
 import com.dvdiso.sunbi.Prefs
+import com.dvdiso.sunbi.Reminders
 import com.dvdiso.sunbi.Repo
 import com.dvdiso.sunbi.RingService
 import com.dvdiso.sunbi.Sfx
@@ -247,6 +248,7 @@ private fun GeneralCard(modifier: Modifier = Modifier) {
     var dyn by remember { mutableStateOf(Prefs.dynamicColor) }
     var ui by remember { mutableStateOf(Prefs.uiSounds) }
     var alarms by remember { mutableStateOf(Prefs.alarmsEnabled) }
+    var remind by remember { mutableStateOf(Prefs.checkinReminder) }
     var tone by remember { mutableStateOf(Prefs.alarmSound) }
     var preview by remember { mutableStateOf<MediaPlayer?>(null) }
     DisposableEffect(Unit) { onDispose { preview?.release() } }
@@ -261,12 +263,27 @@ private fun GeneralCard(modifier: Modifier = Modifier) {
             Prefs.uiSounds = it
             if (it) Feedback.toggle(true)
         }
+        SwitchRow("Lembrete de check-in às 21h", "Só se o dia ainda não tiver registro", remind) {
+            remind = it
+            Prefs.checkinReminder = it
+            Reminders.schedule(ctx)
+        }
         SwitchRow("Alarmes neste aparelho", if (isQuest()) "No Quest só toca com o headset ligado" else "Sem soneca: só Feito ou Parar", alarms) {
             alarms = it
             Prefs.alarmsEnabled = it
             AlarmScheduler.scheduleAll(ctx)
         }
         if (alarms) {
+            Label("Os alarmes tocam em")
+            val mine = Repo.alarmDevice() == Prefs.device
+            ChoiceGroup(listOf(false to "Todos os aparelhos", true to "Só neste"), mine, { v ->
+                if (v == null) return@ChoiceGroup
+                Repo.set("alarm_device", if (v) Prefs.device else null)
+            })
+            Repo.alarmDevice()?.takeIf { it != Prefs.device }?.let {
+                Text("Hoje quem toca é o aparelho $it. Escolha \"Só neste\" para trazer os alarmes para cá.",
+                    style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             Label("Toque do alarme")
             ChoiceGroup(listOf("amanhecer" to "Amanhecer", "girassol" to "Girassol"), tone, { v ->
                 if (v == null) return@ChoiceGroup

@@ -67,6 +67,21 @@ O launcher é código próprio do SunBi (MIT). O comportamento (favoritos em tex
 sozinha, esconder apps) segue a linha do [Olauncher](https://github.com/tanujnotes/Olauncher),
 que é GPL-3.0 e por isso não foi copiado.
 
+## 6. Extras que dependem do sistema
+
+- **Widget:** segure a tela inicial do Android → Widgets → "SunBi · Agora". Atualiza a cada
+  mudança, a cada alarme e a cada meia hora.
+- **Travar a tela com dois toques** (launcher): o Android exige um serviço de acessibilidade.
+  Ative "SunBi · travar a tela" em Ajustes do Android → Acessibilidade. O serviço não lê a
+  tela (`canRetrieveWindowContent=false`); só executa a ação de bloquear.
+- **Sono do relógio:** precisa do app Health Connect (embutido no Android 14+) e de um relógio
+  ou pulseira que grave sessões de sono nele. A permissão de leitura é pedida no primeiro
+  "Puxar do relógio". Não foi testado em aparelho real nesta versão.
+- **Resumo semanal da SunAI:** roda pelo WorkManager (precisa de rede) no domingo às 19h e
+  usa a chave do OpenCode Go deste aparelho; ligue só num aparelho para não receber dois.
+- **Lembrete de check-in** e **resumo semanal** usam alarmes inexatos (`setAndAllowWhileIdle`),
+  então podem atrasar alguns minutos em modo de economia de bateria.
+
 ## Como funciona a sincronização
 
 Cada registro tem valor, horário e aparelho. Quando dois aparelhos conversam, cada um fica com
@@ -117,6 +132,9 @@ Android (`Haptics.kt`).
 | `Report.kt`, `ReportPdf.kt`, `Share.kt` | relatório em texto e PDF, envio por WhatsApp |
 | `Sync.kt` | servidor HTTP, mDNS e sincronização; `WebConfig.kt` | API da página do modo complexo (`assets/web/index.html`) |
 | `Alarms.kt` | alarmes, toque, bloco de foco; `Haptics.kt`, `Sfx.kt` | vibrações e sons |
+| `Reminders.kt` | lembrete de check-in e resumo semanal (WorkManager); `Widget.kt` | widget "Agora" |
+| `Launcher.kt`, `ui/LauncherScreen.kt` | modo launcher; `LockService.kt` | travar a tela com dois toques |
+| `Health.kt` | sono do relógio pelo Health Connect |
 | `ui/` | telas em Compose (Material 3 Expressive) |
 
 ## Publicar uma versão
