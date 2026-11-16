@@ -101,7 +101,7 @@ segurança.
 nem conta. O PDF sai do celular dela para o seu WhatsApp.
 
 **Dá para ajustar a rotina junto com o paciente?** Sim. Na consulta, pelo celular (**Rotina**) ou,
-com mais calma, pelo **modo complexo**: o celular serve uma página que abre no navegador do
+com mais calma, pelo **modo avançado**: o celular serve uma página que abre no navegador do
 computador com toda a configuração (rotinas, sinais, planos, pessoas, registros e backup).
 
 ---
@@ -124,11 +124,11 @@ pareamento e recebe tudo.
 
 | Tela | O que aparece | Um toque abre |
 | --- | --- | --- |
-| **Hoje** | Saudação, a faixa de **sequência e nível**, a tarefa da vez com **Concluído**, no máximo um aviso, o check-in e as tarefas pendentes | O check-in em 3 passos, as conquistas, as tarefas feitas, o editor da rotina, outros dias |
+| **Hoje** | Saudação com o selo de **sequência e nível**, a tarefa da vez com **Concluído**, uma linha de aviso, uma linha do check-in e as tarefas pendentes | O check-in em 3 passos, as conquistas, as tarefas feitas, o editor da rotina, outros dias |
 | **Histórico** | Gráfico de humor no estilo Life Chart, sono contra o seu normal e três números | O **relatório em PDF**, que já abre o WhatsApp do psicólogo |
 | **SunAI** | Conversa com a assistente: como foi a semana ou o mês, conselhos e ajustes na rotina | Chave, modelo e apagar a conversa |
 | **Plano** | O botão **Preciso de ajuda agora** e uma lista curta | Sinais de alerta, o que fazer quando o humor sobe ou desce, plano de segurança, pessoas |
-| **Ajustes** (engrenagem) | Cores, sons e vibração, alarmes | A rotina, a SunAI, a sincronização, o **modo complexo** e a **tela inicial** |
+| **Ajustes** (engrenagem) | Uma lista curta | Aparência e sons, alarmes e lembretes, rotina, SunAI, sincronização, **modo avançado** e **tela inicial**, cada um numa folha |
 
 **Modo férias:** toque na flor em **Hoje**. Ela coloca óculos escuros e o app passa a usar a
 rotina de folga. Toque de novo para voltar.
@@ -188,9 +188,9 @@ do app; o papel de parede aparece por trás de um véu da cor do tema.
   <img src="docs/telas/launcher-opcoes.png" width="24%" alt="Opções de um app: tela inicial, renomear, ocultar">
 </p>
 
-### Modo complexo
+### Modo avançado
 
-Para configurar tudo com calma pelo computador: em **Ajustes → Modo complexo**, o celular passa
+Para configurar tudo com calma pelo computador: em **Ajustes → Modo avançado**, o celular passa
 a servir uma página na rede local, protegida por um PIN de seis dígitos. Nela dá para editar as
 duas rotinas em tabela, os sinais, os sete blocos do plano, as pessoas, os registros dos últimos
 dias e os ajustes, e exportar ou importar um backup. Cinco PINs errados desligam o modo.
@@ -215,7 +215,7 @@ Detalhes, limites e referências: **[docs/METODOS.md](docs/METODOS.md)**.
   protegida por um código de pareamento; fora de casa, Tailscale ou WireGuard.
 - A **SunAI** só funciona com a chave da própria pessoa e depois de um consentimento explícito
   que diz o que é enviado. A chave e a conversa ficam só no aparelho.
-- O **modo complexo** só responde com o modo ligado e com o PIN; é HTTP na rede local, para
+- O **modo avançado** só responde com o modo ligado e com o PIN; é HTTP na rede local, para
   ligar só enquanto usa.
 - O app não tem conta, não tem anúncios, não coleta nada. Código aberto sob a licença MIT.
 
@@ -224,7 +224,7 @@ Detalhes, limites e referências: **[docs/METODOS.md](docs/METODOS.md)**.
 - **Celular e Quest:** baixe o `sunbi.apk` na aba **Releases** e instale por cima da versão
   anterior (mesma chave de assinatura).
 - **PC (Noctalia):** plugin em `noctalia/sunbi/`, sem daemon.
-- Pareamento, modo complexo, limitações, desenvolvimento e publicação de versões:
+- Pareamento, modo avançado, limitações, desenvolvimento e publicação de versões:
   **[docs/INSTALACAO.md](docs/INSTALACAO.md)**. Protocolo de sincronização:
   **[docs/PROTOCOL.md](docs/PROTOCOL.md)**.
 

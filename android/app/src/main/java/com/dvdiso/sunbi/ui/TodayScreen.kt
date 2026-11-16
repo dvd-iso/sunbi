@@ -33,6 +33,11 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Face
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -122,6 +127,7 @@ fun TodayScreen(
                         size = 44.dp, turns = turns, sunglasses = off != null,
                     )
                 },
+                trailing = if (isToday) ({ GameChip(stats, onAchievements) }) else null,
             )
             DayPicker(day, isToday, onPrev = { day = LocalDate.parse(day).minusDays(1).toString() },
                 onNext = { day = LocalDate.parse(day).plusDays(1).toString() }, onToday = { day = todayStr })
@@ -134,11 +140,15 @@ fun TodayScreen(
             }
         }
         if (isToday) {
-            item(key = "game") { GameStrip(stats, Modifier.animateItem().enterFromBelow(0), onOpen = onAchievements) }
-            if (tasks.isNotEmpty()) item(key = "now") { NowCard(tasks, tick, onFocus, Modifier.animateItem().enterFromBelow(1)) }
-            if (insight != null) item(key = "insight") { InsightCard(insight, onOpenPlan, Modifier.animateItem().enterFromBelow(2)) }
+            if (tasks.isNotEmpty()) item(key = "now") { NowCard(tasks, tick, onFocus, Modifier.animateItem().enterFromBelow(0)) }
         }
-        item(key = "checkin") { CheckinSummary(day, Modifier.animateItem().enterFromBelow(3)) { step -> onCheckin(day, step) } }
+        // aviso e check-in feito: uma linha cada, o detalhe abre ao tocar
+        item(key = "lines") {
+            Column(Modifier.animateItem().enterFromBelow(1), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                if (insight != null) InsightLine(insight, onOpenPlan)
+                CheckinSummary(day) { step -> onCheckin(day, step) }
+            }
+        }
         if (tasks.isEmpty()) {
             item(key = "empty") { EmptyRoutine(off, onEditRoutine, Modifier.animateItem().enterFromBelow(4)) }
         } else {
@@ -258,30 +268,44 @@ internal fun NowCard(tasks: List<Task>, tick: Long, onFocus: (Task?) -> Unit, mo
     }
 }
 
+/** Linha de informação: ícone, texto curto e seta. Usada para o aviso e o check-in feito. */
 @Composable
-private fun InsightCard(i: Insight, onOpenPlan: () -> Unit, modifier: Modifier = Modifier) {
+private fun InfoLine(icon: ImageVector, tint: androidx.compose.ui.graphics.Color, text: String, label: String, onClick: () -> Unit) {
     val cs = MaterialTheme.colorScheme
-    val (bg, fg) = when (i.kind) {
-        InsightKind.UP, InsightKind.DOWN -> cs.secondaryContainer to cs.onSecondaryContainer
-        InsightKind.KUDOS -> cs.tertiaryContainer to cs.onTertiaryContainer
-        else -> cs.surfaceContainerHigh to cs.onSurface
-    }
-    var open by rememberSaveable { mutableStateOf(false) }
-    Card(
-        modifier.fillMaxWidth().bouncyClick { Feedback.tap(); open = !open },
-        shape = MaterialTheme.shapes.extraLarge, colors = CardDefaults.cardColors(containerColor = bg, contentColor = fg),
+    Row(
+        Modifier.fillMaxWidth().clip(MaterialTheme.shapes.large).bouncyClick(label = label) { Feedback.tap(); onClick() }
+            .padding(horizontal = 8.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(i.title, style = MaterialTheme.typography.titleMediumEmphasized)
-            Text(i.body, style = MaterialTheme.typography.bodyMedium, maxLines = if (open) Int.MAX_VALUE else 2, overflow = TextOverflow.Ellipsis)
-            if (i.kind == InsightKind.UP || i.kind == InsightKind.DOWN) {
-                TextButton(onClick = onOpenPlan, contentPadding = PaddingValues(0.dp)) { Text("Ver meu plano", color = fg, fontWeight = FontWeight.Bold) }
+        Icon(icon, null, tint = tint, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(12.dp))
+        Text(text, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = cs.onSurfaceVariant)
+    }
+}
+
+/** O aviso do dia numa linha; o texto inteiro e o atalho para o plano abrem numa folha. */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun InsightLine(i: Insight, onOpenPlan: () -> Unit) {
+    val cs = MaterialTheme.colorScheme
+    var open by rememberSaveable { mutableStateOf(false) }
+    val warn = i.kind == InsightKind.UP || i.kind == InsightKind.DOWN
+    InfoLine(
+        when (i.kind) { InsightKind.KUDOS -> Icons.Filled.Star; InsightKind.UP, InsightKind.DOWN -> Icons.Filled.Warning; else -> Icons.Filled.Info },
+        if (warn) cs.secondary else cs.primary, i.title, "Ver o aviso",
+    ) { open = true }
+    if (open) {
+        EditorSheet(i.title, onDismiss = { open = false }) {
+            Text(i.body, style = MaterialTheme.typography.bodyLarge)
+            if (warn) {
+                Button(onClick = { open = false; onOpenPlan() }, shapes = ButtonDefaults.shapes(), modifier = Modifier.fillMaxWidth()) { Text("Ver meu plano") }
             }
         }
     }
 }
 
-/** Resumo do check-in: convida a fazer ou mostra o que já foi registrado. */
+/** Check-in: convite quando falta; quando feito, uma linha com humor e sono. */
 @Composable
 internal fun CheckinSummary(day: String, modifier: Modifier = Modifier, open: (step: Int) -> Unit) {
     val h = Repo.humor(day)
@@ -289,7 +313,7 @@ internal fun CheckinSummary(day: String, modifier: Modifier = Modifier, open: (s
     val cs = MaterialTheme.colorScheme
     if (h == null && s == null) {
         Card(
-            modifier.fillMaxWidth().bouncyClick { Feedback.tap(); open(0) }, shape = MaterialTheme.shapes.extraLarge,
+            modifier.fillMaxWidth().padding(top = 4.dp).bouncyClick { Feedback.tap(); open(0) }, shape = MaterialTheme.shapes.extraLarge,
             colors = CardDefaults.cardColors(containerColor = cs.surfaceContainerHigh),
         ) {
             Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -297,27 +321,15 @@ internal fun CheckinSummary(day: String, modifier: Modifier = Modifier, open: (s
                     Text("Como você está hoje?", style = MaterialTheme.typography.titleMediumEmphasized)
                     Text("Humor e sono em menos de um minuto", style = MaterialTheme.typography.bodyMedium, color = cs.onSurfaceVariant)
                 }
-                Button(onClick = { open(0) }, shapes = ButtonDefaults.shapes()) { Text("Registrar") }
+                Button(onClick = { Feedback.tap(); open(0) }, shapes = ButtonDefaults.shapes()) { Text("Registrar") }
             }
         }
         return
     }
-    Card(
-        modifier.fillMaxWidth().bouncyClick { Feedback.tap(); open(0) }, shape = MaterialTheme.shapes.extraLarge,
-        colors = CardDefaults.cardColors(containerColor = cs.surfaceContainerLow),
-    ) {
-        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text("Check-in", style = MaterialTheme.typography.labelLarge, color = cs.onSurfaceVariant)
-                Text(h?.let { HUMOR[it] } ?: "Humor sem registro", style = MaterialTheme.typography.titleMedium)
-                Text(
-                    s?.let { "%.1f h de sono".format(it).replace('.', ',') } ?: "Sono sem registro",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (s != null && s < 6.0) cs.error else cs.onSurfaceVariant,
-                )
-            }
-            TextButton(onClick = { open(0) }) { Text("Editar") }
-        }
+    val sleep = s?.let { "%.1f h de sono".format(it).replace('.', ',') }
+    val text = listOfNotNull(h?.let { HUMOR[it] }, sleep).joinToString(" · ")
+    Box(modifier) {
+        InfoLine(Icons.Filled.Face, if (s != null && s < 6.0) cs.error else cs.primary, text, "Editar o check-in") { open(0) }
     }
 }
 

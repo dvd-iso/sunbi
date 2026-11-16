@@ -1,6 +1,8 @@
 package com.dvdiso.sunbi.ui
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
@@ -300,57 +302,60 @@ private fun Message(m: SunAI.Msg, onUndo: () -> Unit) {
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun SunAISetup(insets: PaddingValues, onReady: () -> Unit) {
-    val contentPadding = PaddingValues(
-        start = 16.dp, end = 16.dp, top = insets.calculateTopPadding() + 4.dp, bottom = insets.calculateBottomPadding() + 24.dp,
-    )
+    val cs = MaterialTheme.colorScheme
     var key by remember { mutableStateOf(Prefs.aiKey) }
-    var model by remember { mutableStateOf(Prefs.aiModel) }
     var agree by remember { mutableStateOf(false) }
-    LazyColumn(contentPadding = contentPadding, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item { ScreenHeader("SunAI", subtitle = "Assistente com IA", leading = { SunBiMark(size = 40.dp) }) }
-        item {
-            SectionCard("Antes de começar") {
+    var more by remember { mutableStateOf(false) }
+    Column(
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+            .padding(start = 24.dp, end = 24.dp, top = insets.calculateTopPadding() + 12.dp, bottom = insets.calculateBottomPadding() + 24.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Row(Modifier.enterFromBelow(0), verticalAlignment = Alignment.CenterVertically) {
+            SunBiMark(size = 40.dp)
+            Spacer(Modifier.width(12.dp))
+            Text("SunAI", style = MaterialTheme.typography.headlineMediumEmphasized)
+        }
+        Column(Modifier.enterFromBelow(1), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text("A SunAI lê sua rotina e os últimos 31 dias para responder. Tudo vai para o OpenCode Go, com a sua chave.",
+                style = MaterialTheme.typography.bodyLarge)
+            TextButton(onClick = { Feedback.tap(); more = !more }, contentPadding = PaddingValues(0.dp)) {
+                Text(if (more) "Mostrar menos" else "Saiba mais")
+            }
+            AnimatedVisibility(more) {
                 Text(
-                    "A SunAI usa o OpenCode Go, com a sua chave. A cada pergunta, o app envia a sua rotina, o seu plano " +
-                        "e os registros dos últimos 31 dias (humor, sono, remédios marcados, sinais e anotações) para o " +
-                        "OpenCode Go e para o modelo escolhido gerarem a resposta.",
-                    style = MaterialTheme.typography.bodyLarge,
+                    "A cada pergunta, o app envia as duas rotinas, o seu plano e os registros dos últimos 31 dias (humor, sono, " +
+                        "remédios marcados, sinais e anotações) ao OpenCode Go e ao modelo escolhido. A chave e a conversa ficam só " +
+                        "neste aparelho e podem ser apagadas. A SunAI não substitui sua equipe de saúde e nunca muda remédios.",
+                    style = MaterialTheme.typography.bodyMedium, color = cs.onSurfaceVariant,
                 )
-                Text(
-                    "A chave fica só neste aparelho. A conversa fica só aqui e pode ser apagada. A SunAI não substitui " +
-                        "sua equipe de saúde e nunca muda remédios.",
-                    style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Row(Modifier.clip(MaterialTheme.shapes.large).clickable { agree = !agree }.padding(vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(agree, { agree = it })
-                    Text("Entendi e quero usar a SunAI", style = MaterialTheme.typography.bodyLarge)
-                }
             }
         }
-        item {
-            SectionCard("Sua chave do OpenCode Go") {
-                OutlinedTextField(
-                    key, { key = it.trim() }, label = { Text("Chave da API") }, singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.large,
-                    supportingText = { Text("No opencode.ai/console, assine o Go e copie a chave da API.") },
-                )
-                Label("Modelo")
-                ModelPicker(model) { model = it }
-                Button(
-                    onClick = {
-                        Prefs.aiKey = key
-                        Prefs.aiModel = model
-                        Prefs.aiConsent = true
-                        onReady()
-                    },
-                    enabled = agree && key.length >= 8,
-                    shapes = ButtonDefaults.shapes(), modifier = Modifier.fillMaxWidth().height(52.dp),
-                ) { Text("Ativar a SunAI", style = MaterialTheme.typography.titleMedium) }
-            }
+        OutlinedTextField(
+            key, { key = it.trim() }, label = { Text("Chave do OpenCode Go") }, singleLine = true,
+            visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth().enterFromBelow(2),
+            shape = MaterialTheme.shapes.large,
+            supportingText = { Text("Pegue em opencode.ai/console") },
+        )
+        Row(
+            Modifier.fillMaxWidth().enterFromBelow(3).clip(MaterialTheme.shapes.large)
+                .bouncyClick { Feedback.tick(); agree = !agree }.padding(vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Checkbox(agree, { Feedback.tick(); agree = it })
+            Text("Entendi e quero usar", style = MaterialTheme.typography.bodyLarge)
         }
-        item { Spacer(Modifier.height(24.dp)) }
+        Button(
+            onClick = {
+                Feedback.toggle(true)
+                Prefs.aiKey = key
+                Prefs.aiConsent = true
+                onReady()
+            },
+            enabled = agree && key.length >= 8,
+            shapes = ButtonDefaults.shapes(), modifier = Modifier.fillMaxWidth().height(56.dp).enterFromBelow(4),
+        ) { Text("Ativar a SunAI", style = MaterialTheme.typography.titleMedium) }
+        Text("O modelo muda depois em ⋮ → Modelo e chave.", style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
     }
 }
 

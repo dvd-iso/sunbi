@@ -74,11 +74,24 @@ fun HistoryScreen(todayStr: String, contentPadding: PaddingValues, onSettings: (
             )
         }
         item {
+            // os três números numa linha de texto, e o relatório sempre à vista logo abaixo
             val sl = days.mapNotNull { Repo.sleep(it) }
-            Row(Modifier.enterFromBelow(0), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Stat("${days.count { Repo.checkedIn(it) }}", "dias com registro", Modifier.weight(1f))
-                Stat(if (sl.isEmpty()) "–" else "%.1f h".format(sl.average()).replace('.', ','), "de sono por noite", Modifier.weight(1f))
-                Stat(medAdherence(days)?.let { "$it%" } ?: "–", "dos remédios", Modifier.weight(1f))
+            val reg = animatedInt(days.count { Repo.checkedIn(it) })
+            val parts = listOfNotNull(
+                "$reg ${if (reg == 1) "dia" else "dias"} com registro",
+                if (sl.isEmpty()) null else "%.1f h de sono".format(sl.average()).replace('.', ','),
+                medAdherence(days)?.let { "${animatedInt(it)}% dos remédios" },
+            )
+            Column(Modifier.enterFromBelow(0), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(parts.joinToString(" · "), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Button(
+                    onClick = { Feedback.tap(); showReport = true }, shapes = ButtonDefaults.shapes(),
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                ) {
+                    Icon(Icons.Filled.Share, null, Modifier.size(ButtonDefaults.IconSize))
+                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                    Text("Relatório para a consulta", style = MaterialTheme.typography.titleMedium)
+                }
             }
         }
         item {
@@ -86,16 +99,6 @@ fun HistoryScreen(todayStr: String, contentPadding: PaddingValues, onSettings: (
         }
         item {
             SectionCard("Sono", Modifier.enterFromBelow(2), subtitle = "Linha tracejada: o seu normal.") { SleepChart(days) }
-        }
-        item {
-            FilledTonalButton(
-                onClick = { Feedback.tap(); showReport = true }, shapes = ButtonDefaults.shapes(),
-                modifier = Modifier.fillMaxWidth().height(56.dp).enterFromBelow(3),
-            ) {
-                Icon(Icons.Filled.Share, null, Modifier.size(ButtonDefaults.IconSize))
-                Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                Text("Relatório para a consulta", style = MaterialTheme.typography.titleMedium)
-            }
         }
         item { Spacer(Modifier.height(24.dp)) }
     }

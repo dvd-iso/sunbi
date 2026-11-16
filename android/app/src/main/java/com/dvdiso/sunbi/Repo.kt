@@ -78,7 +78,7 @@ object Prefs {
         get() = sp.getString("focusArea", "both")!!
         set(v) = sp.edit().putString("focusArea", v).apply()
 
-    // Modo complexo: página de configuração servida pelo próprio app, para abrir no computador
+    // Modo avançado: página de configuração servida pelo próprio app, para abrir no computador
     var webConfig: Boolean
         get() = sp.getBoolean("webConfig", false)
         set(v) = sp.edit().putBoolean("webConfig", v).apply()

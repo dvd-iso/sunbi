@@ -8,7 +8,7 @@ import org.json.JSONObject
 import java.security.SecureRandom
 
 /**
- * Modo complexo: uma página de configuração servida pelo próprio app, para abrir no navegador
+ * Modo avançado: uma página de configuração servida pelo próprio app, para abrir no navegador
  * do computador (mesma rede). Edita as duas rotinas, sinais, planos, contatos, ajustes e os
  * registros dos últimos dias, além de exportar e importar um backup.
  *
@@ -87,13 +87,13 @@ object WebConfig {
             return Res(200, html, "text/html; charset=utf-8")
         }
         if (!uri.startsWith("/api/")) return null
-        if (!Prefs.webConfig) return err(403, "modo complexo desligado")
+        if (!Prefs.webConfig) return err(403, "modo avançado desligado")
         lastUse = System.currentTimeMillis()
         if (pin == null || pin != Prefs.webPin) {
             fails++
             if (fails >= 5) {
                 enable(ctx, false)
-                return err(403, "PIN errado 5 vezes: o modo complexo foi desligado; ligue de novo no app")
+                return err(403, "PIN errado 5 vezes: o modo avançado foi desligado; ligue de novo no app")
             }
             return err(401, "PIN errado")
         }
@@ -260,6 +260,6 @@ object WebConfig {
 
     private const val OFF_HTML = """<!doctype html><meta charset="utf-8"><title>SunBi</title>
 <body style="font-family:system-ui;max-width:32rem;margin:4rem auto;padding:0 1rem;color:#1f1b13;background:#fff8f2">
-<h1>🌻 SunBi</h1><p>O <b>modo complexo</b> está desligado neste aparelho.</p>
-<p>No app, abra <b>Ajustes → Modo complexo</b>, ligue e recarregue esta página.</p></body>"""
+<h1>🌻 SunBi</h1><p>O <b>modo avançado</b> está desligado neste aparelho.</p>
+<p>No app, abra <b>Ajustes → Modo avançado</b>, ligue e recarregue esta página.</p></body>"""
 }

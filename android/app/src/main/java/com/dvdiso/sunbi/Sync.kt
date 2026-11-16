@@ -113,7 +113,7 @@ object SyncManager {
         return ok
     }
 
-    /** Sobe o serviço (servidor + descoberta). O modo complexo também precisa do servidor. */
+    /** Sobe o serviço (servidor + descoberta). O modo avançado também precisa do servidor. */
     fun start(ctx: Context) {
         if (!Prefs.syncEnabled && !Prefs.webConfig) return
         ContextCompat.startForegroundService(ctx, Intent(ctx, SyncService::class.java))
@@ -131,7 +131,7 @@ object SyncManager {
     }
 }
 
-/** Servidor HTTP do protocolo (docs/PROTOCOL.md) e da página do modo complexo (WebConfig). */
+/** Servidor HTTP do protocolo (docs/PROTOCOL.md) e da página do modo avançado (WebConfig). */
 class PeerServer(private val ctx: Context) : NanoHTTPD(SyncManager.PORT) {
     private fun readBody(s: IHTTPSession): String? {
         val len = s.headers["content-length"]?.toIntOrNull() ?: 0
@@ -147,7 +147,7 @@ class PeerServer(private val ctx: Context) : NanoHTTPD(SyncManager.PORT) {
     }
 
     override fun serve(s: IHTTPSession): Response {
-        // página do modo complexo (PIN próprio, só com o modo ligado)
+        // página do modo avançado (PIN próprio, só com o modo ligado)
         if (s.uri == "/" || s.uri == "/index.html" || s.uri.startsWith("/api/")) {
             val body = if (s.method == Method.POST) readBody(s) ?: return json(Response.Status.BAD_REQUEST, JSONObject().put("error", "grande demais")) else null
             val query = s.parameters.mapValues { it.value.firstOrNull() ?: "" }
@@ -233,7 +233,7 @@ class SyncService : Service() {
             while (true) {
                 if (Prefs.syncEnabled) SyncManager.syncAll()
                 WebConfig.checkIdle(applicationContext)
-                // nada mais para fazer: sem sync e sem modo complexo, o serviço pode parar
+                // nada mais para fazer: sem sync e sem modo avançado, o serviço pode parar
                 if (!Prefs.syncEnabled && !Prefs.webConfig) { stopSelf(); break }
                 delay(60_000)
             }

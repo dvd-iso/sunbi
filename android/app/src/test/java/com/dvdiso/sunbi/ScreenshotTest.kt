@@ -101,7 +101,7 @@ class ScreenshotTest {
         rule.setContent { SunBiTheme { Root() } }
         rule.onNodeWithContentDescription("SunBi").performClick()
         save("claro-10-ferias")
-        rule.onAllNodesWithText("Editar")[1].performClick() // o da rotina (o outro é do check-in)
+        rule.onNodeWithText("Editar").performClick() // o da rotina
         save("claro-11-rotina")
         rule.onNodeWithText("Folga e férias").performClick()
         save("claro-12-rotina-folga")
@@ -202,7 +202,7 @@ class ScreenshotTest {
         rule.waitUntil(5000) { rule.onAllNodesWithText("Que legal").fetchSemanticsNodes().isNotEmpty() }
         save("claro-18-conquista")
         rule.onNodeWithText("Que legal").performClick()
-        rule.onNodeWithContentDescription("Conquistas").performClick()
+        rule.onNodeWithContentDescription("Conquistas", substring = true).performClick()
         save("claro-19-conquistas")
     }
 

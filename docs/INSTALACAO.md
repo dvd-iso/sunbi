@@ -44,15 +44,15 @@ visitante, alguns roteadores), copie o endereço que o app mostra em **Ajustes �
 ("Este aparelho: 192.168.0.20:47321") para **Aparelhos manuais** nas configurações do plugin.
 Com Tailscale, o mesmo vale para sincronizar fora de casa.
 
-## 4. Modo complexo (configurar pelo computador)
+## 4. Modo avançado (configurar pelo computador)
 
-Em **Ajustes → Modo complexo**, ligue o interruptor. O app mostra um endereço
+Em **Ajustes → Modo avançado**, ligue o interruptor. O app mostra um endereço
 (`http://192.168.0.20:47321/`) e um **PIN de 6 dígitos**. Abra o endereço no navegador de um
-computador na mesma rede e digite o PIN. A página edita as duas rotinas, os sinais de alerta,
+computador na mesma rede e digite o PIN. No PC com o plugin do Noctalia, o botão do globo no rodapé do painel abre a página direto. A página edita as duas rotinas, os sinais de alerta,
 os planos, as pessoas, os registros dos últimos dias e os ajustes, e faz **backup** (exportar e
 importar um JSON).
 
-A página só responde com o modo ligado; cinco PINs errados desligam o modo. O tráfego é HTTP
+O endereço precisa começar com `http://`: navegadores que completam sozinhos com `https://` (Chrome, Helium) dão erro de conexão. A página só responde com o modo ligado; desliga sozinha depois de 1 hora sem uso, e cinco PINs errados também desligam. O tráfego é HTTP
 na rede local, sem criptografia: ligue só enquanto usa e desligue depois.
 
 ## 5. Tela inicial (modo launcher)
@@ -94,7 +94,7 @@ chamada troca os dados nos dois sentidos. Detalhes em [PROTOCOL.md](PROTOCOL.md)
 - No celular, a sincronização em segundo plano usa uma notificação fixa ("Sincronizando..."),
   que pode ser silenciada nas configurações de notificação do app.
 - A rotina, os sinais, o plano, os contatos e o check-in valem para todos os aparelhos. O cronômetro
-  de foco, a chave da SunAI, a conversa com ela e o PIN do modo complexo são de cada aparelho.
+  de foco, a chave da SunAI, a conversa com ela e o PIN do modo avançado são de cada aparelho.
 
 ## Desenvolvimento
 
@@ -127,7 +127,7 @@ Android (`Haptics.kt`).
 | `Insights.kt` | avisos automáticos (subida, descida, sono, remédios, ritmo) |
 | `SunAI.kt` | assistente via OpenCode Go, com ferramentas de rotina e regras |
 | `Report.kt`, `ReportPdf.kt`, `Share.kt` | relatório em texto e PDF, envio por WhatsApp |
-| `Sync.kt` | servidor HTTP, mDNS e sincronização; `WebConfig.kt` | API da página do modo complexo (`assets/web/index.html`) |
+| `Sync.kt` | servidor HTTP, mDNS e sincronização; `WebConfig.kt` | API da página do modo avançado (`assets/web/index.html`) |
 | `Alarms.kt` | alarmes, toque, bloco de foco; `Haptics.kt`, `Sfx.kt` | vibrações e sons |
 | `Reminders.kt` | lembrete de check-in e resumo semanal (WorkManager); `Widget.kt` | widget "Agora" |
 | `Launcher.kt`, `ui/LauncherScreen.kt` | modo launcher (sem acessibilidade: o SunBi não usa serviços de acessibilidade) |

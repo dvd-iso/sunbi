@@ -286,7 +286,7 @@ class LogicTest {
         assertNull(rhythm(day))
     }
 
-    // ── modo complexo ───────────────────────────────────────────────────────
+    // ── modo avançado ───────────────────────────────────────────────────────
 
     @Test fun webConfigNeedsModeAndPin() {
         val ctx = org.robolectric.RuntimeEnvironment.getApplication()
@@ -299,7 +299,7 @@ class LogicTest {
         assertEquals(6, pin.length)
         val page = WebConfig.handle(ctx, "GET", "/", null, emptyMap(), null)!!
         assertEquals(200, page.status)
-        assertTrue(page.body.contains("Modo complexo"))
+        assertTrue(page.body.contains("Modo avançado"))
         assertEquals(401, WebConfig.handle(ctx, "GET", "/api/config", "nope", emptyMap(), null)!!.status)
         val ok = WebConfig.handle(ctx, "GET", "/api/config", pin, emptyMap(), null)!!
         assertEquals(200, ok.status)

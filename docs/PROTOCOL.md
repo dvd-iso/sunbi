@@ -101,7 +101,7 @@ Corpo do `POST /v1/merge`:
   Noctalia). O app então só registra o aparelho como "conectado" e não tenta chamá-lo de volta.
   Com `true`, o app adiciona quem chamou como par, o que ajuda quando o mDNS só funciona num sentido.
 
-## Página do modo complexo (só no app)
+## Página do modo avançado (só no app)
 
 Na mesma porta, o app serve uma página de configuração para o navegador, **fora do protocolo
 de sync**: ela usa o cabeçalho `X-SunBi-Pin` (PIN de 6 dígitos mostrado em Ajustes) e só

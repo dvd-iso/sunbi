@@ -64,6 +64,25 @@ import com.dvdiso.sunbi.Prefs
 import kotlin.math.sin
 import kotlin.random.Random
 
+/** Selo pequeno do cabeçalho de Hoje: sequência e nível. Toque abre as conquistas. */
+@Composable
+fun GameChip(stats: Game.Stats, onOpen: () -> Unit) {
+    val cs = MaterialTheme.colorScheme
+    Row(
+        Modifier.clip(CircleShape).background(cs.surfaceContainerHigh)
+            .semantics { contentDescription = "Conquistas: ${stats.streak} dias seguidos, nível ${stats.level}" }
+            .bouncyClick(label = "Conquistas") { Feedback.tap(); onOpen() }
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(if (stats.streak > 0) "🔥" else "🌱", fontSize = 14.sp, modifier = Modifier.pulse(stats.goalCheckin && stats.streak > 0))
+        Spacer(Modifier.width(4.dp))
+        // tela estreita: só a sequência, para não cortar a saudação
+        val n = animatedInt(stats.streak)
+        Text(if (isNarrow()) "$n" else "$n · Nv ${stats.level}", style = MaterialTheme.typography.labelLarge, color = cs.onSurface, maxLines = 1)
+    }
+}
+
 /** Faixa em Hoje: sequência, nível e a barra até o próximo. Toque abre as conquistas. */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable

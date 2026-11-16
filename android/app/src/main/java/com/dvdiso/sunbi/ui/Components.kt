@@ -591,6 +591,7 @@ fun ScreenHeader(
     subtitle: String? = null,
     onSettings: (() -> Unit)? = null,
     leading: (@Composable () -> Unit)? = null,
+    trailing: (@Composable () -> Unit)? = null,
 ) {
     Row(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         if (leading != null) {
@@ -604,8 +605,9 @@ fun ScreenHeader(
                     maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
+        trailing?.invoke()
         if (onSettings != null) {
-            IconButton(onClick = onSettings) { Icon(Icons.Filled.Settings, contentDescription = "Ajustes") }
+            IconButton(onClick = { Feedback.tap(); onSettings() }) { Icon(Icons.Filled.Settings, contentDescription = "Ajustes") }
         }
     }
 }

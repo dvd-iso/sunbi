@@ -9,6 +9,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -27,6 +28,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Refresh
@@ -57,11 +59,13 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -81,44 +85,61 @@ import com.dvdiso.sunbi.isQuest
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun SettingsScreen(contentPadding: PaddingValues, onBack: () -> Unit, onRoutine: () -> Unit, onSunAI: () -> Unit) {
-    var sheet by rememberSaveable { mutableStateOf<String?>(null) } // "routine" | "sync"
+    val ctx = LocalContext.current
+    var sheet by rememberSaveable { mutableStateOf<String?>(null) }
     val peers by SyncManager.peers.collectAsState()
+    // recalcula as permissões ao voltar dos ajustes do Android
+    var resumed by remember { mutableIntStateOf(0) }
+    val owner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(owner) {
+        val obs = androidx.lifecycle.LifecycleEventObserver { _, e -> if (e == androidx.lifecycle.Lifecycle.Event.ON_RESUME) resumed++ }
+        owner.lifecycle.addObserver(obs)
+        onDispose { owner.lifecycle.removeObserver(obs) }
+    }
+    val fixes = remember(resumed) { permissionFixes(ctx) }
+
+    data class Item(val key: String, val title: String, val sub: String, val go: () -> Unit)
+    val items = buildList {
+        add(Item("look", "Aparência e sons", if (Prefs.uiSounds) "Sons e vibração ligados" else "Sons e vibração desligados") { sheet = "look" })
+        add(Item("alarms", "Alarmes e lembretes", if (Prefs.alarmsEnabled) "Alarmes ligados neste aparelho" else "Alarmes desligados neste aparelho") { sheet = "alarms" })
+        add(Item("routine", "Rotina e horários", "Semana ${Repo.tasks().size} · folga ${Repo.offTasks().size} tarefas") { onRoutine() })
+        add(Item("ai", "SunAI", if (Prefs.aiKey.isBlank()) "Configurar a chave" else "Ligada · ${Prefs.aiModel}") { onSunAI() })
+        add(Item("sync", "Sincronização", when (peers.size) { 0 -> "Nenhum aparelho"; 1 -> "1 aparelho"; else -> "${peers.size} aparelhos" }) { sheet = "sync" })
+        add(Item("web", "Modo avançado", if (Prefs.webConfig) "Ligado" else "Configurar pelo computador") { sheet = "web" })
+        if (!isQuest()) add(Item("launcher", "Tela inicial", if (Launcher.isEnabled(ctx)) "Ligada" else "Usar o SunBi como tela inicial") { sheet = "launcher" })
+    }
+
     LazyColumn(contentPadding = contentPadding, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
             ScreenHeader("Ajustes", leading = {
-                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Voltar") }
+                IconButton(onClick = { Feedback.tap(); onBack() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Voltar") }
             })
         }
-        item { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { PermissionHints() } }
-        item { GeneralCard(Modifier.enterFromBelow(0)) }
-        item {
-            Column(Modifier.enterFromBelow(1), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                val n = if (isQuest()) 4 else 5
-                NavRow("Rotina e horários", "Semana e folga · ${Repo.tasks().size} e ${Repo.offTasks().size} tarefas", 0, n) { Feedback.tap(); onRoutine() }
-                NavRow("SunAI", if (Prefs.aiKey.isBlank()) "Assistente com IA · configurar a chave" else "Assistente com IA · ${Prefs.aiModel}", 1, n) { Feedback.tap(); onSunAI() }
-                NavRow(
-                    "Sincronização",
-                    "Código ${Prefs.key} · " + when (peers.size) { 0 -> "nenhum aparelho"; 1 -> "1 aparelho"; else -> "${peers.size} aparelhos" },
-                    2, n,
-                ) { Feedback.tap(); sheet = "sync" }
-                NavRow(
-                    "Modo complexo",
-                    if (Prefs.webConfig) "Ligado · configure tudo pelo navegador do computador" else "Configuração completa pelo computador",
-                    3, n,
-                ) { Feedback.tap(); sheet = "web" }
-                if (!isQuest()) {
-                    val ctx = LocalContext.current
-                    NavRow(
-                        "Tela inicial (launcher)",
-                        if (Launcher.isEnabled(ctx)) "Ligado · a rotina do dia e seus apps na tela inicial" else "Usar o SunBi como tela inicial do telefone",
-                        4, n,
-                    ) { Feedback.tap(); sheet = "launcher" }
+        if (fixes.isNotEmpty()) {
+            item {
+                val cs = MaterialTheme.colorScheme
+                Row(
+                    Modifier.fillMaxWidth().enterFromBelow(0).clip(MaterialTheme.shapes.large).background(cs.errorContainer)
+                        .bouncyClick(label = "Resolver permissões") { Feedback.tap(); sheet = "perms" }
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Filled.Warning, null, Modifier.size(20.dp), tint = cs.onErrorContainer)
+                    Spacer(Modifier.width(12.dp))
+                    Text(if (fixes.size == 1) "1 permissão pendente" else "${fixes.size} permissões pendentes",
+                        Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge, color = cs.onErrorContainer)
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = cs.onErrorContainer)
                 }
             }
         }
         item {
+            Column(Modifier.enterFromBelow(1), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                items.forEachIndexed { i, it -> NavRow(it.title, it.sub, i, items.size) { Feedback.tap(); it.go() } }
+            }
+        }
+        item {
             Text(
-                "SunBi ${BuildConfig.VERSION_NAME}\nO SunBi organiza e observa; não diagnostica nem substitui seu tratamento.",
+                "SunBi ${BuildConfig.VERSION_NAME} · organiza e observa; não diagnostica nem substitui seu tratamento.",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(8.dp),
             )
@@ -126,19 +147,26 @@ fun SettingsScreen(contentPadding: PaddingValues, onBack: () -> Unit, onRoutine:
         item { Spacer(Modifier.height(24.dp)) }
     }
     when (sheet) {
+        "perms" -> EditorSheet("Permissões", "Sem elas os alarmes podem não tocar na hora ou não aparecer.", { sheet = null }) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                fixes.forEachIndexed { i, (title, fix) -> NavRow(title, "Toque para resolver", i, fixes.size) { Feedback.tap(); runCatching(fix) } }
+            }
+        }
+        "look" -> EditorSheet("Aparência e sons", onDismiss = { sheet = null }) { LookCard() }
+        "alarms" -> EditorSheet("Alarmes e lembretes", onDismiss = { sheet = null }) { AlarmsCard() }
         "sync" -> EditorSheet(
             "Sincronização",
             "Seus aparelhos se encontram na rede de casa e trocam os dados direto entre si, sem servidor.",
             { sheet = null },
         ) { SyncCard() }
         "web" -> EditorSheet(
-            "Modo complexo",
+            "Modo avançado",
             "Uma página servida por este aparelho para configurar o SunBi inteiro com calma, no computador.",
             { sheet = null },
         ) { WebConfigCard() }
         "launcher" -> EditorSheet(
             "Tela inicial",
-            "O SunBi vira a tela inicial do telefone: relógio, a tarefa da vez, o check-in e seus apps em texto, sem ícones gritando.",
+            "O SunBi vira a tela inicial do telefone: relógio, a tarefa da vez e seus apps em texto, sem ícones gritando.",
             { sheet = null },
         ) { LauncherCard() }
     }
@@ -223,7 +251,7 @@ private fun WebConfigCard() {
     var pin by remember { mutableStateOf(Prefs.webPin) }
     val cs = MaterialTheme.colorScheme
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        SwitchRow("Ligar o modo complexo", "Rotinas, sinais, planos, pessoas, registros, ajustes e backup", on) {
+        SwitchRow("Ligar o modo avançado", "Rotinas, sinais, planos, pessoas, registros e backup", on) {
             Feedback.tick()
             WebConfig.enable(ctx, it)
             on = it
@@ -242,7 +270,7 @@ private fun WebConfigCard() {
                     }
                 }
                 Text(
-                    "Os dois precisam estar na mesma rede Wi-Fi. Digite o endereço com http:// no começo. Desliga sozinho depois de 1 hora sem uso; cinco PINs errados também desligam.",
+                    "No PC com o plugin do Noctalia, use o botão do globo no painel do SunBi: ele já abre o endereço certo. Em outro computador, digite o endereço inteiro, com http:// no começo (com https:// não abre). Desliga sozinho depois de 1 hora sem uso.",
                     style = MaterialTheme.typography.bodyMedium, color = cs.onSurfaceVariant,
                 )
                 TextButton(onClick = { Feedback.tick(); Prefs.webPin = WebConfig.newPin(); pin = Prefs.webPin }) { Text("Gerar outro PIN") }
@@ -264,50 +292,46 @@ private fun SwitchRow(title: String, subtitle: String?, checked: Boolean, onChan
 }
 
 /** Tudo o que é liga/desliga num cartão só. */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun GeneralCard(modifier: Modifier = Modifier) {
-    val ctx = LocalContext.current
+private fun LookCard() {
     var dyn by remember { mutableStateOf(Prefs.dynamicColor) }
     var ui by remember { mutableStateOf(Prefs.uiSounds) }
+    SwitchRow("Cores do sistema", "Acompanha o papel de parede (Material You)", dyn) {
+        Feedback.tick()
+        dyn = it
+        Prefs.dynamicColor = it
+        ThemeState.load()
+    }
+    SwitchRow("Sons e vibração", "Cada ação tem um toque próprio", ui) {
+        ui = it
+        Prefs.uiSounds = it
+        if (it) Feedback.toggle(true)
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun AlarmsCard() {
+    val ctx = LocalContext.current
     var alarms by remember { mutableStateOf(Prefs.alarmsEnabled) }
     var remind by remember { mutableStateOf(Prefs.checkinReminder) }
     var tone by remember { mutableStateOf(Prefs.alarmSound) }
     var preview by remember { mutableStateOf<MediaPlayer?>(null) }
     DisposableEffect(Unit) { onDispose { preview?.release() } }
-    SectionCard("Geral", modifier) {
-        SwitchRow("Cores do sistema", "Acompanha o papel de parede (Material You)", dyn) {
-            dyn = it
-            Prefs.dynamicColor = it
-            ThemeState.load()
-        }
-        SwitchRow("Sons e vibração", "Cada ação tem um toque próprio: marcar, fechar o dia, conquistas", ui) {
-            ui = it
-            Prefs.uiSounds = it
-            if (it) Feedback.toggle(true)
-        }
-        SwitchRow("Lembrete de check-in às 21h", "Só se o dia ainda não tiver registro", remind) {
-            remind = it
-            Prefs.checkinReminder = it
-            Reminders.schedule(ctx)
-        }
-        SwitchRow("Alarmes neste aparelho", if (isQuest()) "No Quest só toca com o headset ligado" else "Sem soneca: só Feito ou Parar", alarms) {
-            alarms = it
-            Prefs.alarmsEnabled = it
-            AlarmScheduler.scheduleAll(ctx)
-        }
-        if (alarms) {
+    SwitchRow("Alarmes neste aparelho", if (isQuest()) "No Quest só toca com o headset ligado" else "Sem soneca: só Concluído ou Parar", alarms) {
+        Feedback.tick()
+        alarms = it
+        Prefs.alarmsEnabled = it
+        AlarmScheduler.scheduleAll(ctx)
+    }
+    androidx.compose.animation.AnimatedVisibility(alarms) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Label("Os alarmes tocam em")
-            val mine = Repo.alarmDevice() == Prefs.device
-            ChoiceGroup(listOf(false to "Todos os aparelhos", true to "Só neste"), mine, { v ->
+            ChoiceGroup(listOf(false to "Todos os aparelhos", true to "Só neste"), Repo.alarmDevice() == Prefs.device, { v ->
                 if (v == null) return@ChoiceGroup
                 Repo.set("alarm_device", if (v) Prefs.device else null)
             })
-            Repo.alarmDevice()?.takeIf { it != Prefs.device }?.let {
-                Text("Hoje quem toca é o aparelho $it. Escolha \"Só neste\" para trazer os alarmes para cá.",
-                    style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            Label("Toque do alarme")
+            Label("Toque")
             ChoiceGroup(listOf("amanhecer" to "Amanhecer", "girassol" to "Girassol"), tone, { v ->
                 if (v == null) return@ChoiceGroup
                 tone = v
@@ -319,46 +343,37 @@ private fun GeneralCard(modifier: Modifier = Modifier) {
                 }
             })
             TextButton(onClick = {
+                Feedback.tap()
                 val t = Repo.tasks().firstOrNull() ?: return@TextButton
                 ctx.startForegroundService(Intent(ctx, RingService::class.java).setAction(RingService.START).putExtra("task", t.id))
             }) { Text("Testar o alarme agora") }
         }
     }
+    SwitchRow("Lembrete de check-in às 21h", "Só se o dia ainda não tiver registro", remind) {
+        Feedback.tick()
+        remind = it
+        Prefs.checkinReminder = it
+        Reminders.schedule(ctx)
+    }
 }
 
-@Composable
-private fun PermissionHints() {
-    val ctx = LocalContext.current
+/** Permissões que faltam, cada uma com o atalho para resolver. */
+private fun permissionFixes(ctx: Context): List<Pair<String, () -> Unit>> {
     val pkg = Uri.parse("package:${ctx.packageName}")
     val nm = ctx.getSystemService(NotificationManager::class.java)
+    val out = mutableListOf<Pair<String, () -> Unit>>()
     if (!AlarmScheduler.canScheduleExact(ctx) && Build.VERSION.SDK_INT >= 31) {
-        Hint("Alarmes exatos estão bloqueados.") { ctx.startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, pkg)) }
+        out += "Alarmes exatos estão bloqueados" to { ctx.startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, pkg)) }
     }
     if (Build.VERSION.SDK_INT >= 34 && !nm.canUseFullScreenIntent()) {
-        Hint("O alarme não pode abrir em tela cheia.") { ctx.startActivity(Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, pkg)) }
+        out += "O alarme não pode abrir em tela cheia" to { ctx.startActivity(Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, pkg)) }
     }
     if (Build.VERSION.SDK_INT >= 33 && !nm.areNotificationsEnabled()) {
-        Hint("As notificações estão desligadas.") {
+        out += "As notificações estão desligadas" to {
             ctx.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, ctx.packageName))
         }
     }
-}
-
-@Composable
-private fun Hint(text: String, fix: () -> Unit) {
-    val cs = MaterialTheme.colorScheme
-    Card(shape = MaterialTheme.shapes.large, colors = CardDefaults.cardColors(containerColor = cs.errorContainer, contentColor = cs.onErrorContainer)) {
-        Column(Modifier.fillMaxWidth().padding(start = 14.dp, end = 8.dp, top = 12.dp, bottom = 4.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Filled.Warning, null, Modifier.size(20.dp))
-                Spacer(Modifier.width(10.dp))
-                Text(text, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
-            }
-            TextButton(onClick = { runCatching(fix) }, modifier = Modifier.align(Alignment.End)) {
-                Text("Resolver", fontWeight = FontWeight.Bold, color = cs.onErrorContainer)
-            }
-        }
-    }
+    return out
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
