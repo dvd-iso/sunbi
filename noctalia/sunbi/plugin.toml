@@ -1,0 +1,60 @@
+# SunBi para Noctalia v5: rotina, humor e foco para bipolaridade e TDAH.
+#
+# service -> conversa com o daemon sunbid (127.0.0.1), toca os alarmes
+# bar     -> mostra quantas tarefas do dia estão feitas; vira alarme quando toca
+# panel   -> agora/próxima, foco, humor, checklist e anotação
+#
+# IPC: noctalia msg plugin dvd-iso/sunbi:service all toggle <id>|done|stop|focus <min>|focus-stop|humor <n>|refresh
+
+id = "dvd-iso/sunbi"
+name = "SunBi"
+version = "0.2.0"
+plugin_api = 43
+author = "dvd-iso"
+license = "MIT"
+dependencies = ["sunbid"]
+tags = ["productivity", "health", "time"]
+icon = "flower"
+description = "Routine companion for bipolar disorder and ADHD: alarms, checklist, mood and focus timer, synced peer-to-peer with Android and Meta Quest."
+
+[[setting]]
+key = "port"
+type = "int"
+label_key = "settings.port.label"
+description_key = "settings.port.description"
+default = 47321
+min = 1024
+max = 65535
+
+[[setting]]
+key = "alarms"
+type = "bool"
+label_key = "settings.alarms.label"
+description_key = "settings.alarms.description"
+default = true
+
+[[setting]]
+key = "ring_seconds"
+type = "int"
+label_key = "settings.ring_seconds.label"
+description_key = "settings.ring_seconds.description"
+default = 45
+min = 0
+max = 300
+
+[[widget]]
+id = "bar"
+entry = "bar.luau"
+
+[[panel]]
+id = "panel"
+entry = "panel.luau"
+width = 380
+height = 600
+placement = "attached"
+position = "auto"
+open_near_click = true
+
+[[service]]
+id = "service"
+entry = "service.luau"

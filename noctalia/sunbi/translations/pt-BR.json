@@ -1,0 +1,27 @@
+{
+  "settings": {
+    "port": { "label": "Porta do sunbid", "description": "Porta local do daemon de sincronização (padrão 47321)" },
+    "alarms": { "label": "Tocar alarmes no PC", "description": "Notificação e som na hora de cada tarefa ainda não feita" },
+    "ring_seconds": { "label": "Duração do alarme (segundos)", "description": "Por quanto tempo o som repete. 0 deixa só a notificação." }
+  },
+  "ui": {
+    "offline": "O sunbid não está respondendo. Inicie o daemon para ver e sincronizar sua rotina.",
+    "retry": "Tentar de novo",
+    "progress": "{done} de {total} tarefas feitas hoje",
+    "stop": "Parar",
+    "done": "Feito",
+    "humor": "Humor de hoje (-3 para baixo · 0 estável · +3 acelerado)",
+    "note_placeholder": "Anotação do dia (Enter salva)",
+    "next": "Próxima",
+    "now": "Agora",
+    "in_min": "em {m} min",
+    "late_min": "{m} min atrás",
+    "all_done": "Nada pendente por agora",
+    "focus": "Foco {m} min",
+    "focus_left": "Foco: faltam {t}",
+    "focus_end": "Tempo de foco acabou",
+    "focus_end_body": "Marque como feito ou faça mais um bloco.",
+    "first_step": "Primeiro passo: {s}",
+    "sleep": "Sono: {h} h"
+  }
+}

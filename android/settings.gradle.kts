@@ -12,5 +12,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "SunflowerClocks"
+rootProject.name = "SunBi"
 include(":app")

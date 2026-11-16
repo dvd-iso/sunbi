@@ -1,0 +1,27 @@
+{
+  "settings": {
+    "port": { "label": "sunbid port", "description": "Local port of the sync daemon (default 47321)" },
+    "alarms": { "label": "Ring alarms on this PC", "description": "Notification and sound when an unfinished task is due" },
+    "ring_seconds": { "label": "Alarm length (seconds)", "description": "How long the sound repeats. 0 shows only the notification." }
+  },
+  "ui": {
+    "offline": "sunbid is not responding. Start the daemon to see and sync your routine.",
+    "retry": "Retry",
+    "progress": "{done} of {total} tasks done today",
+    "stop": "Stop",
+    "done": "Done",
+    "humor": "Mood today (-3 down · 0 stable · +3 up)",
+    "note_placeholder": "Note for today (Enter saves)",
+    "next": "Next",
+    "now": "Now",
+    "in_min": "in {m} min",
+    "late_min": "{m} min ago",
+    "all_done": "Nothing pending right now",
+    "focus": "Focus {m} min",
+    "focus_left": "Focus: {t} left",
+    "focus_end": "Focus time is over",
+    "focus_end_body": "Mark it done or start another block.",
+    "first_step": "First step: {s}",
+    "sleep": "Sleep: {h} h"
+  }
+}
