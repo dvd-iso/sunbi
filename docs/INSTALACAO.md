@@ -175,6 +175,8 @@ Em **Settings → Secrets and variables → Actions**, crie `SUNBI_KEYSTORE_BASE
 `SUNBI_KEYSTORE_PASSWORD`, `SUNBI_KEY_ALIAS` (`sunbi`) e `SUNBI_KEY_PASSWORD`. Guarde o `.jks`
 num lugar seguro: sem ele, versões futuras não instalam por cima.
 
-Depois, `git tag v0.6.0 && git push --tags` gera a Release com o `sunbi.apk` e o `sunbi-extensao.zip`. Sem os secrets,
+Depois, `git tag v0.6.0 && git push --tags` gera a Release com o `sunbi.apk` e o `sunbi-extensao.zip`.
+Também dá para publicar sem tag local: em **Actions → build → Run workflow**, preencha **release**
+com a versão (`v0.6.0`) e o CI cria a tag no commit construído. Sem os secrets,
 o CI ainda gera APKs de teste (assinados com a chave pública `dev-debug.keystore`), mas se recusa
 a publicar uma Release.

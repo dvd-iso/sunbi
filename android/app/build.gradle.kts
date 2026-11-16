@@ -13,7 +13,8 @@ android {
         targetSdk = 35
         versionCode = (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInt()
         // tag v1.2.3 → versão 1.2.3; fora de tag, 0.2.<número do build>
-        versionName = System.getenv("GITHUB_REF_NAME")?.takeIf { it.matches(Regex("v\\d+\\.\\d+\\.\\d+")) }?.drop(1)
+        versionName = listOf(System.getenv("SUNBI_VERSION"), System.getenv("GITHUB_REF_NAME"))
+            .firstOrNull { it != null && it.matches(Regex("v\\d+\\.\\d+\\.\\d+")) }?.drop(1)
             ?: "0.2.${System.getenv("GITHUB_RUN_NUMBER") ?: "0"}"
     }
 
