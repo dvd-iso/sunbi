@@ -447,7 +447,7 @@ private fun <T> OptionList(options: List<Pair<T, String>>, selected: T, onPick: 
             Row(
                 Modifier.fillMaxWidth().clip(MaterialTheme.shapes.large)
                     .background(if (on) cs.primaryContainer else cs.surfaceContainerHigh)
-                    .semantics { role = Role.RadioButton; selected = on }
+                    .semantics { role = Role.RadioButton; this.selected = on }
                     .bouncyClick { Feedback.tick(); onPick(v) }
                     .padding(horizontal = 18.dp, vertical = 16.dp),
                 verticalAlignment = Alignment.CenterVertically,
