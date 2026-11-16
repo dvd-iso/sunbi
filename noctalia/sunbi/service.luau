@@ -393,6 +393,20 @@ local commands = {
     discover()
     syncAll()
   end,
+  -- abre o modo avançado do celular no navegador, já com http:// (o navegador não troca para https)
+  web = function()
+    local best
+    for _, p in pairs(peers) do
+      if p.addr and (best == nil or (p.ok and not best.ok)) then
+        best = p
+      end
+    end
+    if not best then
+      noctalia.notify("SunBi", I.t("ui.web_no_device"))
+      return
+    end
+    noctalia.runAsync({ "xdg-open", `http://{best.addr}/` }, function() end)
+  end,
   refresh = function()
     publish()
     publishSync()

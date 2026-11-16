@@ -57,6 +57,8 @@
     "code": "Código: {k}",
     "no_devices": "Nenhum aparelho ainda. Use o mesmo código no app (Ajustes → Sincronização).",
     "sync_now": "Sincronizar",
+    "web": "Abrir o modo avançado do celular no navegador",
+    "web_no_device": "Nenhum celular encontrado ainda. Abra o SunBi no celular, na mesma rede.",
     "focus_title": "Foco",
     "hide_done": "Esconder as feitas",
     "show_done": "Ver {n} feitas",

@@ -57,6 +57,8 @@
     "code": "Code: {k}",
     "no_devices": "No devices yet. Use the same code in the app (Settings → Sync).",
     "sync_now": "Sync",
+    "web": "Open the phone's advanced mode in the browser",
+    "web_no_device": "No phone found yet. Open SunBi on the phone, on the same network.",
     "focus_title": "Focus",
     "hide_done": "Hide done",
     "show_done": "Show {n} done",

@@ -118,8 +118,32 @@ object Launcher {
         ctx.getSystemService(LauncherApps::class.java).startAppDetailsActivity(app.component, app.user, null, null)
     }
 
-    fun uninstall(ctx: Context, app: AppEntry) = runCatching {
-        ctx.startActivity(Intent(Intent.ACTION_DELETE, Uri.parse("package:${app.component.packageName}")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    /** App de sistema (não dá para desinstalar, só desativar nas informações do app). */
+    fun isSystem(ctx: Context, app: AppEntry): Boolean = runCatching {
+        val info = ctx.getSystemService(LauncherApps::class.java).getApplicationInfo(app.component.packageName, 0, app.user)
+        info.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM != 0
+    }.getOrDefault(false)
+
+    /**
+     * Pede ao Android para desinstalar (ele mostra a confirmação). App de sistema ou de outro
+     * perfil (trabalho) abre as informações do app, onde o Android oferece o que for possível.
+     * Devolve false quando caiu nas informações.
+     */
+    fun uninstall(ctx: Context, app: AppEntry): Boolean {
+        if (app.user != Process.myUserHandle() || isSystem(ctx, app)) {
+            appInfo(ctx, app)
+            return false
+        }
+        val ok = runCatching {
+            ctx.startActivity(
+                Intent(Intent.ACTION_DELETE, Uri.parse("package:${app.component.packageName}"))
+                    .putExtra(Intent.EXTRA_RETURN_RESULT, false)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+            true
+        }.getOrDefault(false)
+        if (!ok) appInfo(ctx, app)
+        return ok
     }
 
     fun openSunBi(ctx: Context) {

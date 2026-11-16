@@ -257,6 +257,7 @@ local function status()
     ui.glyph({ name = ok > 0 and "devices-check" or "devices", size = 16, color = ok > 0 and "primary" or "on_surface_variant" }),
     small(text .. " · " .. I.t("ui.code", { k = sync.key or "" })),
     ui.spacer({ flexGrow = 1 }),
+    ui.button({ glyph = "world", variant = "ghost", controlSize = "sm", tooltip = I.t("ui.web"), onClick = function() send("web") end }),
     ui.button({ glyph = "refresh", variant = "ghost", controlSize = "sm", tooltip = I.t("ui.sync_now"), onClick = function() send("sync") end }),
   })
 end

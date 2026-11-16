@@ -71,9 +71,6 @@ que é GPL-3.0 e por isso não foi copiado.
 
 - **Widget:** segure a tela inicial do Android → Widgets → "SunBi · Agora". Atualiza a cada
   mudança, a cada alarme e a cada meia hora.
-- **Travar a tela com dois toques** (launcher): o Android exige um serviço de acessibilidade.
-  Ative "SunBi · travar a tela" em Ajustes do Android → Acessibilidade. O serviço não lê a
-  tela (`canRetrieveWindowContent=false`); só executa a ação de bloquear.
 - **Sono do relógio:** precisa do app Health Connect (embutido no Android 14+) e de um relógio
   ou pulseira que grave sessões de sono nele. A permissão de leitura é pedida no primeiro
   "Puxar do relógio". Não foi testado em aparelho real nesta versão.
@@ -133,7 +130,7 @@ Android (`Haptics.kt`).
 | `Sync.kt` | servidor HTTP, mDNS e sincronização; `WebConfig.kt` | API da página do modo complexo (`assets/web/index.html`) |
 | `Alarms.kt` | alarmes, toque, bloco de foco; `Haptics.kt`, `Sfx.kt` | vibrações e sons |
 | `Reminders.kt` | lembrete de check-in e resumo semanal (WorkManager); `Widget.kt` | widget "Agora" |
-| `Launcher.kt`, `ui/LauncherScreen.kt` | modo launcher; `LockService.kt` | travar a tela com dois toques |
+| `Launcher.kt`, `ui/LauncherScreen.kt` | modo launcher (sem acessibilidade: o SunBi não usa serviços de acessibilidade) |
 | `Health.kt` | sono do relógio pelo Health Connect |
 | `ui/` | telas em Compose (Material 3 Expressive) |
 

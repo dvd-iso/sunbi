@@ -7,9 +7,4 @@
     </style>
     <color name="bg">#FFFFF8F2</color>
     <color name="ic_bg">#FFFFF4D6</color>
-    <!-- Modo launcher: mostra o papel de parede atrás da tela inicial -->
-    <style name="Theme.SunBi.Launcher" parent="Theme.SunBi">
-        <item name="android:windowShowWallpaper">true</item>
-        <item name="android:windowBackground">@android:color/transparent</item>
-    </style>
 </resources>

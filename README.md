@@ -150,8 +150,6 @@ culpa. Enquanto vale, um selo pequeno em Hoje avisa e, com um toque, volta à ro
   o PC e deixa o celular tocar.
 - **Sono do relógio:** no check-in, "Puxar do relógio" copia a noite do Health Connect
   (só leitura, só quando a pessoa pede).
-- **Travar a tela** com dois toques no fundo da tela inicial do launcher, por um serviço de
-  acessibilidade que só faz isso.
 
 ### Pontos e conquistas, sem culpa
 

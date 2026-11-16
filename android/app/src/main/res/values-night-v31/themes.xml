@@ -7,9 +7,4 @@
         <item name="android:windowSplashScreenBackground">@color/bg</item>
         <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
     </style>
-    <!-- Modo launcher: mostra o papel de parede atrás da tela inicial -->
-    <style name="Theme.SunBi.Launcher" parent="Theme.SunBi">
-        <item name="android:windowShowWallpaper">true</item>
-        <item name="android:windowBackground">@android:color/transparent</item>
-    </style>
 </resources>

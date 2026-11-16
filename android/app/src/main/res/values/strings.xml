@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">SunBi</string>
-    <string name="lock_service_desc">Trava a tela quando você toca duas vezes na tela inicial do SunBi. O serviço não lê o conteúdo da tela nem de outros apps.</string>
 </resources>
