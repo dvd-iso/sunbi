@@ -11,6 +11,7 @@
 -- Comandos chegam por noctalia.state("sb.cmd") ou por IPC.
 
 local S = require("./lib/store.luau")
+local I = require("./lib/i18n.luau")
 
 noctalia.setUpdateInterval(1000)
 
@@ -280,7 +281,7 @@ local function ring(task)
   publish()
   local body = task.label
   if task.step and task.step ~= "" then
-    body = body .. "\n" .. noctalia.tr("ui.first_step", { s = task.step })
+    body = body .. "\n" .. I.t("ui.first_step", { s = task.step })
   end
   noctalia.notify("SunBi · " .. task.time, body)
   play(alarmSound())
@@ -320,7 +321,7 @@ local function checkFocus()
     local label = focus.task and focus.task.label
     focus = nil
     publish()
-    noctalia.notify(noctalia.tr("ui.focus_end"), (label and (label .. " · ") or "") .. noctalia.tr("ui.focus_end_body"))
+    noctalia.notify(I.t("ui.focus_end"), (label and (label .. " · ") or "") .. I.t("ui.focus_end_body"))
     play("focus_end")
   end
 end

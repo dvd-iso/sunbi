@@ -19,6 +19,18 @@ icon = "flower"
 description = "Routine companion for bipolar disorder and ADHD: alarms, checklist, mood and focus timer, synced peer-to-peer with the Android and Meta Quest app. No daemon needed."
 
 [[setting]]
+key = "language"
+type = "select"
+label_key = "settings.language.label"
+description_key = "settings.language.description"
+default = "pt-BR"
+options = [
+  { value = "pt-BR", label_key = "settings.language.pt" },
+  { value = "en", label_key = "settings.language.en" },
+  { value = "auto", label_key = "settings.language.auto" },
+]
+
+[[setting]]
 key = "key"
 type = "string"
 label_key = "settings.key.label"
@@ -74,8 +86,7 @@ entry = "bar.luau"
 id = "panel"
 entry = "panel.luau"
 width = 400
-height = "content"
-max_height = 760
+height = 640
 placement = "attached"
 position = "auto"
 open_near_click = true

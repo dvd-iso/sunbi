@@ -1,5 +1,12 @@
 {
   "settings": {
+    "language": {
+      "label": "Idioma",
+      "description": "Idioma do painel e dos avisos do SunBi",
+      "pt": "Português",
+      "en": "English",
+      "auto": "Igual ao Noctalia"
+    },
     "key": {
       "label": "Código de pareamento",
       "description": "O mesmo código em todos os aparelhos. Vazio usa o código gerado por este PC (aparece no painel)."
@@ -31,8 +38,8 @@
     "offline": "O serviço do SunBi ainda não iniciou. Ative o plugin em Ajustes → Plugins.",
     "progress": "{done} de {total} tarefas feitas hoje",
     "stop": "Parar",
-    "done": "Feito",
-    "humor": "Humor de hoje",
+    "done": "Concluído",
+    "humor": "Humor",
     "humor_hint": "-3 para baixo · 0 estável · +3 acelerado",
     "note_placeholder": "Anotação do dia (Enter salva)",
     "next": "Próxima",
@@ -51,7 +58,6 @@
     "no_devices": "Nenhum aparelho ainda. Use o mesmo código no app (Ajustes → Sincronização).",
     "sync_now": "Sincronizar",
     "focus_title": "Foco",
-    "focus_hint": "Um bloco curto para começar. Depois dá para somar +5 min.",
     "hide_done": "Esconder as feitas",
     "show_done": "Ver {n} feitas",
     "add_note": "Anotação do dia",
@@ -59,6 +65,7 @@
     "devices_count": {
       "one": "{n} aparelho conectado",
       "other": "{n} aparelhos conectados"
-    }
+    },
+    "settings": "Configurações do SunBi"
   }
 }

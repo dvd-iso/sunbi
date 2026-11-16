@@ -3,6 +3,7 @@
 -- linha de status. O resto (feitas, anotação, aparelhos) aparece só quando pedido.
 
 local S = require("./lib/store.luau")
+local I = require("./lib/i18n.luau")
 
 noctalia.setUpdateInterval(1000)
 
@@ -43,6 +44,8 @@ local function header(done, total)
       ui.glyph({ name = "flower", size = 22, color = "primary" }),
       ui.label({ text = "SunBi", fontSize = 17, fontWeight = "bold", flexGrow = 1 }),
       ui.label({ text = `{done}/{total}`, fontSize = 15, fontWeight = "bold", color = "primary" }),
+      ui.button({ glyph = "settings", variant = "ghost", controlSize = "sm", tooltip = I.t("ui.settings"),
+        onClick = function() noctalia.openSettings() end }),
     }),
     ui.progress({ progress = total > 0 and done / total or 0, height = 6, radius = 3, fill = "primary", track = "surface_container_high" }),
   })
@@ -55,8 +58,8 @@ local function topCard()
       small(ringing.time or "", "error"),
       ui.label({ text = ringing.label or "", fontSize = 16, fontWeight = "bold", maxLines = 3 }),
       ui.row({ gap = 8 }, {
-        ui.button({ text = noctalia.tr("ui.stop"), variant = "outline", flexGrow = 1, onClick = function() send("stop") end }),
-        ui.button({ text = noctalia.tr("ui.done"), variant = "primary", glyph = "check", flexGrow = 1, onClick = function() send("done", ringing.id) end }),
+        ui.button({ text = I.t("ui.stop"), variant = "outline", flexGrow = 1, onClick = function() send("stop") end }),
+        ui.button({ text = I.t("ui.done"), variant = "primary", glyph = "check", flexGrow = 1, onClick = function() send("done", ringing.id) end }),
       }),
     })
   end
@@ -66,16 +69,16 @@ local function topCard()
     local total = math.max(1, focus.total or 1)
     local label = focus.task and focus.task.label
     return card("primary_container", {
-      small(string.upper(noctalia.tr("ui.focus_title")), "primary"),
+      small(string.upper(I.t("ui.focus_title")), "primary"),
       ui.row({ gap = 10, align = "center" }, {
         ui.label({ text = mmss(left), fontSize = 30, fontWeight = "bold" }),
         label and ui.label({ text = label, fontSize = 13, maxLines = 2, flexGrow = 1 }) or ui.spacer({ flexGrow = 1 }),
       }),
       ui.progress({ progress = math.clamp(left / total, 0, 1), height = 6, radius = 3, fill = "primary", track = "surface_container_high" }),
       ui.row({ gap = 8 }, {
-        ui.button({ text = noctalia.tr("ui.stop"), variant = "outline", flexGrow = 1, onClick = function() send("focus-stop") end }),
+        ui.button({ text = I.t("ui.stop"), variant = "outline", flexGrow = 1, onClick = function() send("focus-stop") end }),
         ui.button({ text = "+5 min", variant = "secondary", flexGrow = 1, onClick = function() send("extend", "5") end }),
-        (focus.task and focus.task.id) and ui.button({ text = noctalia.tr("ui.done"), glyph = "check", variant = "primary", flexGrow = 1,
+        (focus.task and focus.task.id) and ui.button({ text = I.t("ui.done"), glyph = "check", variant = "primary", flexGrow = 1,
           onClick = function() send("done", focus.task.id) end }) or ui.spacer({ width = 0 }),
       }),
     })
@@ -84,22 +87,18 @@ local function topCard()
   local t, mins, late = S.nowOrNext(day, nowMin())
   if not t then
     return card("surface_container", {
-      ui.label({ text = noctalia.tr("ui.all_done"), fontSize = 15, fontWeight = "semibold" }),
+      ui.label({ text = I.t("ui.all_done"), fontSize = 15, fontWeight = "semibold" }),
     })
   end
-  local when = late and noctalia.tr("ui.late_min", { m = mins }) or noctalia.tr("ui.in_min", { m = mins })
+  local when = late and I.t("ui.late_min", { m = mins }) or I.t("ui.in_min", { m = mins })
   local children = {
-    small(string.upper(late and noctalia.tr("ui.now") or noctalia.tr("ui.next")) .. " · " .. t.time .. " · " .. when, "primary"),
+    small(string.upper(late and I.t("ui.now") or I.t("ui.next")) .. " · " .. t.time .. " · " .. when, "primary"),
     ui.label({ text = t.label, fontSize = 16, fontWeight = "bold", maxLines = 3 }),
   }
   if t.step and t.step ~= "" then
-    table.insert(children, ui.label({ text = noctalia.tr("ui.first_step", { s = t.step }), fontSize = 13, color = "on_surface_variant", maxLines = 2 }))
+    table.insert(children, ui.label({ text = I.t("ui.first_step", { s = t.step }), fontSize = 13, color = "on_surface_variant", maxLines = 2 }))
   end
-  table.insert(children, ui.row({ gap = 8 }, {
-    ui.button({ text = noctalia.tr("ui.focus", { m = 5 }), glyph = "player-play", variant = "primary", flexGrow = 1,
-      tooltip = noctalia.tr("ui.focus_hint"), onClick = function() send("focus", "5 " .. t.id) end }),
-    ui.button({ text = noctalia.tr("ui.done"), glyph = "check", variant = "secondary", flexGrow = 1, onClick = function() send("toggle", t.id) end }),
-  }))
+  table.insert(children, ui.button({ text = I.t("ui.done"), glyph = "check", variant = "primary", onClick = function() send("toggle", t.id) end }))
   return card("primary_container", children)
 end
 
@@ -112,7 +111,7 @@ local function taskRow(task, isDone)
     paddingH = 10,
     paddingV = 7,
     radius = 12,
-    tooltip = (task.step and task.step ~= "" and not isDone) and noctalia.tr("ui.first_step", { s = task.step }) or nil,
+    tooltip = (task.step and task.step ~= "" and not isDone) and I.t("ui.first_step", { s = task.step }) or nil,
     onClick = function() send("toggle", task.id) end,
   }, {
     ui.glyph({ name = isDone and "circle-check-filled" or "circle", size = 20, color = isDone and "primary" or "on_surface_variant" }),
@@ -132,7 +131,7 @@ local function tasks()
   end
   if doneN > 0 then
     table.insert(rows, ui.button({
-      text = showDone and noctalia.tr("ui.hide_done") or noctalia.tr("ui.show_done", { n = doneN }),
+      text = showDone and I.t("ui.hide_done") or I.t("ui.show_done", { n = doneN }),
       glyph = showDone and "chevron-up" or "chevron-down",
       variant = "ghost", controlSize = "sm", contentAlign = "start",
       onClick = function()
@@ -148,7 +147,8 @@ local function tasks()
       end
     end
   end
-  return ui.scroll({ gap = 2, height = 260 }, rows)
+  -- ocupa o espaço que sobra no painel e rola por dentro
+  return ui.scroll({ gap = 2, flexGrow = 1 }, rows)
 end
 
 local function mood()
@@ -160,23 +160,25 @@ local function mood()
       variant = day.humor == i and "primary" or "ghost",
       selected = day.humor == i,
       flexGrow = 1,
-      controlSize = "sm",
+      fontSize = 13,
+      height = 30,
       onClick = function() send("humor", tostring(i)) end,
     }))
   end
   local children = {
-    ui.row({ align = "center", gap = 8 }, {
-      ui.label({ text = noctalia.tr("ui.humor"), fontSize = 14, fontWeight = "semibold", flexGrow = 1 }),
-      ui.label({ text = day.humorLabel or noctalia.tr("ui.humor_hint"), fontSize = 12, color = day.humorLabel and "primary" or "on_surface_variant", maxLines = 1 }),
+    ui.row({ align = "center", gap = 8, tooltip = I.t("ui.humor_hint") }, {
+      ui.label({ text = I.t("ui.humor"), fontSize = 14, fontWeight = "semibold", maxLines = 1 }),
+      ui.spacer({ flexGrow = 1 }),
+      ui.label({ text = day.humorLabel or "", fontSize = 12, fontWeight = "semibold", color = "primary", maxLines = 1 }),
     }),
-    ui.row({ gap = 2 }, hb),
+    ui.row({ gap = 0 }, hb),
   }
   local hasNote = (day.note or "") ~= ""
   if showNote or hasNote then
     table.insert(children, ui.input({
       key = "note",
       value = noteDraft or day.note or "",
-      placeholder = noctalia.tr("ui.note_placeholder"),
+      placeholder = I.t("ui.note_placeholder"),
       submitOnEnter = true,
       onChange = function(v) noteDraft = v end,
       onSubmit = function(v)
@@ -186,7 +188,7 @@ local function mood()
     }))
   else
     table.insert(children, ui.button({
-      text = noctalia.tr("ui.add_note"), glyph = "pencil", variant = "ghost", controlSize = "sm", contentAlign = "start",
+      text = I.t("ui.add_note"), glyph = "pencil", variant = "ghost", controlSize = "sm", contentAlign = "start",
       onClick = function()
         showNote = true
         render()
@@ -208,16 +210,16 @@ local function status()
   end
   local text
   if #peers == 0 then
-    text = noctalia.tr("ui.no_devices_short")
-    table.insert(tip, noctalia.tr("ui.no_devices"))
+    text = I.t("ui.no_devices_short")
+    table.insert(tip, I.t("ui.no_devices"))
   else
-    text = noctalia.trp("ui.devices_count", ok, { n = ok })
+    text = I.tp("ui.devices_count", ok, { n = ok })
   end
   return ui.row({ align = "center", gap = 6, tooltip = table.concat(tip, "\n") }, {
     ui.glyph({ name = ok > 0 and "devices-check" or "devices", size = 16, color = ok > 0 and "primary" or "on_surface_variant" }),
-    small(text .. " · " .. noctalia.tr("ui.code", { k = sync.key or "" })),
+    small(text .. " · " .. I.t("ui.code", { k = sync.key or "" })),
     ui.spacer({ flexGrow = 1 }),
-    ui.button({ glyph = "refresh", variant = "ghost", controlSize = "sm", tooltip = noctalia.tr("ui.sync_now"), onClick = function() send("sync") end }),
+    ui.button({ glyph = "refresh", variant = "ghost", controlSize = "sm", tooltip = I.t("ui.sync_now"), onClick = function() send("sync") end }),
   })
 end
 
@@ -228,12 +230,12 @@ function render()
         ui.glyph({ name = "flower", size = 22, color = "primary" }),
         ui.label({ text = "SunBi", fontSize = 17, fontWeight = "bold" }),
       }),
-      ui.label({ text = noctalia.tr("ui.offline"), fontSize = 14, maxLines = 4 }),
+      ui.label({ text = I.t("ui.offline"), fontSize = 14, maxLines = 4 }),
     }))
     return
   end
   local total = #(day.tasks or {})
-  panel.render(ui.column({ gap = 12, padding = 16 }, {
+  panel.render(ui.column({ gap = 12, padding = 16, flexGrow = 1 }, {
     header(day.doneCount or 0, total),
     topCard(),
     tasks(),

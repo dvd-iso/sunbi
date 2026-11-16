@@ -4,6 +4,8 @@
 -- Foco: ampulheta + tempo restante. Alarme: sino + nome da tarefa.
 -- Clique abre o painel; clique do meio durante o alarme marca como feito.
 
+local I = require("./lib/i18n.luau")
+
 local day = {}
 local ringing = {}
 local focus = {}
@@ -59,7 +61,7 @@ local function render()
 
   if focus.endsAt then
     local left = focus.endsAt - os.time()
-    barWidget.setTooltip(focus.task and focus.task.label or noctalia.tr("ui.focus_left", { t = mmss(left) }))
+    barWidget.setTooltip(focus.task and focus.task.label or I.t("ui.focus_left", { t = mmss(left) }))
     barWidget.render(container({ gap = 6, align = "center" }, {
       ui.glyph({ name = "hourglass-high", color = "primary" }),
       ui.label({ text = mmss(left), fontWeight = "bold", color = "primary" }),
@@ -68,7 +70,7 @@ local function render()
   end
 
   if not online then
-    barWidget.setTooltip(noctalia.tr("ui.offline"))
+    barWidget.setTooltip(I.t("ui.offline"))
     barWidget.render(container({ align = "center" }, {
       ui.glyph({ name = "flower", color = "on_surface_variant" }),
     }))
@@ -76,10 +78,10 @@ local function render()
   end
 
   local done, total = counts()
-  local tip = noctalia.tr("ui.progress", { done = done, total = total })
+  local tip = I.t("ui.progress", { done = done, total = total })
   local t, inMin = nextTask()
   if t then
-    tip = tip .. `\n{noctalia.tr("ui.next")}: {t.time} {t.label} ({noctalia.tr("ui.in_min", { m = inMin })})`
+    tip = tip .. `\n{I.t("ui.next")}: {t.time} {t.label} ({I.t("ui.in_min", { m = inMin })})`
   end
   barWidget.setTooltip(tip)
   barWidget.render(container({ gap = 6, align = "center" }, {
@@ -114,6 +116,11 @@ end)
 
 function onClick()
   noctalia.togglePanel("dvd-iso/sunbi:panel")
+end
+
+-- botão direito abre as configurações do SunBi
+function onRightClick()
+  noctalia.openSettings()
 end
 
 function onMiddleClick()

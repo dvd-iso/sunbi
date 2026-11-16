@@ -26,7 +26,7 @@ Data lives in `~/.local/state/noctalia/plugins/data/dvd-iso/sunbi/`.
 ## Usage
 
 Add the widget to a bar as `dvd-iso/sunbi:bar`. Click it to open the panel; click a task to mark it
-done. When an alarm rings, middle-click the widget to mark the task done.
+done. Right-click opens the SunBi settings. When an alarm rings, middle-click the widget to mark the task done.
 
 Use the same pairing code on every device: the plugin shows its code at the bottom of the panel,
 or you can type the app's code in the plugin settings.
@@ -52,6 +52,9 @@ noctalia msg plugin dvd-iso/sunbi:service all sync             # look for device
 
 ## Settings
 
+Open them with the ⚙ button in the panel, by right-clicking the bar widget, or in Settings → Plugins.
+
+- **Language**: Português (default), English, or the same as Noctalia.
 - **Pairing code**: same code on every device. Empty uses the code this PC generated.
 - **Manual devices**: `ip:port` of the phone or Quest, for networks that block discovery or for Tailscale.
 - **Ring alarms on this PC**, **Alarm sound** (Amanhecer or Girassol) and **Alarm length**.
