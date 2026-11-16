@@ -143,7 +143,11 @@ internal fun Root(launch: Launch = Launch()) {
     var onboarded by remember { mutableStateOf(Prefs.onboarded) }
     var aiKickoff by remember { mutableStateOf<String?>(null) }
     if (!onboarded) {
-        OnboardingScreen { ai -> aiKickoff = ai; onboarded = true }
+        // o tour fica fora do Scaffold: sem esta superfície, os textos sem cor própria (títulos)
+        // saem em preto e somem no tema escuro
+        Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
+            OnboardingScreen { ai -> aiKickoff = ai; onboarded = true }
+        }
         return
     }
     var tab by rememberSaveable { mutableIntStateOf(0) }
