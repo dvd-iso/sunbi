@@ -4,6 +4,11 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.ime
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -75,9 +80,9 @@ private val SUGGESTIONS = listOf(
     "Ajuste minha rotina",
 )
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun SunAIScreen(contentPadding: PaddingValues, onSettings: () -> Unit) {
+fun SunAIScreen(contentPadding: PaddingValues) {
     var ready by remember { mutableStateOf(Prefs.aiConsent && Prefs.aiKey.isNotBlank()) }
     var setup by remember { mutableStateOf(false) }
     if (!ready) {
@@ -88,9 +93,11 @@ fun SunAIScreen(contentPadding: PaddingValues, onSettings: () -> Unit) {
     val msgs = remember { mutableStateListOf<SunAI.Msg>().apply { addAll(SunAI.load()) } }
     var input by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
+    var menu by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val list = rememberLazyListState()
     val fb = rememberFeedback()
+    val density = androidx.compose.ui.platform.LocalDensity.current
 
     fun send(q: String) {
         if (q.isBlank() || busy) return
@@ -107,86 +114,98 @@ fun SunAIScreen(contentPadding: PaddingValues, onSettings: () -> Unit) {
             busy = false
         }
     }
-    LaunchedEffect(msgs.size, busy) { if (msgs.isNotEmpty()) list.animateScrollToItem(msgs.size + (if (busy) 1 else 0)) }
+    LaunchedEffect(msgs.size, busy) {
+        val last = msgs.size + (if (busy) 1 else 0) - 1
+        if (last >= 0) list.animateScrollToItem(last)
+    }
 
-    Column(Modifier.fillMaxSize().imePadding()) {
-        LazyColumn(
-            Modifier.weight(1f),
-            state = list,
-            contentPadding = PaddingValues(
-                start = contentPadding.calculateLeftPadding(androidx.compose.ui.unit.LayoutDirection.Ltr),
-                end = contentPadding.calculateRightPadding(androidx.compose.ui.unit.LayoutDirection.Ltr),
-                top = contentPadding.calculateTopPadding(), bottom = 12.dp,
-            ),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            item {
-                ScreenHeader("SunAI", subtitle = "Sua assistente de rotina", onSettings = onSettings, leading = { SunBiMark(size = 40.dp) })
-                Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
-                    TextButton(onClick = { setup = true }) {
-                        Icon(Icons.Filled.MoreVert, null, Modifier.size(18.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text("Chave, modelo e conversa")
+    // o campo fica logo acima do teclado; sem teclado, logo acima da barra de abas
+    val bottomBar = contentPadding.calculateBottomPadding()
+    val ime = with(density) { WindowInsets.ime.getBottom(this).toDp() }
+    val inputBottom = (ime - bottomBar).coerceAtLeast(0.dp) + bottomBar + 8.dp
+    val side = PaddingValues(horizontal = 16.dp)
+
+    Column(Modifier.fillMaxSize().padding(top = contentPadding.calculateTopPadding())) {
+        // cabeçalho enxuto: nome e um menu
+        Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            SunBiMark(size = 32.dp)
+            Spacer(Modifier.width(10.dp))
+            Text("SunAI", style = MaterialTheme.typography.titleLargeEmphasized, modifier = Modifier.weight(1f))
+            Box {
+                IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, "Opções da SunAI") }
+                DropdownMenu(menu, { menu = false }) {
+                    DropdownMenuItem(text = { Text("Modelo e chave") }, onClick = { menu = false; setup = true })
+                    DropdownMenuItem(text = { Text("Nova conversa") }, enabled = msgs.isNotEmpty(),
+                        onClick = { menu = false; SunAI.clear(); msgs.clear() })
+                }
+            }
+        }
+
+        if (msgs.isEmpty() && !busy) {
+            // tela vazia: a flor, uma pergunta e as sugestões
+            Column(
+                Modifier.weight(1f).fillMaxWidth().padding(side),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                SunBiMark(size = 72.dp)
+                Spacer(Modifier.height(16.dp))
+                Text("Como posso ajudar?", style = MaterialTheme.typography.headlineSmallEmphasized)
+                Text("Eu olho os seus registros e a sua rotina.", style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(20.dp))
+                Column(Modifier.widthIn(max = 480.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    for (sug in SUGGESTIONS) {
+                        Text(
+                            sug,
+                            Modifier.fillMaxWidth().clip(MaterialTheme.shapes.large)
+                                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                                .clickable { send(sug) }.padding(horizontal = 18.dp, vertical = 14.dp),
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
                     }
                 }
             }
-            if (msgs.isEmpty()) {
-                item {
-                    Card(shape = MaterialTheme.shapes.extraLarge, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
-                        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text("Oi! Eu sou a SunAI.", style = MaterialTheme.typography.titleLargeEmphasized)
-                            Text(
-                                "Posso olhar como foi a sua semana ou o seu mês, dar ideias para hoje e ajustar a sua rotina. " +
-                                    "Toque numa sugestão ou escreva do seu jeito.",
-                                style = MaterialTheme.typography.bodyLarge,
-                            )
+        } else {
+            LazyColumn(
+                Modifier.weight(1f).fillMaxWidth(),
+                state = list,
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                itemsIndexed(msgs) { i, m ->
+                    Message(m, onUndo = {
+                        SunAI.undo(m)
+                        msgs[i] = m.copy(undone = true)
+                        SunAI.save(msgs)
+                    })
+                }
+                if (busy) {
+                    item {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            LoadingIndicator(Modifier.size(32.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Pensando…", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
             }
-            itemsIndexed(msgs) { i, m ->
-                Bubble(m, onUndo = {
-                    SunAI.undo(m)
-                    msgs[i] = m.copy(undone = true)
-                    SunAI.save(msgs)
-                })
-            }
-            if (busy) {
-                item {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        LoadingIndicator(Modifier.size(44.dp))
-                        Text("SunAI está pensando…", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-            }
         }
-        // sugestões e campo de mensagem, sempre embaixo
-        Column(
-            Modifier.fillMaxWidth().padding(
-                start = contentPadding.calculateLeftPadding(androidx.compose.ui.unit.LayoutDirection.Ltr),
-                end = contentPadding.calculateRightPadding(androidx.compose.ui.unit.LayoutDirection.Ltr),
-                bottom = contentPadding.calculateBottomPadding() - 80.dp + 8.dp,
-            ),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            AnimatedVisibility(!busy) {
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    for (s in SUGGESTIONS) AssistChip(onClick = { send(s) }, label = { Text(s) }, shape = MaterialTheme.shapes.large)
-                }
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                OutlinedTextField(
-                    input, { input = it }, placeholder = { Text("Pergunte ou peça um ajuste") },
-                    modifier = Modifier.weight(1f), shape = MaterialTheme.shapes.extraLarge, maxLines = 4,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                    keyboardActions = KeyboardActions(onSend = { send(input) }),
-                )
-                Spacer(Modifier.width(8.dp))
-                FilledIconButton(onClick = { send(input) }, enabled = input.isNotBlank() && !busy, modifier = Modifier.size(52.dp)) {
+
+        // campo de mensagem com o botão de enviar dentro
+        OutlinedTextField(
+            input, { input = it },
+            placeholder = { Text("Escreva para a SunAI") },
+            modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = inputBottom),
+            shape = MaterialTheme.shapes.extraLarge, maxLines = 5,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+            keyboardActions = KeyboardActions(onSend = { send(input) }),
+            trailingIcon = {
+                FilledIconButton(onClick = { send(input) }, enabled = input.isNotBlank() && !busy) {
                     Icon(Icons.AutoMirrored.Filled.Send, "Enviar")
                 }
-            }
-        }
+            },
+        )
     }
 
     if (setup) {
@@ -217,39 +236,44 @@ private fun richText(text: String): AnnotatedString = buildAnnotatedString {
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun Bubble(m: SunAI.Msg, onUndo: () -> Unit) {
+private fun Message(m: SunAI.Msg, onUndo: () -> Unit) {
     val cs = MaterialTheme.colorScheme
-    val mine = m.role == "user"
-    Box(Modifier.fillMaxWidth(), contentAlignment = if (mine) Alignment.CenterEnd else Alignment.CenterStart) {
-        Column(
-            Modifier.widthIn(max = 560.dp).fillMaxWidth(if (mine) 0.85f else 1f),
-            horizontalAlignment = if (mine) Alignment.End else Alignment.Start,
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            val (bg, fg) = when (m.role) {
-                "user" -> cs.primary to cs.onPrimary
-                "error" -> cs.errorContainer to cs.onErrorContainer
-                else -> cs.surfaceContainerHigh to cs.onSurface
-            }
-            AnimatedVisibility(true, enter = fadeIn() + slideInVertically { it / 3 }) {
-                Text(
-                    richText(m.text),
-                    Modifier.clip(MaterialTheme.shapes.extraLarge).background(bg).padding(horizontal = 16.dp, vertical = 12.dp),
-                    style = MaterialTheme.typography.bodyLarge, color = fg,
-                )
-            }
+    if (m.role == "user") {
+        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
+            Text(
+                m.text,
+                Modifier.widthIn(max = 320.dp).clip(MaterialTheme.shapes.extraLarge).background(cs.surfaceContainerHighest)
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                style = MaterialTheme.typography.bodyLarge, color = cs.onSurface,
+            )
+        }
+        return
+    }
+    Row(Modifier.fillMaxWidth()) {
+        SunBiMark(Modifier.padding(top = 2.dp), size = 24.dp)
+        Spacer(Modifier.width(10.dp))
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(
+                richText(m.text),
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (m.role == "error") cs.error else cs.onSurface,
+            )
             if (m.changes.isNotEmpty()) {
-                Card(shape = MaterialTheme.shapes.extraLarge, colors = CardDefaults.cardColors(containerColor = cs.tertiaryContainer, contentColor = cs.onTertiaryContainer)) {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(if (m.undone) "Mudanças desfeitas" else "Mudanças na rotina", style = MaterialTheme.typography.titleMedium)
-                        for (c in m.changes) {
-                            val sign = when (c.kind) { "add" -> "＋"; "remove" -> "－"; else -> "↻" }
-                            Text("$sign ${c.text} (${c.routine})", style = MaterialTheme.typography.bodyMedium,
-                                textDecoration = if (m.undone) androidx.compose.ui.text.style.TextDecoration.LineThrough else null)
-                        }
-                        if (!m.undone && m.undo != null) {
-                            OutlinedButton(onClick = onUndo, shapes = ButtonDefaults.shapes()) { Text("Desfazer") }
-                        }
+                Column(
+                    Modifier.fillMaxWidth().clip(MaterialTheme.shapes.large).background(cs.surfaceContainerLow)
+                        .border(1.dp, cs.outlineVariant, MaterialTheme.shapes.large).padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(if (m.undone) "Mudanças desfeitas" else "Mudei na sua rotina", style = MaterialTheme.typography.labelLarge,
+                        color = cs.primary)
+                    for (c in m.changes) {
+                        val sign = when (c.kind) { "add" -> "+"; "remove" -> "−"; else -> "↻" }
+                        Text("$sign ${c.text}" + if (c.routine == "folga") " · folga" else "",
+                            style = MaterialTheme.typography.bodyMedium,
+                            textDecoration = if (m.undone) androidx.compose.ui.text.style.TextDecoration.LineThrough else null)
+                    }
+                    if (!m.undone && m.undo != null) {
+                        TextButton(onClick = onUndo, contentPadding = PaddingValues(0.dp)) { Text("Desfazer") }
                     }
                 }
             }
@@ -260,7 +284,10 @@ private fun Bubble(m: SunAI.Msg, onUndo: () -> Unit) {
 /** Primeira vez: explica o que é enviado, pede a chave e o consentimento. */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun SunAISetup(contentPadding: PaddingValues, onReady: () -> Unit) {
+private fun SunAISetup(insets: PaddingValues, onReady: () -> Unit) {
+    val contentPadding = PaddingValues(
+        start = 16.dp, end = 16.dp, top = insets.calculateTopPadding() + 4.dp, bottom = insets.calculateBottomPadding() + 24.dp,
+    )
     var key by remember { mutableStateOf(Prefs.aiKey) }
     var model by remember { mutableStateOf(Prefs.aiModel) }
     var agree by remember { mutableStateOf(false) }

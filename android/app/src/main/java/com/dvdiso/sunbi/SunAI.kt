@@ -44,9 +44,23 @@ object SunAI {
     )
 
     private lateinit var file: File
+    private lateinit var sessionFile: File
 
     fun init(ctx: Context) {
         file = File(ctx.filesDir, "sunai.json")
+        sessionFile = File(ctx.filesDir, "sunai.session")
+    }
+
+    /**
+     * ID estável da conversa, enviado em x-opencode-session (o OpenCode Go exige: sem ele
+     * responde 400 "MissingSessionID"). Muda quando a pessoa começa uma conversa nova.
+     */
+    fun sessionId(): String {
+        val cur = runCatching { sessionFile.readText().trim() }.getOrNull()
+        if (!cur.isNullOrBlank()) return cur
+        val id = "sunbi-" + java.util.UUID.randomUUID()
+        runCatching { sessionFile.writeText(id) }
+        return id
     }
 
     // ── histórico local (não sincroniza) ────────────────────────────────────
@@ -80,6 +94,7 @@ object SunAI {
 
     fun clear() {
         runCatching { file.delete() }
+        runCatching { sessionFile.delete() } // conversa nova, sessão nova
     }
 
     fun undo(m: Msg) {
@@ -276,16 +291,22 @@ Mudar a rotina:
         conn.doOutput = true
         conn.setRequestProperty("Content-Type", "application/json")
         conn.setRequestProperty("Authorization", "Bearer ${Prefs.aiKey}")
+        // o OpenCode Go pede que o cliente se identifique e mande um ID de sessão estável
+        conn.setRequestProperty("User-Agent", "SunBi/${BuildConfig.VERSION_NAME} (Android)")
+        conn.setRequestProperty("x-opencode-session", sessionId())
         conn.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
         val code = conn.responseCode
         val text = (if (code in 200..299) conn.inputStream else conn.errorStream)?.use { it.readBytes().toString(Charsets.UTF_8) } ?: ""
         conn.disconnect()
         if (code !in 200..299) {
+            // mostra a explicação do próprio servidor, quando houver
+            val detail = runCatching { JSONObject(text).optJSONObject("error")?.optString("message") }.getOrNull()
+                ?.takeIf { it.isNotBlank() } ?: text.take(200)
             throw ApiError(
                 when (code) {
-                    401, 403 -> "A chave do OpenCode Go não foi aceita. Confira em Ajustes da SunAI."
+                    401, 403 -> "A chave do OpenCode Go não foi aceita. Confira em ⋮ → Modelo e chave."
                     429 -> "O limite do seu plano OpenCode Go acabou por agora. Tente mais tarde ou troque de modelo."
-                    else -> "O OpenCode Go respondeu com erro $code. " + text.take(200)
+                    else -> "O OpenCode Go respondeu com erro $code: $detail"
                 },
             )
         }
@@ -304,8 +325,8 @@ Mudar a rotina:
         val session = Session()
         var answer = ""
         for (round in 0 until 6) {
-            val body = JSONObject().put("model", Prefs.aiModel).put("messages", messages)
-                .put("tools", tools()).put("temperature", 0.6)
+            // sem "temperature": modelos com raciocínio (Kimi, DeepSeek) recusam valores fora do padrão
+            val body = JSONObject().put("model", Prefs.aiModel).put("messages", messages).put("tools", tools())
             val res = post(body)
             val msg = res.optJSONArray("choices")?.optJSONObject(0)?.optJSONObject("message")
                 ?: throw ApiError("Resposta vazia do OpenCode Go.")
@@ -314,8 +335,10 @@ Mudar a rotina:
                 answer = msg.optString("content", "").let { if (it == "null") "" else it }.trim()
                 break
             }
-            // guarda a vez da assistente com as chamadas e responde cada uma
-            messages.put(JSONObject().put("role", "assistant").put("content", msg.opt("content") ?: JSONObject.NULL).put("tool_calls", calls))
+            // devolve a vez da assistente exatamente como veio (inclui reasoning_content, que os
+            // modelos com raciocínio exigem de volta nas rodadas de ferramenta) e responde cada chamada
+            if (!msg.has("content")) msg.put("content", JSONObject.NULL)
+            messages.put(msg)
             for (i in 0 until calls.length()) {
                 val c = calls.getJSONObject(i)
                 val f = c.optJSONObject("function") ?: continue

@@ -21,6 +21,8 @@ class SunAITest {
     private lateinit var server: HttpServer
     private val bodies = mutableListOf<JSONObject>()
     private var auth = ""
+    private var session = ""
+    private var agent = ""
 
     @Before
     fun start() {
@@ -29,6 +31,15 @@ class SunAITest {
         server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
         server.createContext("/v1/chat/completions") { ex ->
             auth = ex.requestHeaders.getFirst("Authorization") ?: ""
+            session = ex.requestHeaders.getFirst("x-opencode-session") ?: ""
+            agent = ex.requestHeaders.getFirst("User-Agent") ?: ""
+            // o OpenCode Go de verdade recusa sem sessão (400 MissingSessionID)
+            if (session.isBlank()) {
+                val err = """{"type":"error","error":{"type":"MissingSessionID","message":"missing x-opencode-session"}}""".toByteArray()
+                ex.sendResponseHeaders(400, err.size.toLong())
+                ex.responseBody.use { it.write(err) }
+                return@createContext
+            }
             val body = JSONObject(ex.requestBody.readBytes().toString(Charsets.UTF_8))
             bodies += body
             val msgs = body.getJSONArray("messages")
@@ -57,6 +68,9 @@ class SunAITest {
         val before = Repo.tasks().size
         val m = SunAI.ask(emptyList(), "Ajuste minha rotina")
         assertEquals("Bearer chave-de-teste", auth)
+        assertTrue(session, session.startsWith("sunbi-"))
+        assertTrue(agent, agent.startsWith("SunBi/"))
+        assertTrue(!bodies[0].has("temperature"))
         assertEquals(2, bodies.size) // pedido + resposta da ferramenta
         assertTrue(bodies[0].getJSONArray("messages").getJSONObject(0).getString("content").contains("ROTINA DE SEMANA"))
         assertEquals(3, bodies[0].getJSONArray("tools").length())

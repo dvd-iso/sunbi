@@ -199,6 +199,8 @@ internal fun Root() {
                         top = inner.calculateTopPadding() + 8.dp,
                         bottom = inner.calculateBottomPadding() + 88.dp,
                     )
+                    // a conversa da SunAI cuida das próprias margens e do teclado
+                    val chatPad = PaddingValues(top = inner.calculateTopPadding() + 4.dp, bottom = inner.calculateBottomPadding())
                     val enter = MaterialTheme.motionScheme.defaultEffectsSpec<Float>()
                     val exit = MaterialTheme.motionScheme.fastEffectsSpec<Float>()
                     val slide = MaterialTheme.motionScheme.defaultSpatialSpec<IntOffset>()
@@ -219,7 +221,7 @@ internal fun Root() {
                                 onCheckin = { d, step -> checkin = d to step }, onEditRoutine = openRoutine,
                             )
                             1 -> HistoryScreen(now, pad, onSettings = openSettings)
-                            TAB_AI -> SunAIScreen(pad, onSettings = openSettings)
+                            TAB_AI -> SunAIScreen(chatPad)
                             TAB_PLAN -> PlanScreen(pad, crisisRequest, { crisisRequest = false }, onSettings = openSettings)
                             ROUTINE -> RoutineScreen(pad) { tab = routineBack }
                             else -> SettingsScreen(pad, onBack = { tab = prevTab },

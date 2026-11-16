@@ -111,6 +111,32 @@ class ScreenshotTest {
         save("claro-14-sunai")
     }
 
+    /** SunAI com uma conversa (sem rede: as mensagens são gravadas direto). */
+    @Test fun sunAiChat() {
+        Prefs.aiConsent = true
+        Prefs.aiKey = "chave-de-teste"
+        SunAI.save(listOf(
+            SunAI.Msg("user", "Como foi minha semana?"),
+            SunAI.Msg("assistant", "Sua semana teve **dois lados**:\n- Começo para baixo (humor -2), com sono longo.\n- Fim acelerado: sono caiu para 4,5 h e energia subiu.\n\nVale seguir o seu plano de subida hoje: deitar no horário e evitar cafeína."),
+            SunAI.Msg("user", "Ajuste minha rotina"),
+            SunAI.Msg("assistant", "Fiz dois ajustes pequenos para proteger o sono.",
+                listOf(SunAI.Change("add", "semana", "21:00 Desligar notificações"), SunAI.Change("update", "semana", "22:30 Deitar → 22:15 Deitar")),
+                org.json.JSONObject()),
+        ))
+        rule.setContent { SunBiTheme { Root() } }
+        rule.onNodeWithText("SunAI").performClick()
+        save("claro-16-sunai-conversa")
+    }
+
+    @Test fun sunAiEmpty() {
+        Prefs.aiConsent = true
+        Prefs.aiKey = "chave-de-teste"
+        SunAI.clear()
+        rule.setContent { SunBiTheme { Root() } }
+        rule.onNodeWithText("SunAI").performClick()
+        save("claro-17-sunai-vazia")
+    }
+
     @Config(qualifiers = "+night")
     @Test fun alarmDark() {
         rule.setContent {
