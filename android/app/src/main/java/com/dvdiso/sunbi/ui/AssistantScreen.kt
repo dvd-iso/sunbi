@@ -410,7 +410,12 @@ private fun ConnectionEditor(onChanged: () -> Unit = {}) {
             url, { url = it.trim(); Prefs.aiBaseUrl = url; onChanged() }, label = { Text("Endereço da API") }, singleLine = true,
             placeholder = { Text("https://exemplo.com/v1") }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large,
             keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Uri, imeAction = ImeAction.Next),
-            supportingText = { Text("Qualquer serviço no formato da OpenAI: Ollama, LM Studio, LiteLLM, Mistral, Together…") },
+            supportingText = {
+                // sem https, a chave e os registros viajam abertos: só faz sentido na própria rede
+                if (Assistant.normalizeBaseUrl(url).startsWith("http://")) {
+                    Text("Endereço sem https: a chave e os seus registros vão sem proteção. Use só para um servidor na sua própria rede.", color = cs.error)
+                } else Text("Qualquer serviço no formato da OpenAI: Ollama, LM Studio, LiteLLM, Mistral, Together…")
+            },
         )
     }
     OutlinedTextField(

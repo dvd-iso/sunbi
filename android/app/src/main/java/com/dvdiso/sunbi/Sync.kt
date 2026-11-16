@@ -133,9 +133,27 @@ object SyncManager {
 
 /** Servidor HTTP do protocolo (docs/PROTOCOL.md) e da página do modo avançado (WebConfig). */
 class PeerServer(private val ctx: Context) : NanoHTTPD(SyncManager.PORT) {
+    /**
+     * Freio contra adivinhar o código de pareamento pela rede: depois de [MAX_FAILS] códigos
+     * errados vindos do mesmo endereço, ele fica [LOCK_MS] sem ser atendido.
+     */
+    private class Strikes(var count: Int, var until: Long)
+    private val strikes = HashMap<String, Strikes>()
+
+    @Synchronized private fun locked(ip: String, now: Long): Boolean = (strikes[ip]?.until ?: 0) > now
+
+    @Synchronized private fun strike(ip: String, now: Long) {
+        if (strikes.size > 512) strikes.entries.removeAll { it.value.until < now } // não cresce sem limite
+        if (strikes.size > 512) strikes.clear()
+        val s = strikes.getOrPut(ip) { Strikes(0, 0) }
+        if (++s.count >= MAX_FAILS) { s.count = 0; s.until = now + LOCK_MS }
+    }
+
+    @Synchronized private fun cleared(ip: String) { strikes.remove(ip) }
+
     private fun readBody(s: IHTTPSession): String? {
         val len = s.headers["content-length"]?.toIntOrNull() ?: 0
-        if (len > 5_000_000) return null
+        if (len < 0 || len > 5_000_000) return null
         val buf = ByteArray(len)
         var off = 0
         while (off < len) {
@@ -152,14 +170,30 @@ class PeerServer(private val ctx: Context) : NanoHTTPD(SyncManager.PORT) {
             val body = if (s.method == Method.POST) readBody(s) ?: return json(Response.Status.BAD_REQUEST, JSONObject().put("error", "grande demais")) else null
             val query = s.parameters.mapValues { it.value.firstOrNull() ?: "" }
             WebConfig.handle(ctx, s.method.name, s.uri, s.headers["x-sunbi-pin"], query, body)?.let { r ->
-                return newFixedLengthResponse(Response.Status.lookup(r.status) ?: Response.Status.OK, r.type, r.body)
-                    .apply { addHeader("Cache-Control", "no-store") }
+                return newFixedLengthResponse(Response.Status.lookup(r.status) ?: Response.Status.OK, r.type, r.body).apply {
+                    addHeader("Cache-Control", "no-store")
+                    // a página não carrega nada de fora, não entra em moldura e não vaza o endereço
+                    addHeader("X-Content-Type-Options", "nosniff")
+                    addHeader("X-Frame-Options", "DENY")
+                    addHeader("Referrer-Policy", "no-referrer")
+                    addHeader("Content-Security-Policy", "default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data: blob:; frame-ancestors 'none'; base-uri 'none'; form-action 'none'")
+                }
             }
         }
+        // sem sincronização ligada, o protocolo não responde (o serviço pode estar no ar só pelo modo avançado)
+        if (!Prefs.syncEnabled) return json(Response.Status.NOT_FOUND, JSONObject().put("error", "sincronização desligada"))
+        // quem é este aparelho, sem o código: só o que o mDNS já anuncia. Serve para a extensão
+        // reencontrar o celular na rede sem mandar o código a endereços desconhecidos.
+        if (s.uri == "/v1/ping") return json(Response.Status.OK, JSONObject().put("device", Prefs.device).put("v", 1))
+        val now = System.currentTimeMillis()
+        val ip = s.remoteIpAddress ?: ""
+        if (locked(ip, now)) return json(Response.Status.lookup(429) ?: Response.Status.FORBIDDEN, JSONObject().put("error", "muitas tentativas; espere alguns minutos"))
         val key = s.headers["x-sunbi-key"] ?: ""
-        if (!key.equals(Prefs.key, ignoreCase = true)) {
+        if (Prefs.key.isBlank() || !key.equals(Prefs.key, ignoreCase = true)) {
+            strike(ip, now)
             return json(Response.Status.UNAUTHORIZED, JSONObject().put("error", "código de pareamento inválido"))
         }
+        cleared(ip)
         return when (s.uri) {
             "/v1/hello" -> json(Response.Status.OK, JSONObject().put("device", Prefs.device).put("name", Prefs.name).put("v", 1))
             "/v1/state" -> json(Response.Status.OK, Repo.snapshot())
@@ -186,6 +220,12 @@ class PeerServer(private val ctx: Context) : NanoHTTPD(SyncManager.PORT) {
 
     private fun json(status: Response.Status, obj: JSONObject): Response =
         newFixedLengthResponse(status, "application/json; charset=utf-8", obj.toString())
+            .apply { addHeader("Cache-Control", "no-store"); addHeader("X-Content-Type-Options", "nosniff") }
+
+    private companion object {
+        const val MAX_FAILS = 8
+        const val LOCK_MS = 10 * 60_000L
+    }
 }
 
 /** Serviço em primeiro plano: servidor, anúncio e busca mDNS, sincronização periódica. */

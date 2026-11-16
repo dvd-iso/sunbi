@@ -81,15 +81,13 @@ object WebConfig {
     fun handle(ctx: Context, method: String, uri: String, pin: String?, query: Map<String, String>, body: String?): Res? {
         if (uri == "/" || uri == "/index.html") {
             if (!Prefs.webConfig) return Res(404, OFF_HTML, "text/html; charset=utf-8")
-            lastUse = System.currentTimeMillis()
             val html = runCatching { ctx.assets.open("web/index.html").bufferedReader().readText() }.getOrNull()
                 ?: return Res(500, "<p>página não encontrada no app</p>", "text/html; charset=utf-8")
             return Res(200, html, "text/html; charset=utf-8")
         }
         if (!uri.startsWith("/api/")) return null
         if (!Prefs.webConfig) return err(403, "modo avançado desligado")
-        lastUse = System.currentTimeMillis()
-        if (pin == null || pin != Prefs.webPin) {
+        if (pin == null || Prefs.webPin.length != 6 || pin != Prefs.webPin) {
             fails++
             if (fails >= 5) {
                 enable(ctx, false)
@@ -98,6 +96,8 @@ object WebConfig {
             return err(401, "PIN errado")
         }
         fails = 0
+        // só o uso com o PIN certo conta: abrir a página sem entrar não segura o modo ligado
+        lastUse = System.currentTimeMillis()
         return runCatching {
             when (uri) {
                 "/api/config" -> if (method == "POST") {
@@ -185,21 +185,25 @@ object WebConfig {
     private fun parseTasks(arr: JSONArray): List<Task> {
         val out = ArrayList<Task>()
         val seen = HashSet<String>()
+        if (arr.length() > MAX_TASKS) throw IllegalArgumentException("rotina grande demais: no máximo $MAX_TASKS tarefas")
         for (i in 0 until arr.length()) {
             val o = arr.getJSONObject(i)
             val time = o.optString("time")
-            val label = o.optString("label").trim()
+            val label = o.optString("label").trim().take(MAX_TEXT)
             if (!HM.matches(time)) throw IllegalArgumentException("horário inválido: \"$time\"")
             if (label.isEmpty()) throw IllegalArgumentException("tarefa sem texto às $time")
-            var id = o.optString("id").ifBlank { newId("w") }
+            var id = o.optString("id").take(40).ifBlank { newId("w") }
             if (!seen.add(id)) { id = newId("w"); seen += id }
-            out += Task(id, time, label, med = o.optBoolean("med", false), anchor = o.optBoolean("anchor", false), step = o.optString("step", "").trim())
+            out += Task(id, time, label, med = o.optBoolean("med", false), anchor = o.optBoolean("anchor", false), step = o.optString("step", "").trim().take(MAX_TEXT))
         }
         return out
     }
 
+    private const val MAX_TASKS = 100
+    private const val MAX_TEXT = 200
+
     private fun strings(arr: JSONArray?): List<String> =
-        if (arr == null) emptyList() else (0 until arr.length()).map { arr.optString(it).trim() }.filter { it.isNotEmpty() }
+        if (arr == null) emptyList() else (0 until minOf(arr.length(), 200)).map { arr.optString(it).trim().take(MAX_TEXT) }.filter { it.isNotEmpty() }
 
     fun applyConfig(o: JSONObject) {
         o.optJSONArray("tasks")?.let { Repo.setTasks(parseTasks(it)) }
@@ -229,7 +233,7 @@ object WebConfig {
             if (f.has("holidays")) Repo.set("off/holidays", f.optBoolean("holidays"))
         }
         o.optJSONObject("prefs")?.let { p ->
-            if (p.has("userName")) Prefs.userName = p.optString("userName")
+            if (p.has("userName")) Prefs.userName = p.optString("userName").take(60)
             if (p.has("focusArea")) Prefs.focusArea = p.optString("focusArea").takeIf { it in listOf("bipolar", "tdah", "both", "general") } ?: "general"
             if (p.has("alarms")) Prefs.alarmsEnabled = p.optBoolean("alarms")
             if (p.has("alarmSound")) Prefs.alarmSound = if (p.optString("alarmSound") == "girassol") "girassol" else "amanhecer"
@@ -241,7 +245,7 @@ object WebConfig {
             if (p.has("aiModel")) p.optString("aiModel").trim().takeIf { it.isNotEmpty() && it.length <= 120 }?.let { Prefs.aiModel = it }
             if (p.has("aiName")) Prefs.aiName = p.optString("aiName").trim().takeIf { it != Assistant.DEFAULT_NAME } ?: ""
             if (p.has("navLabels")) Prefs.navLabels = p.optBoolean("navLabels")
-            if (p.has("reportName")) Prefs.reportName = p.optString("reportName")
+            if (p.has("reportName")) Prefs.reportName = p.optString("reportName").take(80)
         }
     }
 
@@ -253,7 +257,7 @@ object WebConfig {
             Repo.setSleepTimes(day, bed, wake)
         }
         for (f in listOf("energy", "focus", "irrit", "anx")) if (o.has(f)) Repo.setLevel(day, f, if (o.isNull(f)) null else o.optInt(f))
-        if (o.has("note")) Repo.set("$day/note", o.optString("note"))
+        if (o.has("note")) Repo.set("$day/note", o.optString("note").take(4000))
         if (o.has("signs")) Repo.setStrSet("$day/signs", strings(o.optJSONArray("signs")).toSet())
         if (o.has("events")) Repo.setStrSet("$day/events", strings(o.optJSONArray("events")).toSet())
         if (o.has("done")) {

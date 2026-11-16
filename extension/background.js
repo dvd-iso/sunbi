@@ -63,14 +63,20 @@ const ERRORS = {
   offline: 'Não achei o celular. Ele precisa estar ligado, com o SunBi instalado e na mesma rede Wi-Fi.',
 };
 
-/** Procura o celular nos outros endereços da mesma rede. Devolve o endereço novo ou null. */
+/**
+ * Procura o celular nos outros endereços da mesma rede. Devolve o endereço novo ou null.
+ * Pergunta só "quem é você?" (/v1/ping, sem o código): o código de pareamento nunca é mandado
+ * a um endereço que não se identificou como o celular já pareado.
+ */
 async function rediscover(cfg) {
+  if (!cfg.peerDevice) return null;
   const list = S.neighbors(cfg.addr);
   for (let i = 0; i < list.length; i += 32) {
     const found = await Promise.all(list.slice(i, i + 32).map(async addr => {
       try {
-        const hello = await call(addr, '/v1/hello', cfg.key, null, 1500);
-        return hello && hello.v === 1 && (!cfg.peerDevice || hello.device === cfg.peerDevice) ? addr : null;
+        const res = await fetch(`http://${addr}/v1/ping`, { signal: AbortSignal.timeout(1500), cache: 'no-store' });
+        const who = res.ok ? await res.json() : null;
+        return who && who.v === 1 && who.device === cfg.peerDevice ? addr : null;
       } catch { return null; }
     }));
     const hit = found.find(Boolean);

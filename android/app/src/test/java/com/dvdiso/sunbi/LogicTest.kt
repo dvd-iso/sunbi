@@ -207,6 +207,21 @@ class LogicTest {
         assertTrue(s.changes.isEmpty())
     }
 
+    @Test fun mergeIgnoresRecordsFromTheFuture() {
+        val day = "2026-01-05"
+        Repo.set("$day/note", "minha")
+        val far = System.currentTimeMillis() + 3 * 24 * 60 * 60_000L
+        val changed = Repo.merge(JSONObject()
+            .put("$day/note", JSONObject().put("v", "do futuro").put("t", far).put("d", "x"))
+            .put("x".repeat(300), JSONObject().put("v", 1).put("t", 5).put("d", "x")))
+        assertTrue(changed.isEmpty())
+        assertEquals("minha", Repo.note(day))
+        // uma hora de diferença de relógio continua valendo
+        val soon = System.currentTimeMillis() + 60 * 60_000L
+        assertEquals(1, Repo.merge(JSONObject().put("$day/note", JSONObject().put("v", "outra").put("t", soon).put("d", "x"))).size)
+        Repo.set("$day/note", null)
+    }
+
     @Test fun assistantBaseUrlAcceptsWhatPeoplePaste() {
         assertEquals("https://api.openai.com/v1", Assistant.normalizeBaseUrl("https://api.openai.com/v1/"))
         assertEquals("https://openrouter.ai/api/v1", Assistant.normalizeBaseUrl(" https://openrouter.ai/api/v1/chat/completions "))

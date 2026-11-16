@@ -331,6 +331,9 @@ object Repo {
 
     fun addListener(fn: (Set<String>) -> Unit) { listeners.add(fn) }
 
+    const val MAX_CLOCK_SKEW_MS = 24 * 60 * 60_000L
+    const val MAX_KEY_LENGTH = 200
+
     private fun parseRec(o: JSONObject?): Rec? {
         if (o == null || !o.has("t")) return null
         val v = o.opt("v").let { if (it == JSONObject.NULL) null else it }
@@ -369,9 +372,14 @@ object Repo {
     fun merge(remote: JSONObject?): Set<String> {
         if (remote == null) return emptySet()
         val changed = HashSet<String>()
+        // um registro "do futuro" (relógio errado ou adulterado) ganharia de tudo para sempre:
+        // só entra o que tem no máximo um dia de folga de relógio
+        val limit = System.currentTimeMillis() + MAX_CLOCK_SKEW_MS
         synchronized(this) {
             for (k in remote.keys()) {
+                if (k.length > MAX_KEY_LENGTH) continue
                 val r = parseRec(remote.optJSONObject(k)) ?: continue
+                if (r.t > limit || r.t < 0) continue
                 if (newer(entries[k], r)) {
                     entries[k] = r
                     changed.add(k)
