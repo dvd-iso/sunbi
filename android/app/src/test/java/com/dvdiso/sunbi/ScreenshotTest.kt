@@ -92,6 +92,50 @@ class ScreenshotTest {
         save("claro-9-checkin-detalhes")
     }
 
+    /** Modo férias (toque na flor), editor de rotina e a SunAI na primeira vez. */
+    @Test fun newScreens() {
+        rule.setContent { SunBiTheme { Root() } }
+        rule.onNodeWithContentDescription("SunBi").performClick()
+        save("claro-10-ferias")
+        rule.onAllNodesWithText("Editar")[1].performClick() // o da rotina (o outro é do check-in)
+        save("claro-11-rotina")
+        rule.onNodeWithText("Folga e férias").performClick()
+        save("claro-12-rotina-folga")
+        rule.onNodeWithText("Levantar da cama").performClick()
+        save("claro-13-rotina-tarefa")
+    }
+
+    @Test fun sunAiSetup() {
+        rule.setContent { SunBiTheme { Root() } }
+        rule.onNodeWithText("SunAI").performClick()
+        save("claro-14-sunai")
+    }
+
+    @Config(qualifiers = "+night")
+    @Test fun alarmDark() {
+        rule.setContent {
+            SunBiTheme { com.dvdiso.sunbi.ui.AlarmScreen("07:00", "Levantar da cama", "Abrir a cortina", {}, {}) }
+        }
+        save("escuro-15-alarme")
+    }
+
+    /** O PDF de verdade, para conferir o visual (convertido em PNG fora do teste). */
+    @Test fun reportPdf() {
+        Prefs.reportName = "Davi"
+        // o Robolectric não tem PdfDocument: as mesmas páginas são desenhadas em imagens
+        val pages = mutableListOf<Bitmap>()
+        ReportPdf.draw(object : ReportPdf.PageSink {
+            override fun start(n: Int, w: Int, h: Int): android.graphics.Canvas {
+                val b = Bitmap.createBitmap(w * 2, h * 2, Bitmap.Config.ARGB_8888)
+                pages += b
+                return android.graphics.Canvas(b).apply { scale(2f, 2f) }
+            }
+            override fun end() {}
+        }, today(), 14, "Dra. Ana (Psicólogo(a))")
+        val dir = File("build/shots").apply { mkdirs() }
+        pages.forEachIndexed { i, b -> File(dir, "relatorio-pagina-${i + 1}.png").outputStream().use { b.compress(Bitmap.CompressFormat.PNG, 100, it) } }
+    }
+
     @Test fun crisis() {
         rule.setContent { SunBiTheme { Root() } }
         rule.onNodeWithText("Plano").performClick()

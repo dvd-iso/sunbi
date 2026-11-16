@@ -7,21 +7,36 @@
 local M = {}
 
 -- Rotina inicial igual à do app (Repo.DEFAULT_TASKS): as cinco âncoras do ritmo social,
--- remédios e pausas. "step" é o primeiro passo (TDAH), "min" a duração estimada.
+-- remédios e pausas. "step" é o primeiro passo (TDAH).
 M.DEFAULT_TASKS = {
-  { id = "wake", time = "07:00", label = "Levantar da cama", anchor = true, step = "Sentar na cama e abrir a cortina", min = 5 },
-  { id = "medam", time = "07:15", label = "Remédio da manhã", med = true, step = "Pegar o copo d'água", min = 2 },
-  { id = "breakfast", time = "07:30", label = "Café da manhã", step = "Ir até a cozinha", min = 20 },
-  { id = "contact", time = "08:30", label = "Falar com alguém (mensagem, ligação ou pessoalmente)", anchor = true, step = "Mandar um \"bom dia\"", min = 5 },
-  { id = "start", time = "09:00", label = "Começar o trabalho, estudo ou tarefa do dia", anchor = true, step = "Abrir só a primeira coisa da lista", min = 25 },
-  { id = "water1", time = "10:30", label = "Beber água", min = 1 },
-  { id = "lunch", time = "12:30", label = "Almoço: pare e coma", step = "Levantar da cadeira", min = 30 },
-  { id = "water2", time = "15:00", label = "Lanche e água", min = 10 },
-  { id = "move", time = "17:30", label = "Movimento leve ou luz do dia", step = "Calçar o tênis", min = 20 },
-  { id = "dinner", time = "19:30", label = "Jantar", anchor = true, step = "Pôr a mesa ou esquentar a comida", min = 30 },
-  { id = "dim", time = "21:30", label = "Luz baixa e telas no modo noturno", step = "Apagar a luz principal", min = 5 },
-  { id = "medpm", time = "22:00", label = "Remédio da noite", med = true, step = "Pegar o copo d'água", min = 2 },
-  { id = "bed", time = "22:30", label = "Deitar para dormir", anchor = true, step = "Deixar o celular fora da cama", min = 10 },
+  { id = "wake", time = "07:00", label = "Levantar da cama", anchor = true, step = "Sentar na cama e abrir a cortina" },
+  { id = "medam", time = "07:15", label = "Remédio da manhã", med = true, step = "Pegar o copo d'água" },
+  { id = "breakfast", time = "07:30", label = "Café da manhã", step = "Ir até a cozinha" },
+  { id = "contact", time = "08:30", label = "Falar com alguém (mensagem, ligação ou pessoalmente)", anchor = true, step = "Mandar um \"bom dia\"" },
+  { id = "start", time = "09:00", label = "Começar o trabalho, estudo ou tarefa do dia", anchor = true, step = "Abrir só a primeira coisa da lista" },
+  { id = "water1", time = "10:30", label = "Beber água" },
+  { id = "lunch", time = "12:30", label = "Almoço: pare e coma", step = "Levantar da cadeira" },
+  { id = "water2", time = "15:00", label = "Lanche e água" },
+  { id = "move", time = "17:30", label = "Movimento leve ou luz do dia", step = "Calçar o tênis" },
+  { id = "dinner", time = "19:30", label = "Jantar", anchor = true, step = "Pôr a mesa ou esquentar a comida" },
+  { id = "dim", time = "21:30", label = "Luz baixa e telas no modo noturno", step = "Apagar a luz principal" },
+  { id = "medpm", time = "22:00", label = "Remédio da noite", med = true, step = "Pegar o copo d'água" },
+  { id = "bed", time = "22:30", label = "Deitar para dormir", anchor = true, step = "Deixar o celular fora da cama" },
+}
+
+-- Rotina de folga (fins de semana, feriados, férias), igual à do app (Repo.DEFAULT_OFF_TASKS).
+M.DEFAULT_OFF_TASKS = {
+  { id = "wake", time = "08:00", label = "Levantar da cama", anchor = true, step = "Abrir a cortina e beber água" },
+  { id = "medam", time = "08:15", label = "Remédio da manhã", med = true, step = "Pegar o copo d'água" },
+  { id = "breakfast", time = "08:30", label = "Café da manhã sem pressa" },
+  { id = "contact", time = "10:00", label = "Falar com alguém ou sair de casa", anchor = true, step = "Mandar uma mensagem" },
+  { id = "lunch", time = "13:00", label = "Almoço" },
+  { id = "fun", time = "15:00", label = "Algo que você gosta de fazer", step = "Escolher uma coisa só" },
+  { id = "move", time = "17:00", label = "Luz do dia ou caminhada", step = "Calçar o tênis" },
+  { id = "dinner", time = "20:00", label = "Jantar", anchor = true },
+  { id = "dim", time = "22:00", label = "Luz baixa e telas no modo noturno", step = "Apagar a luz principal" },
+  { id = "medpm", time = "22:00", label = "Remédio da noite", med = true, step = "Pegar o copo d'água" },
+  { id = "bed", time = "23:00", label = "Deitar para dormir", anchor = true, step = "Deixar o celular fora da cama" },
 }
 
 M.HUMOR = {
@@ -130,17 +145,162 @@ local function sortedTasks(tasks)
   return out
 end
 
-function M.tasks(entries)
-  local t = M.get(entries, "tasks")
+-- ── folga: fins de semana, feriados e modo férias (mesmas regras do app) ──────
+
+local function ymd(day)
+  local y, m, d = string.match(day or "", "^(%d+)-(%d+)-(%d+)$")
+  return tonumber(y), tonumber(m), tonumber(d)
+end
+
+local function dateOf(y, m, d)
+  return string.format("%04d-%02d-%02d", y, m, d)
+end
+
+local function addDays(day, n)
+  local y, m, d = ymd(day)
+  local t = os.time({ year = y, month = m, day = d + n, hour = 12 })
+  return os.date("%Y-%m-%d", t)
+end
+M.addDays = addDays
+
+--- Domingo de Páscoa (algoritmo anônimo gregoriano).
+function M.easter(year)
+  local a = year % 19
+  local b = year // 100
+  local c = year % 100
+  local d = b // 4
+  local e = b % 4
+  local f = (b + 8) // 25
+  local g = (b - f + 1) // 3
+  local h = (19 * a + b - d - g + 15) % 30
+  local i = c // 4
+  local k = c % 4
+  local l = (32 + 2 * e + 2 * i - h - k) % 7
+  local m = (a + 11 * h + 22 * l) // 451
+  local month = (h + l - 7 * m + 114) // 31
+  local dd = ((h + l - 7 * m + 114) % 31) + 1
+  return dateOf(year, month, dd)
+end
+
+local FIXED = {
+  ["01-01"] = "Confraternização Universal", ["04-21"] = "Tiradentes", ["05-01"] = "Dia do Trabalho",
+  ["09-07"] = "Independência", ["10-12"] = "Nossa Senhora Aparecida", ["11-02"] = "Finados",
+  ["11-15"] = "Proclamação da República", ["11-20"] = "Consciência Negra", ["12-25"] = "Natal",
+}
+
+function M.holiday(day)
+  local y = ymd(day)
+  if not y then
+    return nil
+  end
+  local f = FIXED[string.sub(day, 6, 10)]
+  if f then
+    return f
+  end
+  local e = M.easter(y)
+  if day == addDays(e, -48) or day == addDays(e, -47) then
+    return "Carnaval"
+  elseif day == addDays(e, -2) then
+    return "Paixão de Cristo"
+  elseif day == addDays(e, 60) then
+    return "Corpus Christi"
+  end
+  return nil
+end
+
+local function weekday(day) -- 1 = domingo ... 7 = sábado; nil se a data não for válida
+  local y, m, d = ymd(day)
+  if not y then
+    return nil
+  end
+  return os.date("*t", os.time({ year = y, month = m, day = d, hour = 12 })).wday
+end
+
+function M.vacationSince(entries)
+  local v = M.get(entries, "vacation")
+  return type(v) == "table" and type(v.since) == "string" and v.since ~= "" and v.since or nil
+end
+
+--- "vacation" | "manual" | "holiday" | "weekend" | nil (rotina de semana).
+function M.offReason(entries, day)
+  local explicit = M.get(entries, day .. "/off")
+  local since = M.vacationSince(entries)
+  if explicit == true then
+    return (since and day >= since) and "vacation" or "manual"
+  elseif explicit == false then
+    return nil
+  end
+  if since and day >= since then
+    return "vacation"
+  end
+  if M.get(entries, "off/holidays") ~= false and M.holiday(day) then
+    return "holiday"
+  end
+  local w = weekday(day)
+  if M.get(entries, "off/weekends") ~= false and (w == 1 or w == 7) then
+    return "weekend"
+  end
+  return nil
+end
+
+--- A rotina que vale no dia (sem dia: a de semana).
+function M.tasks(entries, day)
+  local key, default = "tasks", M.DEFAULT_TASKS
+  if day and M.offReason(entries, day) then
+    key, default = "tasks_off", M.DEFAULT_OFF_TASKS
+  end
+  local t = M.get(entries, key)
   if type(t) ~= "table" or #t == 0 then
-    return sortedTasks(M.DEFAULT_TASKS)
+    return sortedTasks(default)
   end
   return sortedTasks(t)
 end
 
+--- Toque na flor (mesma regra do app). Devolve a lista de (chave, valor) a gravar.
+function M.toggleOff(entries, day, today)
+  local writes = {}
+  local since = M.vacationSince(entries)
+  local function isOffNow()
+    return M.offReason(entries, day) ~= nil
+  end
+  if day ~= today then
+    table.insert(writes, { day .. "/off", not isOffNow() })
+    return writes
+  end
+  if since then
+    local d = since
+    while d < today do
+      if M.get(entries, d .. "/off") == nil then
+        table.insert(writes, { d .. "/off", true })
+      end
+      d = addDays(d, 1)
+    end
+    table.insert(writes, { "vacation", nil })
+    -- hoje: se ainda cairia em folga (fim de semana/feriado), volta ao normal
+    local tmp = table.clone(entries)
+    tmp.vacation = nil
+    tmp[today .. "/off"] = nil
+    if M.offReason(tmp, today) then
+      table.insert(writes, { today .. "/off", false })
+    elseif M.get(entries, today .. "/off") ~= nil then
+      table.insert(writes, { today .. "/off", nil })
+    end
+    return writes
+  end
+  if isOffNow() then
+    table.insert(writes, { today .. "/off", false })
+    return writes
+  end
+  if M.get(entries, today .. "/off") == false then
+    table.insert(writes, { today .. "/off", nil })
+  end
+  table.insert(writes, { "vacation", { since = today } })
+  return writes
+end
+
 --- Visão pronta de um dia para a barra e o painel.
 function M.day(entries, day)
-  local tasks = M.tasks(entries)
+  local tasks = M.tasks(entries, day)
   local done, doneAt, count = {}, {}, 0
   for _, t in ipairs(tasks) do
     local v = M.get(entries, `{day}/done/{t.id}`)
@@ -158,6 +318,8 @@ function M.day(entries, day)
   return {
     date = day,
     tasks = tasks,
+    off = M.offReason(entries, day),
+    holiday = M.holiday(day),
     done = done,
     doneAt = doneAt,
     doneCount = count,

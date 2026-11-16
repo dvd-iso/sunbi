@@ -69,6 +69,11 @@
     "settings": "SunBi settings",
     "humor_pick": "tap to pick",
     "down": "down",
-    "up": "up"
+    "up": "up",
+    "off_vacation": "Vacation mode · day-off routine",
+    "off_holiday": "Holiday ({name}) · day-off routine",
+    "off_weekend": "Weekend · day-off routine",
+    "off_manual": "Day off · day-off routine",
+    "vacation_hint": "Tap to turn vacation mode on or off"
   }
 }

@@ -39,7 +39,7 @@ fun sleepBaseline(end: String): Double {
  * Devolve (acertos, total) ou null se o dia não tem nenhuma âncora marcada.
  */
 fun rhythm(day: String): Pair<Int, Int>? {
-    val anchors = Repo.tasks().filter { it.anchor }
+    val anchors = Repo.tasksFor(day).filter { it.anchor }
     if (anchors.isEmpty()) return null
     var marked = false
     var hits = 0
@@ -70,11 +70,10 @@ fun wakeSpreadMinutes(days: List<String>): Int? {
 
 /** Doses (tarefas de remédio) não marcadas. No dia de hoje só conta o que passou há mais de 1 hora. */
 fun missedMeds(days: List<String>): Int {
-    val meds = Repo.tasks().filter { it.med }
     val now = LocalTime.now().toSecondOfDay() / 60
     val today = today()
     var missed = 0
-    for (d in days) for (m in meds) {
+    for (d in days) for (m in Repo.tasksFor(d).filter { it.med }) {
         // dia sem nenhum registro: o app pode só não ter sido aberto, então não conta
         if (d != today && !Repo.hasDay(d)) continue
         if (Repo.done(d, m.id)) continue
@@ -88,11 +87,10 @@ fun missedMeds(days: List<String>): Int {
 }
 
 fun medAdherence(days: List<String>): Int? {
-    val meds = Repo.tasks().filter { it.med }
     val tracked = days.filter { Repo.hasDay(it) }
-    if (meds.isEmpty() || tracked.isEmpty()) return null
-    val total = meds.size * tracked.size
-    val taken = tracked.sumOf { d -> meds.count { Repo.done(d, it.id) } }
+    val total = tracked.sumOf { d -> Repo.tasksFor(d).count { it.med } }
+    if (total == 0) return null
+    val taken = tracked.sumOf { d -> Repo.tasksFor(d).count { it.med && Repo.done(d, it.id) } }
     return 100 * taken / total
 }
 

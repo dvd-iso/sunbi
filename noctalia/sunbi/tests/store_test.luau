@@ -148,6 +148,47 @@ test("lê a saída do avahi-browse", function()
   eq(q["android-4fb5f3"].name, "SM-A366E")
 end)
 
+test("feriados fixos e móveis", function()
+  eq(S.easter(2026), "2026-04-05")
+  eq(S.holiday("2026-04-03"), "Paixão de Cristo")
+  eq(S.holiday("2026-02-17"), "Carnaval")
+  eq(S.holiday("2026-11-15"), "Proclamação da República")
+  eq(S.holiday("2026-11-16"), nil)
+end)
+
+test("fim de semana e feriado usam a rotina de folga", function()
+  local e = {}
+  eq(S.offReason(e, "2026-03-07"), "weekend") -- sábado
+  eq(S.offReason(e, "2026-04-21"), "holiday") -- terça, Tiradentes
+  eq(S.offReason(e, "2026-03-10"), nil)
+  eq(S.tasks(e, "2026-03-07")[1].time, "08:00") -- folga acorda 08:00
+  eq(S.tasks(e, "2026-03-10")[1].time, "07:00")
+  S.set(e, "off/weekends", false, 1, "x")
+  eq(S.offReason(e, "2026-03-07"), nil)
+end)
+
+test("modo férias liga e desliga guardando o histórico", function()
+  local e = {}
+  local function apply(writes)
+    for _, w in ipairs(writes) do
+      S.set(e, w[1], w[2], 1, "x")
+    end
+  end
+  apply(S.toggleOff(e, "2026-03-10", "2026-03-10")) -- terça: liga
+  eq(S.vacationSince(e), "2026-03-10")
+  eq(S.offReason(e, "2026-03-12"), "vacation")
+  apply(S.toggleOff(e, "2026-03-12", "2026-03-12")) -- quinta: desliga
+  eq(S.vacationSince(e), nil)
+  eq(S.offReason(e, "2026-03-11"), "manual") -- ontem ficou como folga
+  eq(S.offReason(e, "2026-03-12"), nil)
+end)
+
+test("tarefas não têm mais duração", function()
+  for _, t in ipairs(S.DEFAULT_TASKS) do
+    eq(t.min, nil)
+  end
+end)
+
 print(`{passed} ok, {failed} falharam`)
 if failed > 0 then
   error("testes falharam")

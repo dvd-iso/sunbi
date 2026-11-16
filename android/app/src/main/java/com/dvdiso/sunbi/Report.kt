@@ -24,8 +24,6 @@ private fun fmt(x: Double) = "%.1f".format(PT, x)
 /** Resumo dos últimos [n] dias até [end], em texto para levar à consulta. */
 fun report(end: String, n: Int = 7): String {
     val days = lastDays(end, n)
-    val tasks = Repo.tasks()
-    val meds = tasks.filter { it.med }
     val signs = Repo.signs().associateBy { it.id }
     val events = EVENTS.toMap()
     val sb = StringBuilder()
@@ -63,6 +61,8 @@ fun report(end: String, n: Int = 7): String {
         Repo.level(d, "focus")?.let { parts += "foco $it/5" }
         parts += "rotina ${Repo.percent(d)}%"
         sb.append(parts.joinToString(" · ")).append("\n")
+        val meds = Repo.tasksFor(d).filter { it.med }
+        if (Repo.isOff(d)) sb.append("  (rotina de folga)\n")
         if (meds.isNotEmpty()) {
             sb.append("  Remédios: ")
             sb.append(meds.joinToString(", ") { "${it.time} ${if (Repo.done(d, it.id)) "✓" else "✗"}" })

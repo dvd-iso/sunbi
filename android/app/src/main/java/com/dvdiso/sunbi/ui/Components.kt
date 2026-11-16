@@ -137,7 +137,7 @@ fun rememberFeedback(): Feedback {
 /** Marca uma tarefa no dia, com som, vibração e o acorde quando a rotina fecha. */
 fun toggleTask(fb: Feedback, day: String, id: String, done: Boolean) {
     Repo.setDone(day, id, done)
-    val tasks = Repo.tasks()
+    val tasks = Repo.tasksFor(day)
     fb.toggle(done, completesDay = done && tasks.isNotEmpty() && tasks.all { Repo.done(day, it.id) })
 }
 
@@ -147,7 +147,7 @@ fun toggleTask(fb: Feedback, day: String, id: String, done: Boolean) {
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun SunBiMark(modifier: Modifier = Modifier, size: Dp = 40.dp, spin: Boolean = false, turns: Float = 0f) {
+fun SunBiMark(modifier: Modifier = Modifier, size: Dp = 40.dp, spin: Boolean = false, turns: Float = 0f, sunglasses: Boolean = false) {
     val cs = MaterialTheme.colorScheme
     val angle = if (spin) {
         val t = rememberInfiniteTransition(label = "spin")
@@ -156,6 +156,8 @@ fun SunBiMark(modifier: Modifier = Modifier, size: Dp = 40.dp, spin: Boolean = f
     // um giro com mola cada vez que [turns] muda (ex.: rotina do dia completa)
     val extra by animateFloatAsState(turns * 360f, MaterialTheme.motionScheme.slowSpatialSpec(), label = "turns")
     val petals = MaterialShapes.Flower.toShape()
+    // óculos escuros descem sobre os olhos no modo férias
+    val shades by animateFloatAsState(if (sunglasses) 1f else 0f, MaterialTheme.motionScheme.defaultSpatialSpec(), label = "shades")
     Box(modifier.size(size).semantics { contentDescription = "SunBi" }, contentAlignment = Alignment.Center) {
         Box(Modifier.fillMaxSize().rotate(angle + extra).clip(petals).background(cs.primary))
         Box(Modifier.size(size * 0.56f).clip(CircleShape).background(cs.primaryContainer))
@@ -164,6 +166,20 @@ fun SunBiMark(modifier: Modifier = Modifier, size: Dp = 40.dp, spin: Boolean = f
             val ink = cs.onPrimaryContainer
             drawCircle(ink, radius = w * 0.075f, center = Offset(w * 0.33f, w * 0.43f))
             drawCircle(ink, radius = w * 0.075f, center = Offset(w * 0.67f, w * 0.43f))
+            if (shades > 0.01f) {
+                val glass = Color(0xFF1B1B1F).copy(alpha = shades)
+                val drop = (1f - shades) * -w * 0.35f // desce de cima
+                val lw = w * 0.30f
+                val lh = w * 0.20f
+                val y = w * 0.33f + drop
+                for (x in listOf(w * 0.17f, w * 0.53f)) {
+                    drawRoundRect(glass, Offset(x, y), Size(lw, lh), CornerRadius(lh * 0.45f))
+                    // brilho na lente
+                    drawLine(Color.White.copy(alpha = 0.55f * shades), Offset(x + lw * 0.22f, y + lh * 0.28f),
+                        Offset(x + lw * 0.42f, y + lh * 0.28f), strokeWidth = w * 0.035f, cap = StrokeCap.Round)
+                }
+                drawLine(glass, Offset(w * 0.47f, y + lh * 0.35f), Offset(w * 0.53f, y + lh * 0.35f), strokeWidth = w * 0.05f)
+            }
             drawArc(
                 ink, startAngle = 20f, sweepAngle = 140f, useCenter = false,
                 topLeft = Offset(w * 0.32f, w * 0.40f), size = Size(w * 0.36f, w * 0.30f),

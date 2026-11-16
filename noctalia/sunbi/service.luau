@@ -357,6 +357,18 @@ local commands = {
       setKey(`{today()}/humor`, nil)
     end
   end,
+  vacation = function()
+    -- toque na flor: liga ou desliga o modo férias (mesma regra do app)
+    local writes = S.toggleOff(entries, today(), today())
+    local t = noctalia.nowMs()
+    for _, w in ipairs(writes) do
+      S.set(entries, w[1], w[2], t, ident.device)
+    end
+    markDirty()
+    uiSound(S.offReason(entries, today()) and "pop" or "unpop")
+    publish()
+    pushSoon()
+  end,
   note = function(arg)
     setKey(`{today()}/note`, arg or "")
   end,

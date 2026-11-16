@@ -69,6 +69,11 @@
     "settings": "Configurações do SunBi",
     "humor_pick": "toque para marcar",
     "down": "para baixo",
-    "up": "acelerado"
+    "up": "acelerado",
+    "off_vacation": "Modo férias · rotina de folga",
+    "off_holiday": "Feriado ({name}) · rotina de folga",
+    "off_weekend": "Fim de semana · rotina de folga",
+    "off_manual": "Dia de folga · rotina de folga",
+    "vacation_hint": "Toque para ligar ou desligar o modo férias"
   }
 }

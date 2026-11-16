@@ -38,16 +38,37 @@ local function small(text, color)
   return ui.label({ text = text, fontSize = 12, fontWeight = "semibold", color = color or "on_surface_variant", maxLines = 1 })
 end
 
+local function offText()
+  if day.off == "vacation" then
+    return I.t("ui.off_vacation")
+  elseif day.off == "holiday" then
+    return I.t("ui.off_holiday", { name = day.holiday or "" })
+  elseif day.off == "weekend" then
+    return I.t("ui.off_weekend")
+  elseif day.off then
+    return I.t("ui.off_manual")
+  end
+  return nil
+end
+
 local function header(done, total)
+  local off = offText()
   return ui.column({ gap = 8 }, {
     ui.row({ gap = 8, align = "center" }, {
-      ui.glyph({ name = "flower", size = 22, color = "primary" }),
-      ui.label({ text = "SunBi", fontSize = 17, fontWeight = "bold", flexGrow = 1 }),
+      -- tocar na flor liga/desliga o modo férias
+      ui.row({ gap = 8, align = "center", flexGrow = 1, radius = 10, tooltip = I.t("ui.vacation_hint"),
+        onClick = function() send("vacation") end }, {
+        ui.glyph({ name = day.off and "sunglasses" or "flower", size = 22, color = "primary" }),
+        ui.label({ text = "SunBi", fontSize = 17, fontWeight = "bold" }),
+      }),
       ui.label({ text = `{done}/{total}`, fontSize = 15, fontWeight = "bold", color = "primary" }),
       ui.button({ glyph = "settings", variant = "ghost", controlSize = "sm", tooltip = I.t("ui.settings"),
         onClick = function() noctalia.openSettings() end }),
     }),
     ui.progress({ progress = total > 0 and done / total or 0, height = 6, radius = 3, fill = "primary", track = "surface_container_high" }),
+    off and ui.row({ paddingH = 10, paddingV = 6, radius = 10, fill = "tertiary/0.18" }, {
+      ui.label({ text = off, fontSize = 12, fontWeight = "semibold", color = "on_surface", maxLines = 2 }),
+    }) or ui.spacer({ height = 0 }),
   })
 end
 

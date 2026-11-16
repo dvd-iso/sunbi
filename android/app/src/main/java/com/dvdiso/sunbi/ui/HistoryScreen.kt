@@ -5,6 +5,23 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.LoadingIndicator
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.asImageBitmap
+import com.dvdiso.sunbi.Prefs
+import com.dvdiso.sunbi.ReportPdf
+import com.dvdiso.sunbi.Share
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -86,26 +103,90 @@ fun HistoryScreen(todayStr: String, contentPadding: PaddingValues, onSettings: (
     if (showReport) ReportSheet(todayStr, n) { showReport = false }
 }
 
+/** Gera o PDF bonitinho, mostra a primeira página e manda no WhatsApp para quem cuida de você. */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ReportSheet(todayStr: String, n: Int, onDismiss: () -> Unit) {
     val ctx = LocalContext.current
-    val text = report(todayStr, n)
-    EditorSheet("Relatório para a consulta", "Resumo dos últimos $n dias para levar ao psiquiatra ou psicólogo.", onDismiss) {
+    val contacts = Repo.contacts()
+    // psicólogo(a) primeiro, depois outros profissionais
+    val sorted = contacts.sortedBy { c -> when { c.role.startsWith("Psicólog") -> 0; c.role != "Pessoa de confiança" -> 1; else -> 2 } }
+    var to by remember { mutableStateOf(sorted.firstOrNull()) }
+    var name by remember { mutableStateOf(Prefs.reportName) }
+    var file by remember { mutableStateOf<java.io.File?>(null) }
+    var preview by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
+    LaunchedEffect(n, to, name) {
+        Prefs.reportName = name
+        kotlinx.coroutines.delay(300)
+        val f = withContext(Dispatchers.Default) { ReportPdf.build(ctx, todayStr, n, to?.let { "${it.name} (${it.role})" }) }
+        file = f
+        preview = withContext(Dispatchers.IO) { renderFirstPage(f) }
+    }
+    val message = "Oi! Segue o meu relatório do SunBi dos últimos $n dias."
+
+    EditorSheet("Relatório para a consulta", "PDF dos últimos $n dias, pronto para mandar.", onDismiss) {
+        Box(
+            Modifier.fillMaxWidth().height(300.dp).clip(MaterialTheme.shapes.large)
+                .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+            contentAlignment = Alignment.Center,
+        ) {
+            val bmp = preview
+            if (bmp == null) LoadingIndicator(Modifier.size(56.dp))
+            else Image(bmp.asImageBitmap(), "Prévia do relatório", Modifier.fillMaxSize().padding(10.dp))
+        }
+        OutlinedTextField(
+            name, { name = it }, label = { Text("Seu nome no relatório (opcional)") }, singleLine = true,
+            modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large,
+        )
+        Label("Mandar para")
+        if (sorted.isEmpty()) {
+            Text(
+                "Adicione o contato do seu psicólogo em Plano → Pessoas e profissionais para o WhatsApp já abrir a conversa dele.",
+                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else {
+            Column {
+                for (c in sorted + listOf<com.dvdiso.sunbi.Contact?>(null)) {
+                    Row(
+                        Modifier.fillMaxWidth().clip(MaterialTheme.shapes.large).clickable { to = c }.padding(vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(to == c, { to = c })
+                        Text(c?.let { "${it.name} · ${it.role}" } ?: "Escolher no WhatsApp", style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+            }
+        }
+        Button(
+            onClick = { file?.let { Share.pdfToWhatsApp(ctx, it, to?.phone, message) } },
+            enabled = file != null, shapes = ButtonDefaults.shapes(),
+            modifier = Modifier.fillMaxWidth().height(56.dp),
+        ) {
+            Icon(Icons.Filled.Share, null, Modifier.size(ButtonDefaults.IconSize))
+            Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+            Text("Enviar no WhatsApp", style = MaterialTheme.typography.titleMedium)
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = {
-                val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text)
-                runCatching { ctx.startActivity(Intent.createChooser(send, "Enviar relatório")) }
-            }, shapes = ButtonDefaults.shapes(), modifier = Modifier.weight(1f)) { Text("Compartilhar", maxLines = 1) }
+            OutlinedButton(onClick = { file?.let { Share.other(ctx, it, message) } }, enabled = file != null,
+                shapes = ButtonDefaults.shapes(), modifier = Modifier.weight(1f)) { Text("Outro app", maxLines = 1) }
             OutlinedButton(onClick = {
                 val cm = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                cm.setPrimaryClip(ClipData.newPlainText("Relatório SunBi", text))
-            }, shapes = ButtonDefaults.shapes(), modifier = Modifier.weight(1f)) { Text("Copiar", maxLines = 1) }
+                cm.setPrimaryClip(ClipData.newPlainText("Relatório SunBi", report(todayStr, n)))
+            }, shapes = ButtonDefaults.shapes(), modifier = Modifier.weight(1f)) { Text("Copiar texto", maxLines = 1) }
         }
-        Text(
-            text,
-            Modifier.fillMaxWidth().clip(MaterialTheme.shapes.large).background(MaterialTheme.colorScheme.surfaceContainerHighest).padding(14.dp),
-            style = MaterialTheme.typography.bodyMedium,
-        )
     }
 }
+
+/** Primeira página do PDF como imagem, para a prévia. */
+private fun renderFirstPage(f: java.io.File): android.graphics.Bitmap? = runCatching {
+    android.os.ParcelFileDescriptor.open(f, android.os.ParcelFileDescriptor.MODE_READ_ONLY).use { fd ->
+        android.graphics.pdf.PdfRenderer(fd).use { r ->
+            r.openPage(0).use { page ->
+                val bmp = android.graphics.Bitmap.createBitmap(page.width * 2, page.height * 2, android.graphics.Bitmap.Config.ARGB_8888)
+                bmp.eraseColor(android.graphics.Color.WHITE)
+                page.render(bmp, null, null, android.graphics.pdf.PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+                bmp
+            }
+        }
+    }
+}.getOrNull()

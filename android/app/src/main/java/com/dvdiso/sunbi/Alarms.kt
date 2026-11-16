@@ -38,9 +38,13 @@ class App : Application() {
         Repo.init(this)
         Focus.restore()
         Sfx.init(this)
+        SunAI.init(this)
         Notifications.createChannels(this)
         Repo.addListener { keys ->
-            if ("tasks" in keys) AlarmScheduler.scheduleAll(this)
+            // rotina, folga ou férias mudaram: reagenda os alarmes de hoje e amanhã
+            if (keys.any { it == "tasks" || it == "tasks_off" || it == "vacation" || it.endsWith("/off") || it.startsWith("off/") }) {
+                AlarmScheduler.scheduleAll(this)
+            }
             SyncManager.pushSoon()
         }
         AlarmScheduler.scheduleAll(this)
@@ -90,12 +94,15 @@ object Notifications {
 object AlarmScheduler {
     const val ACTION = "com.dvdiso.sunbi.ALARM"
 
-    private fun pi(ctx: Context, id: String): PendingIntent {
+    /** Um alarme por (dia, tarefa): hoje e amanhã podem usar rotinas diferentes. */
+    private fun pi(ctx: Context, key: String): PendingIntent {
+        val (day, id) = key.split("|", limit = 2).let { it[0] to it.getOrElse(1) { "" } }
         val i = Intent(ctx, AlarmReceiver::class.java)
             .setAction(ACTION)
-            .setData(Uri.parse("sunbi://task/$id"))
+            .setData(Uri.parse("sunbi://task/$day/$id"))
             .putExtra("task", id)
-        return PendingIntent.getBroadcast(ctx, id.hashCode(), i, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+            .putExtra("day", day)
+        return PendingIntent.getBroadcast(ctx, key.hashCode(), i, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     }
 
     fun next(time: String): Long? {
@@ -108,24 +115,30 @@ object AlarmScheduler {
 
     fun scheduleAll(ctx: Context) {
         val am = ctx.getSystemService(AlarmManager::class.java)
-        val tasks = Repo.tasks()
-        val ids = tasks.map { it.id }.toSet()
-        for (old in Prefs.scheduledIds - ids) am.cancel(pi(ctx, old))
-        if (!Prefs.alarmsEnabled) {
-            for (id in ids) am.cancel(pi(ctx, id))
-            Prefs.scheduledIds = emptySet()
-            return
+        val zone = ZoneId.systemDefault()
+        val now = ZonedDateTime.now(zone).plusSeconds(5)
+        val wanted = LinkedHashMap<String, Long>()
+        if (Prefs.alarmsEnabled) {
+            for (offset in 0L..1L) {
+                val date = LocalDate.now(zone).plusDays(offset)
+                val day = date.toString()
+                for (task in Repo.tasksFor(day)) {
+                    val t = runCatching { LocalTime.parse(task.time) }.getOrNull() ?: continue
+                    val at = ZonedDateTime.of(date, t, zone)
+                    if (at.isAfter(now)) wanted["$day|${task.id}"] = at.toInstant().toEpochMilli()
+                }
+            }
         }
+        for (old in Prefs.scheduledIds - wanted.keys) am.cancel(pi(ctx, old))
         val show = PendingIntent.getActivity(ctx, 0, Intent(ctx, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
-        for (task in tasks) {
-            val at = next(task.time) ?: continue
+        for ((key, at) in wanted) {
             try {
-                am.setAlarmClock(AlarmManager.AlarmClockInfo(at, show), pi(ctx, task.id))
+                am.setAlarmClock(AlarmManager.AlarmClockInfo(at, show), pi(ctx, key))
             } catch (e: SecurityException) {
                 Log.w("SunBiAlarm", "sem permissão de alarme exato: ${e.message}")
             }
         }
-        Prefs.scheduledIds = ids
+        Prefs.scheduledIds = wanted.keys
     }
 
     fun canScheduleExact(ctx: Context): Boolean =
@@ -135,9 +148,11 @@ object AlarmScheduler {
 class AlarmReceiver : BroadcastReceiver() {
     override fun onReceive(ctx: Context, intent: Intent) {
         val id = intent.getStringExtra("task") ?: return
+        val day = intent.getStringExtra("day") ?: today()
         AlarmScheduler.scheduleAll(ctx) // agenda o de amanhã
-        if (!Prefs.alarmsEnabled || Repo.done(today(), id)) return
-        val i = Intent(ctx, RingService::class.java).setAction(RingService.START).putExtra("task", id)
+        // a rotina pode ter mudado (férias ligadas depois de agendar): só toca se a tarefa ainda vale
+        if (!Prefs.alarmsEnabled || Repo.done(day, id) || Repo.tasksFor(day).none { it.id == id }) return
+        val i = Intent(ctx, RingService::class.java).setAction(RingService.START).putExtra("task", id).putExtra("day", day)
         ContextCompat.startForegroundService(ctx, i)
     }
 }
@@ -187,7 +202,7 @@ class RingService : Service() {
         when (intent?.action) {
             START -> {
                 val id = intent.getStringExtra("task")
-                val task = Repo.tasks().firstOrNull { it.id == id } ?: Task(id ?: "?", "", "Alarme")
+                val task = (Repo.tasksFor(today()) + Repo.tasks()).firstOrNull { it.id == id } ?: Task(id ?: "?", "", "Alarme")
                 start(task)
             }
             DONE -> {
@@ -333,7 +348,7 @@ object Focus {
 
 class FocusReceiver : BroadcastReceiver() {
     override fun onReceive(ctx: Context, intent: Intent) {
-        val task = Repo.tasks().firstOrNull { it.id == Prefs.focusTask }
+        val task = Repo.tasksFor(today()).firstOrNull { it.id == Prefs.focusTask }
         Prefs.focusEnd = 0
         Focus.end.value = null
         val open = PendingIntent.getActivity(ctx, 5, Intent(ctx, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)

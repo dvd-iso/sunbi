@@ -78,7 +78,7 @@ class LogicTest {
 
     @Test fun shortSleepAloneIsGentleSleepHint() {
         for (i in 2L..12L) Repo.setSleepTimes(d(i), "23:00", "07:00")
-        for (x in listOf(d(2), d(1), day)) for (m in Repo.tasks().filter { it.med }) Repo.set("$x/done/${m.id}", true)
+        for (x in listOf(d(2), d(1), day)) for (m in Repo.tasksFor(x).filter { it.med }) Repo.set("$x/done/${m.id}", true)
         Repo.setSleepTimes(d(1), "02:00", "06:30")
         Repo.setSleepTimes(day, "02:30", "06:30")
         val kinds = insights(day).map { it.kind }
@@ -104,7 +104,7 @@ class LogicTest {
         for (i in 0L..6L) {
             Repo.set("${d(i)}/humor", 0)
             Repo.setSleepTimes(d(i), "23:00", "07:00")
-            for (t in Repo.tasks()) Repo.set("${d(i)}/done/${t.id}", t.time)
+            for (t in Repo.tasksFor(d(i))) Repo.set("${d(i)}/done/${t.id}", t.time)
         }
         val kinds = insights(day).map { it.kind }
         assertEquals(listOf(InsightKind.KUDOS), kinds)
@@ -141,5 +141,83 @@ class LogicTest {
         assertNotNull(Repo.planList("up").firstOrNull())
         Repo.setPlanList("warn", listOf("Não consigo parar de andar"))
         assertEquals(listOf("Não consigo parar de andar"), Repo.planList("warn"))
+    }
+
+    // ── folga, feriados e férias ────────────────────────────────────────────
+
+    @Test fun holidaysIncludeFixedAndEasterBased() {
+        assertEquals(LocalDate.of(2026, 4, 5), Holidays.easter(2026))
+        assertEquals("Paixão de Cristo", Holidays.name(LocalDate.of(2026, 4, 3)))
+        assertEquals("Carnaval", Holidays.name(LocalDate.of(2026, 2, 17)))
+        assertEquals("Proclamação da República", Holidays.name(LocalDate.of(2026, 11, 15)))
+        assertNull(Holidays.name(LocalDate.of(2026, 11, 16)))
+    }
+
+    @Test fun weekendsAndHolidaysUseOffRoutine() {
+        assertEquals(Repo.OffReason.WEEKEND, Repo.offReason("2026-03-07")) // sábado
+        assertEquals(Repo.OffReason.HOLIDAY, Repo.offReason("2026-04-21")) // Tiradentes, terça
+        assertNull(Repo.offReason("2026-03-10"))
+        assertEquals(Repo.offTasks(), Repo.tasksFor("2026-03-07"))
+        Repo.set("off/weekends", false)
+        assertNull(Repo.offReason("2026-03-07"))
+    }
+
+    @Test fun vacationStartsTodayAndEndsKeepingHistory() {
+        val t = today()
+        val y = LocalDate.parse(t).minusDays(1).toString()
+        Repo.set("vacation", JSONObject().put("since", y)) // começou ontem
+        assertEquals(Repo.OffReason.VACATION, Repo.offReason(t))
+        assertFalse(Repo.toggleOff(t)) // toque na flor: acaba
+        assertNull(Repo.vacationSince())
+        assertEquals(true, Repo.get("$y/off")) // ontem continua de folga no histórico
+        assertFalse(Repo.isOff(t))
+        assertTrue(Repo.toggleOff(t)) // liga de novo
+        assertEquals(t, Repo.vacationSince())
+    }
+
+    @Test fun medAdherenceUsesEachDaysRoutine() {
+        Repo.set("2026-03-07/humor", 0) // sábado: rotina de folga
+        for (m in Repo.offTasks().filter { it.med }) Repo.set("2026-03-07/done/${m.id}", true)
+        assertEquals(100, medAdherence(listOf("2026-03-07")))
+    }
+
+    // ── SunAI: regras das ferramentas ───────────────────────────────────────
+
+    @Test fun sunAiCanAddAndUndo() {
+        val s = SunAI.Session()
+        val before = Repo.tasks().size
+        val r = SunAI.exec(s, "add_task", JSONObject().put("routine", "semana").put("time", "10:00").put("label", "Alongar"))
+        assertTrue(r, r.startsWith("ok"))
+        assertEquals(before + 1, Repo.tasks().size)
+        assertEquals(1, s.changes.size)
+        SunAI.undo(SunAI.Msg("assistant", "", s.changes, s.undo))
+        assertEquals(before, Repo.tasks().size)
+    }
+
+    @Test fun sunAiCannotTouchMedicationTimesOrRemoveThem() {
+        val s = SunAI.Session()
+        val med = Repo.tasks().first { it.med }
+        val r1 = SunAI.exec(s, "remove_task", JSONObject().put("routine", "semana").put("id", med.id))
+        assertTrue(r1, r1.startsWith("erro"))
+        val r2 = SunAI.exec(s, "update_task", JSONObject().put("routine", "semana").put("id", med.id).put("time", "11:00"))
+        assertTrue(r2, r2.startsWith("erro"))
+        assertEquals(med.time, Repo.tasks().first { it.id == med.id }.time)
+        val r3 = SunAI.exec(s, "add_task", JSONObject().put("routine", "folga").put("time", "25:00").put("label", "x"))
+        assertTrue(r3, r3.startsWith("erro"))
+        assertTrue(s.changes.isEmpty())
+    }
+
+    @Test fun sunAiContextHasRoutinesAndDays() {
+        Repo.set("${today()}/humor", 1)
+        val c = SunAI.context()
+        assertTrue(c.contains("ROTINA DE SEMANA"))
+        assertTrue(c.contains("ROTINA DE FOLGA"))
+        assertTrue(c.contains("humor +1"))
+    }
+
+    @Test fun whatsappNumberGetsCountryCode() {
+        assertEquals("5511987654321", Share.waNumber("(11) 98765-4321"))
+        assertEquals("5511987654321", Share.waNumber("+55 11 98765-4321"))
+        assertNull(Share.waNumber("188"))
     }
 }

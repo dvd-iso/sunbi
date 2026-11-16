@@ -19,10 +19,20 @@ Cada tela mostra só o essencial; o resto fica a um toque.
 
 | Tela | O que aparece | Um toque abre |
 | --- | --- | --- |
-| **Hoje** | A tarefa da vez com **Começar** (bloco de foco) e **Feito**, no máximo um aviso, o resumo do check-in e as tarefas pendentes | O **check-in em 3 passos** (humor, sono, detalhes opcionais), as tarefas feitas, outros dias |
-| **Histórico** | Gráfico de humor no estilo Life Chart, sono contra o seu normal e três números | O **relatório para a consulta**, pronto para compartilhar |
+| **Hoje** | A tarefa da vez com **Concluído**, no máximo um aviso, o resumo do check-in e as tarefas pendentes | O **check-in em 3 passos**, as tarefas feitas, o editor da rotina, outros dias |
+| **Histórico** | Gráfico de humor no estilo Life Chart, sono contra o seu normal e três números | O **relatório em PDF**, que já abre o WhatsApp do seu psicólogo |
+| **SunAI** | Conversa com a assistente: como foi a semana ou o mês, conselhos e ajustes na rotina | Chave, modelo e apagar a conversa |
 | **Plano** | O botão **Preciso de ajuda agora** e uma lista curta | Sinais de alerta, o que fazer quando o humor sobe ou desce, plano de segurança, contatos |
-| **Ajustes** (engrenagem) | Um cartão com cores, sons e alarmes | O editor da rotina e a sincronização |
+| **Ajustes** (engrenagem) | Cores, sons e alarmes | A rotina (semana e folga), a SunAI e a sincronização |
+
+**Modo férias:** toque na flor em **Hoje**. Ela coloca óculos escuros e o app passa a usar a
+**rotina de folga**, que também vale sozinha nos fins de semana e nos feriados nacionais.
+Toque de novo para voltar.
+
+**SunAI** usa a sua chave do [OpenCode Go](https://opencode.ai/docs/go/) (endpoint compatível
+com OpenAI). A cada pergunta envia a rotina, o plano e os registros dos últimos 31 dias; pede
+consentimento antes do primeiro uso. Ela pode adicionar, mudar ou tirar tarefas, sempre com
+**Desfazer**, e nunca mexe em remédios.
 
 Design em **Material 3 Expressive** (formas, movimento com mola, grupos de botões conectados,
 indicadores ondulados), com tema claro e escuro, cores dinâmicas do sistema e ícone

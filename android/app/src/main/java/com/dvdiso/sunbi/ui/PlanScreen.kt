@@ -178,7 +178,7 @@ private fun ContactsEditor() {
     val list = Repo.contacts()
     var name by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
-    var pro by remember { mutableStateOf(false) }
+    var role by remember { mutableStateOf("Psicólogo(a)") }
     for ((i, c) in list.withIndex()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
@@ -196,10 +196,13 @@ private fun ContactsEditor() {
         phone, { phone = it }, label = { Text("Telefone") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
     )
-    ChoiceGroup(listOf(false to "Pessoa", true to "Profissional"), pro, { pro = it ?: false })
+    ChoiceGroup(
+        listOf("Psicólogo(a)" to "Psicólogo", "Psiquiatra" to "Psiquiatra", "Pessoa de confiança" to "Pessoa"),
+        role, { if (it != null) role = it },
+    )
     Button(
         onClick = {
-            Repo.setContacts(list + Contact(name.trim(), if (pro) "Profissional" else "Pessoa de confiança", phone.trim()))
+            Repo.setContacts(list + Contact(name.trim(), role, phone.trim()))
             name = ""; phone = ""
         },
         enabled = name.isNotBlank() && phone.isNotBlank(),

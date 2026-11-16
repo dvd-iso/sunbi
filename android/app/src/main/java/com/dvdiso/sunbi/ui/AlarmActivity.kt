@@ -24,6 +24,7 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -65,17 +66,19 @@ class AlarmActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun AlarmScreen(time: String, label: String, step: String, onDone: () -> Unit, onStop: () -> Unit) {
+internal fun AlarmScreen(time: String, label: String, step: String, onDone: () -> Unit, onStop: () -> Unit) {
     val cs = MaterialTheme.colorScheme
+    // Surface define a cor do texto (onSurface); sem ela o texto ficava preto no tema escuro
+    Surface(Modifier.fillMaxSize(), color = cs.surface, contentColor = cs.onSurface) {
     Column(
-        Modifier.fillMaxSize().background(cs.surface).safeDrawingPadding().padding(28.dp),
+        Modifier.fillMaxSize().safeDrawingPadding().padding(28.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         SunBiMark(Modifier.padding(bottom = 28.dp), size = 132.dp, spin = true)
         Text(time, style = MaterialTheme.typography.displayLargeEmphasized, color = cs.primary)
         Spacer(Modifier.height(8.dp))
-        Text(label, style = MaterialTheme.typography.headlineSmallEmphasized, textAlign = TextAlign.Center)
+        Text(label, style = MaterialTheme.typography.headlineMediumEmphasized, color = cs.onSurface, textAlign = TextAlign.Center)
         if (step.isNotBlank()) {
             Spacer(Modifier.height(8.dp))
             Text("Primeiro passo: $step", style = MaterialTheme.typography.bodyLarge, color = cs.onSurfaceVariant, textAlign = TextAlign.Center)
@@ -97,5 +100,6 @@ private fun AlarmScreen(time: String, label: String, step: String, onDone: () ->
             shapes = ButtonDefaults.shapes(),
             modifier = Modifier.fillMaxWidth().widthIn(max = 480.dp).height(ButtonDefaults.MediumContainerHeight),
         ) { Text("Parar", style = MaterialTheme.typography.titleMedium) }
+    }
     }
 }

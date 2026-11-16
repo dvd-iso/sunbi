@@ -7,6 +7,11 @@ object Seed {
     fun clear() {
         val snap = Repo.snapshot().getJSONObject("entries")
         for (k in snap.keys()) if (k.matches(Regex("""\d{4}-\d{2}-\d{2}/.*"""))) Repo.set(k, null)
+        Repo.set("vacation", null)
+        Repo.set("off/weekends", true)
+        Repo.set("off/holidays", true)
+        Repo.setTasks(Repo.DEFAULT_TASKS)
+        Repo.setOffTasks(Repo.DEFAULT_OFF_TASKS)
     }
 
     fun twoWeeks(end: String = today()) {
@@ -20,7 +25,7 @@ object Seed {
             Repo.setSleepTimes(d, beds[i], wakes[i])
             Repo.setLevel(d, "energy", (3 + humor[i]).coerceIn(1, 5))
             if (i >= 12) Repo.setLevel(d, "irrit", 1)
-            for (t in Repo.tasks()) {
+            for (t in Repo.tasksFor(d)) {
                 val skip = (i + t.id.length) % 5 == 0
                 if (!skip && d != end) Repo.set("$d/done/${t.id}", if (t.anchor) shift(t.time, (i % 3) * 20) else true)
             }
@@ -29,7 +34,7 @@ object Seed {
         Repo.setStrSet("$end/events", setOf("late", "caffeine"))
         Repo.set("$end/note", "Muitas ideias hoje, difícil desligar à noite.")
         // hoje: as primeiras tarefas da manhã feitas
-        for (t in Repo.tasks().take(3)) Repo.set("$end/done/${t.id}", t.time)
+        for (t in Repo.tasksFor(end).take(3)) Repo.set("$end/done/${t.id}", t.time)
     }
 
     private fun shift(hm: String, minutes: Int): String {

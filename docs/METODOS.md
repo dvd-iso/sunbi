@@ -18,7 +18,7 @@ evidência mostra e onde ela é fraca.
 | Sono e ritmo circadiano | Bipolar e TDAH | Horário de deitar e acordar, comparação com o seu sono habitual, aviso de noites curtas, tarefa "luz baixa" |
 | Plano de segurança de Stanley e Brown | Crise e risco de suicídio | Botão "Preciso de ajuda agora", 6 passos editáveis, contatos, CVV 188 e SAMU 192 |
 | Lembretes de remédio (SMS/app) | Bipolar | Tarefas marcadas como remédio, alarme sem soneca, % de doses marcadas no relatório |
-| TCC para TDAH em adultos (Safren) e Terapia Metacognitiva (Solanto) | TDAH | Lembretes externos, primeiro passo de cada tarefa, duração estimada, cartão "Agora/Próxima", bloco de foco de 5 a 25 min |
+| TCC para TDAH em adultos (Safren) e Terapia Metacognitiva (Solanto) | TDAH | Lembretes externos, primeiro passo de cada tarefa, cartão "Agora/Próxima", bloco de foco (segurar uma tarefa) |
 | Déficit de percepção de tempo no TDAH | TDAH | Tempo visível: "em 35 min", barra de progresso até a próxima tarefa, cronômetro com contagem regressiva |
 | Ativação comportamental (agendamento de atividades) | Depressão | Tarefas pequenas e agendadas; no plano de descida, "uma coisa pequena e boa por dia" |
 | Design sem culpa | TDAH e humor | Sem sequências que zeram, linguagem gentil, "dias sem registro não apagam nada" |
@@ -36,6 +36,10 @@ de 45 minutos do horário habitual.
 marca uma âncora no próprio dia, o app guarda o horário real e, no histórico, mostra quantas
 foram feitas a até 45 minutos do horário-alvo. O aviso "ritmo irregular" sugere firmar uma
 âncora de cada vez, de preferência o horário de levantar.
+
+**Folga e férias:** fins de semana, feriados e o modo férias usam uma rotina própria, mais solta.
+Ela vem com as âncoras perto das de semana (acordar até 1 hora depois), porque grandes
+mudanças de horário no fim de semana ("jet lag social") desregulam o ritmo que a IPSRT protege.
 
 **Evidência e limites:** o ensaio original mostrou que pacientes em clínica de medicação comum
 praticamente não mudavam a regularidade das rotinas, ao contrário dos que receberam IPSRT.
@@ -134,12 +138,19 @@ dose por conta própria; siga a orientação do seu médico**.
 - **Agora / Próxima:** o cartão do topo mostra a tarefa atual ou a próxima, "em 35 min", e uma
   barra que enche até a hora dela.
 - **Primeiro passo:** cada tarefa pode ter a menor ação concreta para começar ("calçar o tênis").
-- **Duração estimada:** ajuda a calibrar a noção de tempo.
-- **Bloco de foco:** 5 minutos por padrão (o difícil é começar), ou 10, 15, 25. Contagem
-  regressiva visível, aviso no fim mesmo com o app fechado, "+5 min" e "Feito".
+- **Bloco de foco:** segurando uma tarefa, 5 minutos por padrão (o difícil é começar), ou 10, 15, 25.
+  Contagem regressiva visível, aviso no fim mesmo com o app fechado e "+5 min".
 - **Alarmes** para cada tarefa: lembretes externos no celular, no Quest e no PC.
 
-## 8. Bipolar e TDAH juntos
+## 8. SunAI, a assistente
+
+A SunAI resume semanas e meses, dá ideias e ajusta a rotina com base nos registros e nos
+métodos acima. Regras fixas no app: ela nunca sugere mudar remédio, não apaga tarefas de remédio
+nem muda o horário delas, faz poucas mudanças por vez, sempre com "Desfazer", e em sinal de risco
+orienta CVV 188, SAMU 192 e o plano de segurança. Os registros dos últimos 31 dias são enviados ao
+OpenCode Go a cada pergunta, só depois do consentimento da pessoa.
+
+## 9. Bipolar e TDAH juntos
 
 Cerca de 1 em 6 pessoas com bipolar também tem TDAH, e a combinação está associada a curso
 mais difícil. Revisões recomendam **estabilizar o humor antes** de tratar o TDAH com remédio,
@@ -147,7 +158,7 @@ porque alguns medicamentos para TDAH podem desestabilizar o humor em parte das p
 Isso é decisão da equipe médica. O SunBi ajuda levando à consulta o desenho do humor, do sono
 e da rotina das últimas semanas (aba **Histórico → Relatório para a consulta**).
 
-## 9. O que a pesquisa diz sobre apps como este
+## 10. O que a pesquisa diz sobre apps como este
 
 Ensaios randomizados com **automonitoramento por smartphone no bipolar** (MONARCA, LiveWell)
 **não mostraram redução de recaídas** por si só. A detecção automática de episódios ainda não

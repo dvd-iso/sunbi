@@ -80,7 +80,7 @@ import java.time.LocalTime
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun SettingsScreen(contentPadding: PaddingValues, onBack: () -> Unit) {
+fun SettingsScreen(contentPadding: PaddingValues, onBack: () -> Unit, onRoutine: () -> Unit, onSunAI: () -> Unit) {
     var sheet by rememberSaveable { mutableStateOf<String?>(null) } // "routine" | "sync"
     val peers by SyncManager.peers.collectAsState()
     LazyColumn(contentPadding = contentPadding, verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -93,11 +93,12 @@ fun SettingsScreen(contentPadding: PaddingValues, onBack: () -> Unit) {
         item { GeneralCard() }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                NavRow("Rotina e horários", "${Repo.tasks().size} tarefas · alarmes, primeiro passo, âncoras", 0, 2) { sheet = "routine" }
+                NavRow("Rotina e horários", "Semana e folga · ${Repo.tasks().size} e ${Repo.offTasks().size} tarefas", 0, 3) { onRoutine() }
+                NavRow("SunAI", if (Prefs.aiKey.isBlank()) "Assistente com IA · configurar a chave" else "Assistente com IA · ${Prefs.aiModel}", 1, 3) { onSunAI() }
                 NavRow(
                     "Sincronização",
                     "Código ${Prefs.key} · " + when (peers.size) { 0 -> "nenhum aparelho"; 1 -> "1 aparelho"; else -> "${peers.size} aparelhos" },
-                    1, 2,
+                    2, 3,
                 ) { sheet = "sync" }
             }
         }
@@ -111,12 +112,6 @@ fun SettingsScreen(contentPadding: PaddingValues, onBack: () -> Unit) {
         item { Spacer(Modifier.height(24.dp)) }
     }
     when (sheet) {
-        "routine" -> EditorSheet(
-            "Rotina e horários",
-            "Âncoras são os horários que mais protegem o humor (levantar, primeiro contato, começar o dia, jantar, deitar). " +
-                "O primeiro passo é a ação mínima para começar.",
-            { sheet = null },
-        ) { TaskEditor() }
         "sync" -> EditorSheet(
             "Sincronização",
             "Seus aparelhos se encontram na rede de casa e trocam os dados direto entre si, sem servidor.",
@@ -216,83 +211,6 @@ private fun Hint(text: String, fix: () -> Unit) {
                 Text("Resolver", fontWeight = FontWeight.Bold, color = cs.onErrorContainer)
             }
         }
-    }
-}
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
-@Composable
-private fun TaskEditor() {
-    val list = remember { mutableStateListOf<Task>().apply { addAll(Repo.tasks()) } }
-    var saved by remember { mutableStateOf(true) }
-    var picking by remember { mutableStateOf<Int?>(null) }
-    val cs = MaterialTheme.colorScheme
-
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        list.forEachIndexed { i, t ->
-            Card(shape = MaterialTheme.shapes.large, colors = CardDefaults.cardColors(containerColor = cs.surfaceContainerHigh)) {
-                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        FilledTonalButton(onClick = { picking = i }, shapes = ButtonDefaults.shapes()) {
-                            Text(t.time.ifBlank { "--:--" }, style = MaterialTheme.typography.titleMedium)
-                        }
-                        Spacer(Modifier.weight(1f))
-                        IconButton(onClick = { list.removeAt(i); saved = false }) { Icon(Icons.Filled.Delete, "Apagar ${t.label}") }
-                    }
-                    OutlinedTextField(
-                        t.label, { list[i] = t.copy(label = it); saved = false },
-                        modifier = Modifier.fillMaxWidth(), label = { Text("Tarefa") }, shape = MaterialTheme.shapes.large,
-                    )
-                    OutlinedTextField(
-                        t.step, { list[i] = t.copy(step = it); saved = false },
-                        modifier = Modifier.fillMaxWidth(), label = { Text("Primeiro passo (opcional)") }, shape = MaterialTheme.shapes.large,
-                    )
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp),
-                        itemVerticalAlignment = Alignment.CenterVertically) {
-                        FilterChip(t.anchor, { list[i] = t.copy(anchor = !t.anchor); saved = false }, { Text("Âncora") }, shape = CircleShape)
-                        FilterChip(t.med, { list[i] = t.copy(med = !t.med); saved = false }, { Text("Remédio") }, shape = CircleShape)
-                        OutlinedTextField(
-                            if (t.min > 0) t.min.toString() else "",
-                            { v -> list[i] = t.copy(min = v.filter { it.isDigit() }.take(3).toIntOrNull() ?: 0); saved = false },
-                            singleLine = true, modifier = Modifier.width(112.dp), label = { Text("min") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), shape = MaterialTheme.shapes.large,
-                        )
-                    }
-                }
-            }
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = {
-                list.add(Task(newId("t"), "12:00", "Nova tarefa"))
-                saved = false
-            }, shapes = ButtonDefaults.shapes()) {
-                Icon(Icons.Filled.Add, null, Modifier.size(ButtonDefaults.IconSize))
-                Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                Text("Tarefa")
-            }
-            Button(onClick = {
-                Repo.setTasks(list.filter { AlarmScheduler.next(it.time) != null && it.label.isNotBlank() })
-                saved = true
-            }, enabled = !saved, shapes = ButtonDefaults.shapes()) { Text(if (saved) "Salvo" else "Salvar rotina") }
-        }
-        Text("A rotina vale para todos os seus aparelhos.", style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
-    }
-
-    picking?.let { i ->
-        val t = list.getOrNull(i) ?: run { picking = null; return }
-        val lt = runCatching { LocalTime.parse(t.time) }.getOrDefault(LocalTime.NOON)
-        val state = rememberTimePickerState(lt.hour, lt.minute, is24Hour = true)
-        TimePickerDialog(
-            onDismissRequest = { picking = null },
-            title = { Text(t.label) },
-            confirmButton = {
-                TextButton(onClick = {
-                    list[i] = t.copy(time = "%02d:%02d".format(state.hour, state.minute))
-                    saved = false
-                    picking = null
-                }) { Text("OK") }
-            },
-            dismissButton = { TextButton(onClick = { picking = null }) { Text("Cancelar") } },
-        ) { TimePicker(state) }
     }
 }
 

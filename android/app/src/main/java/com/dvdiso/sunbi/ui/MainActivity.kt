@@ -40,6 +40,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularWavyProgressIndicator
@@ -106,11 +107,16 @@ class MainActivity : ComponentActivity() {
 
 private data class Dest(val label: String, val icon: ImageVector)
 
-private const val SETTINGS = 3
+// telas que não são abas: abertas por um botão, "voltar" retorna à aba anterior
+private const val SETTINGS = 10
+private const val ROUTINE = 11
+private const val TAB_PLAN = 3
+private const val TAB_AI = 2
 
 private val DESTS = listOf(
     Dest("Hoje", Icons.Filled.Home),
     Dest("Histórico", Icons.Filled.DateRange),
+    Dest("SunAI", Icons.Filled.Star),
     Dest("Plano", Icons.Filled.Favorite),
 )
 
@@ -126,8 +132,11 @@ internal fun Root() {
     // Ajustes é uma tela à parte (índice 3), aberta pela engrenagem; voltar retorna à aba anterior
     var prevTab by rememberSaveable { mutableIntStateOf(0) }
     var checkin by remember { mutableStateOf<Pair<String, Int>?>(null) }
-    val openSettings = { prevTab = tab; tab = SETTINGS }
-    BackHandler(enabled = tab == SETTINGS) { tab = prevTab }
+    // para onde "voltar" leva a partir da Rotina (uma aba ou Ajustes)
+    var routineBack by rememberSaveable { mutableIntStateOf(0) }
+    val openSettings = { if (tab < SETTINGS) prevTab = tab; tab = SETTINGS }
+    val openRoutine = { if (tab < SETTINGS) prevTab = tab; routineBack = tab; tab = ROUTINE }
+    BackHandler(enabled = tab >= SETTINGS) { tab = if (tab == ROUTINE) routineBack else prevTab }
     val focusEnd by Focus.end.collectAsState()
     val fb = rememberFeedback()
 
@@ -140,7 +149,7 @@ internal fun Root() {
     }
 
     val openFocus: (Task?) -> Unit = { t ->
-        focusTask = t ?: Repo.tasks().firstOrNull { it.id == Prefs.focusTask }
+        focusTask = t ?: Repo.tasksFor(today()).firstOrNull { it.id == Prefs.focusTask }
         focusOpen = true
     }
 
@@ -206,12 +215,15 @@ internal fun Root() {
                     ) { t ->
                         when (t) {
                             0 -> TodayScreen(
-                                now, tick, pad, onFocus = openFocus, onOpenPlan = { tab = 2 }, onSettings = openSettings,
-                                onCheckin = { d, step -> checkin = d to step },
+                                now, tick, pad, onFocus = openFocus, onOpenPlan = { tab = TAB_PLAN }, onSettings = openSettings,
+                                onCheckin = { d, step -> checkin = d to step }, onEditRoutine = openRoutine,
                             )
                             1 -> HistoryScreen(now, pad, onSettings = openSettings)
-                            2 -> PlanScreen(pad, crisisRequest, { crisisRequest = false }, onSettings = openSettings)
-                            else -> SettingsScreen(pad) { tab = prevTab }
+                            TAB_AI -> SunAIScreen(pad, onSettings = openSettings)
+                            TAB_PLAN -> PlanScreen(pad, crisisRequest, { crisisRequest = false }, onSettings = openSettings)
+                            ROUTINE -> RoutineScreen(pad) { tab = routineBack }
+                            else -> SettingsScreen(pad, onBack = { tab = prevTab },
+                                onRoutine = { routineBack = SETTINGS; tab = ROUTINE }, onSunAI = { tab = TAB_AI })
                         }
                     }
                 }

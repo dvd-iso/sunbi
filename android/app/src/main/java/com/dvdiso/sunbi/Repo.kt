@@ -21,7 +21,6 @@ import java.util.concurrent.CopyOnWriteArrayList
  * [anchor]: âncora do ritmo social (IPSRT/SRM): levantar, primeiro contato, começar o dia,
  * jantar, deitar. A regularidade dessas cinco é o que mais protege o humor.
  * [step]: o primeiro passo pequeno e concreto (TDAH: começar é a parte difícil).
- * [min]: duração estimada em minutos (TDAH: tornar o tempo visível).
  */
 data class Task(
     val id: String,
@@ -30,7 +29,6 @@ data class Task(
     val med: Boolean = false,
     val anchor: Boolean = false,
     val step: String = "",
-    val min: Int = 0,
 )
 
 /** Sinal de alerta pessoal. [pole] = "up" (subida/mania) ou "down" (descida/depressão). */
@@ -85,6 +83,22 @@ object Prefs {
     var dynamicColor: Boolean
         get() = sp.getBoolean("dynamicColor", !isQuest())
         set(v) = sp.edit().putBoolean("dynamicColor", v).apply()
+    // SunAI: a chave fica só neste aparelho (não sincroniza, sem backup)
+    var aiKey: String
+        get() = sp.getString("aiKey", "")!!
+        set(v) = sp.edit().putString("aiKey", v.trim()).apply()
+    var aiModel: String
+        get() = sp.getString("aiModel", "kimi-k3")!!
+        set(v) = sp.edit().putString("aiModel", v).apply()
+    /** A pessoa aceitou enviar os registros ao provedor de IA. */
+    var aiConsent: Boolean
+        get() = sp.getBoolean("aiConsent", false)
+        set(v) = sp.edit().putBoolean("aiConsent", v).apply()
+    /** Nome que aparece no PDF do relatório (opcional). */
+    var reportName: String
+        get() = sp.getString("reportName", "")!!
+        set(v) = sp.edit().putString("reportName", v.trim()).apply()
+
     /** Sonzinhos e vibração leve ao tocar na interface. */
     var uiSounds: Boolean
         get() = sp.getBoolean("uiSounds", true)
@@ -141,19 +155,37 @@ object Repo {
 
     /** Rotina inicial: as cinco âncoras do ritmo social, remédios e pausas. Tudo editável. */
     val DEFAULT_TASKS = listOf(
-        Task("wake", "07:00", "Levantar da cama", anchor = true, step = "Sentar na cama e abrir a cortina", min = 5),
-        Task("medam", "07:15", "Remédio da manhã", med = true, step = "Pegar o copo d'água", min = 2),
-        Task("breakfast", "07:30", "Café da manhã", step = "Ir até a cozinha", min = 20),
-        Task("contact", "08:30", "Falar com alguém (mensagem, ligação ou pessoalmente)", anchor = true, step = "Mandar um \"bom dia\"", min = 5),
-        Task("start", "09:00", "Começar o trabalho, estudo ou tarefa do dia", anchor = true, step = "Abrir só a primeira coisa da lista", min = 25),
-        Task("water1", "10:30", "Beber água", min = 1),
-        Task("lunch", "12:30", "Almoço: pare e coma", step = "Levantar da cadeira", min = 30),
-        Task("water2", "15:00", "Lanche e água", min = 10),
-        Task("move", "17:30", "Movimento leve ou luz do dia", step = "Calçar o tênis", min = 20),
-        Task("dinner", "19:30", "Jantar", anchor = true, step = "Pôr a mesa ou esquentar a comida", min = 30),
-        Task("dim", "21:30", "Luz baixa e telas no modo noturno", step = "Apagar a luz principal", min = 5),
-        Task("medpm", "22:00", "Remédio da noite", med = true, step = "Pegar o copo d'água", min = 2),
-        Task("bed", "22:30", "Deitar para dormir", anchor = true, step = "Deixar o celular fora da cama", min = 10),
+        Task("wake", "07:00", "Levantar da cama", anchor = true, step = "Sentar na cama e abrir a cortina"),
+        Task("medam", "07:15", "Remédio da manhã", med = true, step = "Pegar o copo d'água"),
+        Task("breakfast", "07:30", "Café da manhã", step = "Ir até a cozinha"),
+        Task("contact", "08:30", "Falar com alguém (mensagem, ligação ou pessoalmente)", anchor = true, step = "Mandar um \"bom dia\""),
+        Task("start", "09:00", "Começar o trabalho, estudo ou tarefa do dia", anchor = true, step = "Abrir só a primeira coisa da lista"),
+        Task("water1", "10:30", "Beber água"),
+        Task("lunch", "12:30", "Almoço: pare e coma", step = "Levantar da cadeira"),
+        Task("water2", "15:00", "Lanche e água"),
+        Task("move", "17:30", "Movimento leve ou luz do dia", step = "Calçar o tênis"),
+        Task("dinner", "19:30", "Jantar", anchor = true, step = "Pôr a mesa ou esquentar a comida"),
+        Task("dim", "21:30", "Luz baixa e telas no modo noturno", step = "Apagar a luz principal"),
+        Task("medpm", "22:00", "Remédio da noite", med = true, step = "Pegar o copo d'água"),
+        Task("bed", "22:30", "Deitar para dormir", anchor = true, step = "Deixar o celular fora da cama"),
+    )
+
+    /**
+     * Rotina de folga (fins de semana, feriados, férias). Mais solta, mas com as âncoras perto
+     * do horário de semana: acordar até 1 hora depois protege o ritmo (IPSRT).
+     */
+    val DEFAULT_OFF_TASKS = listOf(
+        Task("wake", "08:00", "Levantar da cama", anchor = true, step = "Abrir a cortina e beber água"),
+        Task("medam", "08:15", "Remédio da manhã", med = true, step = "Pegar o copo d'água"),
+        Task("breakfast", "08:30", "Café da manhã sem pressa"),
+        Task("contact", "10:00", "Falar com alguém ou sair de casa", anchor = true, step = "Mandar uma mensagem"),
+        Task("lunch", "13:00", "Almoço"),
+        Task("fun", "15:00", "Algo que você gosta de fazer", step = "Escolher uma coisa só"),
+        Task("move", "17:00", "Luz do dia ou caminhada", step = "Calçar o tênis"),
+        Task("dinner", "20:00", "Jantar", anchor = true),
+        Task("dim", "22:00", "Luz baixa e telas no modo noturno", step = "Apagar a luz principal"),
+        Task("medpm", "22:00", "Remédio da noite", med = true, step = "Pegar o copo d'água"),
+        Task("bed", "23:00", "Deitar para dormir", anchor = true, step = "Deixar o celular fora da cama"),
     )
 
     val DEFAULT_SIGNS = listOf(
@@ -206,6 +238,7 @@ object Repo {
         // t = 1: qualquer versão editada em outro aparelho vence a padrão
         if (!entries.containsKey("tasks")) entries["tasks"] = Rec(tasksToJson(DEFAULT_TASKS), 1, "")
         if (!entries.containsKey("signs")) entries["signs"] = Rec(signsToJson(DEFAULT_SIGNS), 1, "")
+        if (!entries.containsKey("tasks_off")) entries["tasks_off"] = Rec(tasksToJson(DEFAULT_OFF_TASKS), 1, "")
     }
 
     fun addListener(fn: (Set<String>) -> Unit) { listeners.add(fn) }
@@ -275,8 +308,19 @@ object Repo {
 
     // ── rotina ──────────────────────────────────────────────────────────────
 
-    fun tasks(): List<Task> {
-        val arr = get("tasks") as? JSONArray ?: return DEFAULT_TASKS
+    /** Rotina de dias de semana. */
+    fun tasks(): List<Task> = parseTasks(get("tasks") as? JSONArray) ?: DEFAULT_TASKS
+
+    /** Rotina de folga (fins de semana, feriados, modo férias). */
+    fun offTasks(): List<Task> = parseTasks(get("tasks_off") as? JSONArray) ?: DEFAULT_OFF_TASKS
+
+    fun setOffTasks(list: List<Task>) = set("tasks_off", tasksToJson(list))
+
+    /** A rotina que vale num dia. */
+    fun tasksFor(day: String): List<Task> = if (isOff(day)) offTasks() else tasks()
+
+    private fun parseTasks(arr: JSONArray?): List<Task>? {
+        if (arr == null) return null
         return (0 until arr.length()).mapNotNull { i ->
             val o = arr.optJSONObject(i) ?: return@mapNotNull null
             Task(
@@ -284,21 +328,77 @@ object Repo {
                 med = o.optBoolean("med", false),
                 anchor = o.optBoolean("anchor", false),
                 step = o.optString("step", ""),
-                min = o.optInt("min", 0),
             )
         }.sortedBy { it.time }
     }
 
+    // ── folga: fins de semana, feriados e modo férias ───────────────────────
+
+    enum class OffReason { VACATION, WEEKEND, HOLIDAY, MANUAL }
+
+    /** Início do modo férias (AAAA-MM-DD) ou null. */
+    fun vacationSince(): String? = (get("vacation") as? JSONObject)?.optString("since")?.ifBlank { null }
+
+    fun offWeekends(): Boolean = get("off/weekends") as? Boolean ?: true
+    fun offHolidays(): Boolean = get("off/holidays") as? Boolean ?: true
+
+    /** Por que o dia usa a rotina de folga (null = rotina de semana). */
+    fun offReason(day: String): OffReason? {
+        when (get("$day/off")) {
+            true -> return if (vacationSince()?.let { day >= it } == true) OffReason.VACATION else OffReason.MANUAL
+            false -> return null
+        }
+        vacationSince()?.let { if (day >= it) return OffReason.VACATION }
+        val d = LocalDate.parse(day)
+        if (offHolidays() && Holidays.name(d) != null) return OffReason.HOLIDAY
+        if (offWeekends() && d.dayOfWeek.value >= 6) return OffReason.WEEKEND
+        return null
+    }
+
+    fun isOff(day: String): Boolean = offReason(day) != null
+
+    /**
+     * Toque na flor. Hoje: liga ou desliga o modo férias (que segue ligado nos próximos dias).
+     * Outro dia: troca só aquele dia. Devolve se o dia ficou de folga.
+     */
+    fun toggleOff(day: String): Boolean {
+        val today = today()
+        val since = vacationSince()
+        if (day != today) {
+            set("$day/off", !isOff(day))
+            return isOff(day)
+        }
+        if (since != null) {
+            // fim das férias: os dias passados ficam marcados como folga no histórico
+            var d = LocalDate.parse(since)
+            val t = LocalDate.parse(today)
+            while (d.isBefore(t)) {
+                if (get("$d/off") == null) set("$d/off", true)
+                d = d.plusDays(1)
+            }
+            set("vacation", null)
+            if (get("$today/off") == true) set("$today/off", null)
+            if (isOff(today)) set("$today/off", false) // fim de semana ou feriado: hoje volta ao normal
+            return isOff(today)
+        }
+        if (isOff(today)) {
+            set("$today/off", false) // folga automática (fim de semana/feriado) desligada só hoje
+            return false
+        }
+        if (get("$today/off") == false) set("$today/off", null)
+        set("vacation", JSONObject().put("since", today))
+        return true
+    }
+
     fun setTasks(list: List<Task>) = set("tasks", tasksToJson(list))
 
-    private fun tasksToJson(list: List<Task>): JSONArray {
+    fun tasksToJson(list: List<Task>): JSONArray {
         val arr = JSONArray()
         for (t in list) {
             val o = JSONObject().put("id", t.id).put("time", t.time).put("label", t.label)
             if (t.med) o.put("med", true)
             if (t.anchor) o.put("anchor", true)
             if (t.step.isNotBlank()) o.put("step", t.step)
-            if (t.min > 0) o.put("min", t.min)
             arr.put(o)
         }
         return arr
@@ -316,7 +416,7 @@ object Repo {
         set("$day/done/$id", if (!v) false else if (day == today()) nowHm() else true)
 
     fun percent(day: String): Int {
-        val t = tasks()
+        val t = tasksFor(day)
         if (t.isEmpty()) return 0
         return 100 * t.count { done(day, it.id) } / t.size
     }

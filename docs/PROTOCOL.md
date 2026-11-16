@@ -37,7 +37,10 @@ Globais (valem para todos os aparelhos):
 
 | Chave | Valor |
 | --- | --- |
-| `tasks` | lista de `{id, time "HH:MM", label, med?, anchor?, step?, min?}` |
+| `tasks` | rotina de dias de semana: lista de `{id, time "HH:MM", label, med?, anchor?, step?}` |
+| `tasks_off` | rotina de folga (fins de semana, feriados, férias), mesmo formato |
+| `vacation` | `{"since": "AAAA-MM-DD"}` enquanto o modo férias está ligado; `null` desligado |
+| `off/weekends`, `off/holidays` | `true`/`false`: usar a rotina de folga nos fins de semana / feriados nacionais (padrão `true`) |
 | `signs` | lista de `{id, label, pole: "up" \| "down"}`: sinais de alerta pessoais |
 | `plan/<seção>` | lista de textos. Seções: `up`, `down` (plano de ação), `warn`, `cope`, `distract`, `safe`, `reasons` (plano de segurança) |
 | `contacts` | lista de `{name, role, phone}` |
@@ -55,7 +58,12 @@ Por dia:
 | `AAAA-MM-DD/signs` | lista de ids de `signs` que apareceram no dia |
 | `AAAA-MM-DD/events` | lista de acontecimentos: `stress`, `conflict`, `late`, `allnight`, `travel`, `alcohol`, `caffeine`, `screens`, `sick`, `period`, `medchange`, `good` |
 | `AAAA-MM-DD/note` | texto livre |
+| `AAAA-MM-DD/off` | `true`/`false`: força rotina de folga ou de semana nesse dia (vence fim de semana e feriado) |
 | `AAAA-MM-DD/mood` | escala antiga do Sunflower Clocks (1 a 5); lida como `humor = mood − 3` quando `humor` não existe |
+
+Qual rotina vale num dia: `AAAA-MM-DD/off` se existir; senão folga se o modo férias começou
+nesse dia ou antes; senão folga em feriado nacional (com `off/holidays`) ou sábado e domingo
+(com `off/weekends`); senão a rotina de semana.
 
 Quem não conhece uma chave apenas a guarda e repassa, então versões diferentes convivem.
 

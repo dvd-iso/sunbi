@@ -10,7 +10,10 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -78,11 +81,14 @@ fun TodayScreen(
     onOpenPlan: () -> Unit,
     onSettings: () -> Unit,
     onCheckin: (day: String, step: Int) -> Unit,
+    onEditRoutine: () -> Unit,
 ) {
     var day by rememberSaveable { mutableStateOf(todayStr) }
     LaunchedEffect(todayStr) { if (day > todayStr) day = todayStr }
     val isToday = day == todayStr
-    val tasks = Repo.tasks()
+    val tasks = Repo.tasksFor(day)
+    val off = Repo.offReason(day)
+    val fb = rememberFeedback()
     val pending = tasks.filter { !Repo.done(day, it.id) }
     val done = tasks.filter { Repo.done(day, it.id) }
     // só o aviso mais importante; o resto fica no plano
@@ -102,17 +108,29 @@ fun TodayScreen(
             ScreenHeader(
                 title = if (isToday) saudacao() else "Outro dia",
                 onSettings = onSettings,
-                leading = { SunBiMark(size = 44.dp, turns = turns) },
+                leading = {
+                    // tocar na flor liga/desliga o modo férias (rotina de folga)
+                    SunBiMark(
+                        Modifier.clip(CircleShape).clickable(onClickLabel = "Modo férias") {
+                            val on = Repo.toggleOff(day)
+                            fb.toggle(on, completesDay = false)
+                        },
+                        size = 44.dp, turns = turns, sunglasses = off != null,
+                    )
+                },
             )
             DayPicker(day, isToday, onPrev = { day = LocalDate.parse(day).minusDays(1).toString() },
                 onNext = { day = LocalDate.parse(day).plusDays(1).toString() }, onToday = { day = todayStr })
+            AnimatedVisibility(off != null, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
+                OffBadge(day, off)
+            }
         }
         if (isToday) {
             item(key = "now") { NowCard(tasks, tick, onFocus, Modifier.animateItem()) }
             if (insight != null) item(key = "insight") { InsightCard(insight, onOpenPlan, Modifier.animateItem()) }
         }
         item(key = "checkin") { CheckinSummary(day, Modifier.animateItem()) { step -> onCheckin(day, step) } }
-        item(key = "routine-head") { RoutineHeader(tasks.size, done.size, allDone) }
+        item(key = "routine-head") { RoutineHeader(tasks.size, done.size, allDone, off, onEditRoutine) }
         itemsIndexed(pending, key = { _, t -> "task-" + t.id }) { i, t ->
             TaskItem(day, t, i, pending.size, isToday, onFocus, Modifier.animateItem())
         }
@@ -277,14 +295,15 @@ private fun CheckinSummary(day: String, modifier: Modifier = Modifier, open: (st
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun RoutineHeader(total: Int, done: Int, allDone: Boolean) {
+private fun RoutineHeader(total: Int, done: Int, allDone: Boolean, off: Repo.OffReason?, onEdit: () -> Unit) {
     val frac by animateFloatAsState(if (total == 0) 0f else done.toFloat() / total, MaterialTheme.motionScheme.defaultSpatialSpec(), label = "routine")
     Column(Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text("Rotina", style = MaterialTheme.typography.titleLargeEmphasized)
+                Text(if (off != null) "Rotina de folga" else "Rotina", style = MaterialTheme.typography.titleLargeEmphasized)
                 Text("$done de $total feitas", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
+            TextButton(onClick = onEdit) { Text("Editar") }
             Box(contentAlignment = Alignment.Center) {
                 CircularWavyProgressIndicator(progress = { frac }, modifier = Modifier.size(44.dp))
             }
@@ -329,4 +348,23 @@ private fun TaskItem(day: String, t: Task, index: Int, count: Int, isToday: Bool
             color = if (done) cs.onSurfaceVariant else androidx.compose.ui.graphics.Color.Unspecified,
         )
     }
+}
+
+/** Selo que explica por que o dia usa a rotina de folga. */
+@Composable
+private fun OffBadge(day: String, off: Repo.OffReason?) {
+    val cs = MaterialTheme.colorScheme
+    val text = when (off) {
+        Repo.OffReason.VACATION -> "Modo férias · rotina de folga. Toque na flor para voltar."
+        Repo.OffReason.WEEKEND -> "Fim de semana · rotina de folga"
+        Repo.OffReason.HOLIDAY -> "Feriado (${com.dvdiso.sunbi.Holidays.name(LocalDate.parse(day)) ?: ""}) · rotina de folga"
+        Repo.OffReason.MANUAL -> "Dia de folga · rotina de folga"
+        null -> ""
+    }
+    Text(
+        text,
+        Modifier.padding(top = 4.dp).clip(MaterialTheme.shapes.large).background(cs.tertiaryContainer)
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        style = MaterialTheme.typography.bodyMedium, color = cs.onTertiaryContainer, fontWeight = FontWeight.SemiBold,
+    )
 }

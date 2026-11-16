@@ -1,0 +1,13 @@
+[
+  {"id": "wake", "time": "08:00", "label": "Levantar da cama", "anchor": true, "step": "Abrir a cortina e beber água"},
+  {"id": "medam", "time": "08:15", "label": "Remédio da manhã", "med": true, "step": "Pegar o copo d'água"},
+  {"id": "breakfast", "time": "08:30", "label": "Café da manhã sem pressa"},
+  {"id": "contact", "time": "10:00", "label": "Falar com alguém ou sair de casa", "anchor": true, "step": "Mandar uma mensagem"},
+  {"id": "lunch", "time": "13:00", "label": "Almoço"},
+  {"id": "fun", "time": "15:00", "label": "Algo que você gosta de fazer", "step": "Escolher uma coisa só"},
+  {"id": "move", "time": "17:00", "label": "Luz do dia ou caminhada", "step": "Calçar o tênis"},
+  {"id": "dinner", "time": "20:00", "label": "Jantar", "anchor": true},
+  {"id": "dim", "time": "22:00", "label": "Luz baixa e telas no modo noturno", "step": "Apagar a luz principal"},
+  {"id": "medpm", "time": "22:00", "label": "Remédio da noite", "med": true, "step": "Pegar o copo d'água"},
+  {"id": "bed", "time": "23:00", "label": "Deitar para dormir", "anchor": true, "step": "Deixar o celular fora da cama"}
+]
