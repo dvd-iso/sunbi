@@ -12,7 +12,9 @@ android {
         minSdk = 29
         targetSdk = 35
         versionCode = (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInt()
-        versionName = "0.2.${System.getenv("GITHUB_RUN_NUMBER") ?: "0"}"
+        // tag v1.2.3 → versão 1.2.3; fora de tag, 0.2.<número do build>
+        versionName = System.getenv("GITHUB_REF_NAME")?.takeIf { it.matches(Regex("v\\d+\\.\\d+\\.\\d+")) }?.drop(1)
+            ?: "0.2.${System.getenv("GITHUB_RUN_NUMBER") ?: "0"}"
     }
 
     // Assinatura:
