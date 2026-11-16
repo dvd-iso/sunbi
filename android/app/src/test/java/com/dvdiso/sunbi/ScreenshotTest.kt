@@ -203,6 +203,20 @@ class ScreenshotTest {
         save("claro-19-conquistas")
     }
 
+    /** Tela inicial (modo launcher) com apps de exemplo e a gaveta com busca. */
+    @Test fun launcher() {
+        val me = android.os.Process.myUserHandle()
+        fun app(name: String, pkg: String) = Launcher.AppEntry(name, android.content.ComponentName(pkg, "$pkg.Main"), me, 0L)
+        val apps = listOf(app("WhatsApp", "com.whatsapp"), app("Câmera", "com.cam"), app("Spotify", "com.spotify"),
+            app("Chrome", "com.chrome"), app("Mensagens", "com.msg"), app("Telefone", "com.phone"), app("Fotos", "com.photos"),
+            app("Calendário", "com.cal"), app("Banco", "com.bank"), app("Mapas", "com.maps"))
+        Prefs.launcherFavorites = listOf(apps[0].key, apps[5].key, apps[4].key, apps[3].key)
+        rule.setContent { SunBiTheme { com.dvdiso.sunbi.ui.LauncherScreen(apps, 0L) {} } }
+        save("claro-20-launcher")
+        rule.onNodeWithText("Todos os apps").performClick()
+        save("claro-21-launcher-apps")
+    }
+
     @Test fun crisis() {
         rule.setContent { SunBiTheme { Root() } }
         rule.onNodeWithText("Plano").performClick()

@@ -128,7 +128,7 @@ pareamento e recebe tudo.
 | **Histórico** | Gráfico de humor no estilo Life Chart, sono contra o seu normal e três números | O **relatório em PDF**, que já abre o WhatsApp do psicólogo |
 | **SunAI** | Conversa com a assistente: como foi a semana ou o mês, conselhos e ajustes na rotina | Chave, modelo e apagar a conversa |
 | **Plano** | O botão **Preciso de ajuda agora** e uma lista curta | Sinais de alerta, o que fazer quando o humor sobe ou desce, plano de segurança, pessoas |
-| **Ajustes** (engrenagem) | Cores, sons e vibração, alarmes | A rotina, a SunAI, a sincronização e o **modo complexo** |
+| **Ajustes** (engrenagem) | Cores, sons e vibração, alarmes | A rotina, a SunAI, a sincronização, o **modo complexo** e a **tela inicial** |
 
 **Modo férias:** toque na flor em **Hoje**. Ela coloca óculos escuros e o app passa a usar a
 rotina de folga. Toque de novo para voltar.
@@ -156,6 +156,20 @@ tema claro e escuro, cores dinâmicas do sistema (Material You) e ícone adaptat
 monocromática. Cada ação tem **som curto e vibração com forma própria**: marcar uma tarefa sobe e
 estala, desmarcar cai, fechar o dia é um acorde, uma conquista gira. Tudo desligável em Ajustes.
 No Quest e em telas largas, a navegação vira um trilho lateral.
+
+### Tela inicial (modo launcher)
+
+Em **Ajustes → Tela inicial**, o SunBi pode virar a tela inicial do telefone, no espírito dos
+launchers minimalistas: relógio grande, a **tarefa da vez com Concluído**, o convite ao check-in
+e até oito apps favoritos **em texto**, sem grade de ícones. Deslizar para cima abre a lista de
+todos os apps com busca que ignora acentos e abre sozinha quando sobra um só resultado. Segurar
+um app favorita, esconde, abre as informações ou desinstala. A flor abre o SunBi. Mesmas cores,
+formas, sons e vibrações do app; o papel de parede aparece por trás de um véu da cor do tema.
+
+<p align="center">
+  <img src="docs/telas/launcher.png" width="24%" alt="Tela inicial: relógio, tarefa da vez e favoritos em texto">
+  <img src="docs/telas/launcher-apps.png" width="24%" alt="Lista de apps com busca">
+</p>
 
 ### Modo complexo
 

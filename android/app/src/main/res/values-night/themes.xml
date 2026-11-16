@@ -6,4 +6,9 @@
         <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>
     <color name="bg">#FF17130B</color>
+    <!-- Modo launcher: mostra o papel de parede atrás da tela inicial -->
+    <style name="Theme.SunBi.Launcher" parent="Theme.SunBi">
+        <item name="android:windowShowWallpaper">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+    </style>
 </resources>

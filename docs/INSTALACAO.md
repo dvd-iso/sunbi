@@ -55,6 +55,18 @@ importar um JSON).
 A página só responde com o modo ligado; cinco PINs errados desligam o modo. O tráfego é HTTP
 na rede local, sem criptografia: ligue só enquanto usa e desligue depois.
 
+## 5. Tela inicial (modo launcher)
+
+Em **Ajustes → Tela inicial**, ligue **"Usar o SunBi como tela inicial"** e toque em **"Definir
+como tela inicial padrão"**: o Android abre o próprio diálogo de escolha (papel `HOME`). Para
+voltar ao launcher antigo, desligue o interruptor ou troque em Ajustes do Android → Apps
+padrão → App de início. A atividade de tela inicial fica desligada no manifesto até a pessoa
+ligar, então o SunBi não aparece na lista de launchers de quem não usa o recurso.
+
+O launcher é código próprio do SunBi (MIT). O comportamento (favoritos em texto, busca que abre
+sozinha, esconder apps) segue a linha do [Olauncher](https://github.com/tanujnotes/Olauncher),
+que é GPL-3.0 e por isso não foi copiado.
+
 ## Como funciona a sincronização
 
 Cada registro tem valor, horário e aparelho. Quando dois aparelhos conversam, cada um fica com

@@ -340,6 +340,22 @@ class LogicTest {
         assertEquals(3, org.json.JSONArray(days.body).length())
     }
 
+    @Test fun launcherSearchIgnoresAccentsAndPrefersWordStarts() {
+        val me = android.os.Process.myUserHandle()
+        fun app(n: String) = Launcher.AppEntry(n, android.content.ComponentName("p.$n", "p.$n.Main"), me, 0L)
+        val apps = listOf(app("Câmera"), app("Mensagens"), app("Google Maps"), app("Spotify"))
+        assertEquals(listOf("Câmera"), Launcher.filter(apps, "cam").map { it.label })
+        assertEquals(listOf("Google Maps"), Launcher.filter(apps, "ma").map { it.label })
+        assertEquals(listOf("Mensagens"), Launcher.filter(apps, "ens").map { it.label }) // trecho, não começo
+        assertEquals(4, Launcher.filter(apps, " ").size)
+        Launcher.toggleFavorite(apps[0])
+        Launcher.toggleFavorite(apps[1])
+        assertEquals(listOf(apps[0].key, apps[1].key), Launcher.favorites())
+        Launcher.setHidden(apps[0], true)
+        assertEquals(listOf(apps[1].key), Launcher.favorites()) // escondido sai dos favoritos
+        assertTrue(apps[0].key in Launcher.hidden())
+    }
+
     @Test fun whatsappNumberGetsCountryCode() {
         assertEquals("5511987654321", Share.waNumber("(11) 98765-4321"))
         assertEquals("5511987654321", Share.waNumber("+55 11 98765-4321"))

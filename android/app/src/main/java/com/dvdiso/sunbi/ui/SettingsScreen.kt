@@ -68,6 +68,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.dvdiso.sunbi.AlarmScheduler
 import com.dvdiso.sunbi.BuildConfig
+import com.dvdiso.sunbi.Launcher
 import com.dvdiso.sunbi.Prefs
 import com.dvdiso.sunbi.Repo
 import com.dvdiso.sunbi.RingService
@@ -91,18 +92,27 @@ fun SettingsScreen(contentPadding: PaddingValues, onBack: () -> Unit, onRoutine:
         item { GeneralCard(Modifier.enterFromBelow(0)) }
         item {
             Column(Modifier.enterFromBelow(1), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                NavRow("Rotina e horários", "Semana e folga · ${Repo.tasks().size} e ${Repo.offTasks().size} tarefas", 0, 4) { Feedback.tap(); onRoutine() }
-                NavRow("SunAI", if (Prefs.aiKey.isBlank()) "Assistente com IA · configurar a chave" else "Assistente com IA · ${Prefs.aiModel}", 1, 4) { Feedback.tap(); onSunAI() }
+                val n = if (isQuest()) 4 else 5
+                NavRow("Rotina e horários", "Semana e folga · ${Repo.tasks().size} e ${Repo.offTasks().size} tarefas", 0, n) { Feedback.tap(); onRoutine() }
+                NavRow("SunAI", if (Prefs.aiKey.isBlank()) "Assistente com IA · configurar a chave" else "Assistente com IA · ${Prefs.aiModel}", 1, n) { Feedback.tap(); onSunAI() }
                 NavRow(
                     "Sincronização",
                     "Código ${Prefs.key} · " + when (peers.size) { 0 -> "nenhum aparelho"; 1 -> "1 aparelho"; else -> "${peers.size} aparelhos" },
-                    2, 4,
+                    2, n,
                 ) { Feedback.tap(); sheet = "sync" }
                 NavRow(
                     "Modo complexo",
                     if (Prefs.webConfig) "Ligado · configure tudo pelo navegador do computador" else "Configuração completa pelo computador",
-                    3, 4,
+                    3, n,
                 ) { Feedback.tap(); sheet = "web" }
+                if (!isQuest()) {
+                    val ctx = LocalContext.current
+                    NavRow(
+                        "Tela inicial (launcher)",
+                        if (Launcher.isEnabled(ctx)) "Ligado · a rotina do dia e seus apps na tela inicial" else "Usar o SunBi como tela inicial do telefone",
+                        4, n,
+                    ) { Feedback.tap(); sheet = "launcher" }
+                }
             }
         }
         item {
@@ -125,6 +135,58 @@ fun SettingsScreen(contentPadding: PaddingValues, onBack: () -> Unit, onRoutine:
             "Uma página servida por este aparelho para configurar o SunBi inteiro com calma, no computador.",
             { sheet = null },
         ) { WebConfigCard() }
+        "launcher" -> EditorSheet(
+            "Tela inicial",
+            "O SunBi vira a tela inicial do telefone: relógio, a tarefa da vez, o check-in e seus apps em texto, sem ícones gritando.",
+            { sheet = null },
+        ) { LauncherCard() }
+    }
+}
+
+/** Liga o modo launcher, pede para ser a tela inicial padrão e mostra os apps escondidos. */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun LauncherCard() {
+    val ctx = LocalContext.current
+    var on by remember { mutableStateOf(Launcher.isEnabled(ctx)) }
+    var hidden by remember { mutableStateOf(Launcher.hidden()) }
+    val apps = remember { Launcher.apps(ctx).associateBy { it.key } }
+    val cs = MaterialTheme.colorScheme
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        SwitchRow("Usar o SunBi como tela inicial", "Deslize para cima para ver todos os apps; segure um app para favoritar ou esconder", on) {
+            Feedback.tick()
+            Launcher.setEnabled(ctx, it)
+            on = it
+        }
+        androidx.compose.animation.AnimatedVisibility(on) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (Launcher.isDefault(ctx)) {
+                    Text("O SunBi é a tela inicial padrão. Para trocar, use o botão abaixo ou Ajustes do Android → Apps padrão.", style = MaterialTheme.typography.bodyMedium, color = cs.onSurfaceVariant)
+                } else {
+                    Text("Falta escolher o SunBi como padrão: o Android pergunta ao apertar o botão.", style = MaterialTheme.typography.bodyMedium, color = cs.onSurfaceVariant)
+                }
+                Button(onClick = {
+                    Feedback.tap()
+                    Launcher.requestDefaultIntent(ctx)?.let { runCatching { ctx.startActivity(it) } }
+                }, shapes = ButtonDefaults.shapes(), modifier = Modifier.fillMaxWidth()) {
+                    Text(if (Launcher.isDefault(ctx)) "Trocar a tela inicial padrão" else "Definir como tela inicial padrão")
+                }
+                if (hidden.isNotEmpty()) {
+                    Label("Apps escondidos")
+                    for (k in hidden.sorted()) {
+                        val app = apps[k]
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(app?.label ?: k.substringBefore('#'), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+                            TextButton(onClick = {
+                                Feedback.tick()
+                                Prefs.launcherHidden = Prefs.launcherHidden - k
+                                hidden = Launcher.hidden()
+                            }) { Text("Mostrar") }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

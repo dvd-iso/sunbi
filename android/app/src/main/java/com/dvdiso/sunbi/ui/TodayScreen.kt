@@ -207,7 +207,7 @@ private fun mins(time: String): Int? = runCatching { LocalTime.parse(time).toSec
 /** Cartão "Agora": a tarefa da vez, quanto falta e dois botões. */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun NowCard(tasks: List<Task>, tick: Long, onFocus: (Task?) -> Unit, modifier: Modifier = Modifier) {
+internal fun NowCard(tasks: List<Task>, tick: Long, onFocus: (Task?) -> Unit, modifier: Modifier = Modifier) {
     @Suppress("UNUSED_EXPRESSION") tick
     val d = today()
     val fb = rememberFeedback()
@@ -279,7 +279,7 @@ private fun InsightCard(i: Insight, onOpenPlan: () -> Unit, modifier: Modifier =
 
 /** Resumo do check-in: convida a fazer ou mostra o que já foi registrado. */
 @Composable
-private fun CheckinSummary(day: String, modifier: Modifier = Modifier, open: (step: Int) -> Unit) {
+internal fun CheckinSummary(day: String, modifier: Modifier = Modifier, open: (step: Int) -> Unit) {
     val h = Repo.humor(day)
     val s = Repo.sleep(day)
     val cs = MaterialTheme.colorScheme

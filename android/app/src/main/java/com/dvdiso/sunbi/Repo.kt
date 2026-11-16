@@ -86,6 +86,14 @@ object Prefs {
         get() = sp.getString("webPin", "")!!
         set(v) = sp.edit().putString("webPin", v).apply()
 
+    // Modo launcher: favoritos (em ordem) e apps escondidos, só neste aparelho
+    var launcherFavorites: List<String>
+        get() = sp.getString("launcherFavorites", "")!!.split('\n').filter { it.isNotBlank() }
+        set(v) = sp.edit().putString("launcherFavorites", v.distinct().joinToString("\n")).apply()
+    var launcherHidden: Set<String>
+        get() = sp.getStringSet("launcherHidden", emptySet())!!.toSet()
+        set(v) = sp.edit().putStringSet("launcherHidden", v).apply()
+
     // Gamificação: o que já foi comemorado neste aparelho
     var seenBadges: Set<String>
         get() = sp.getStringSet("seenBadges", emptySet())!!.toSet()

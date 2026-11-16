@@ -37,6 +37,25 @@
             </intent-filter>
         </activity>
 
+        <!-- Tela inicial (modo launcher): desligada até a pessoa ligar em Ajustes → Tela inicial -->
+        <activity
+            android:name=".ui.LauncherActivity"
+            android:enabled="false"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:taskAffinity=""
+            android:excludeFromRecents="true"
+            android:stateNotNeeded="true"
+            android:configChanges="orientation|screenSize|uiMode"
+            android:windowSoftInputMode="adjustResize|stateAlwaysHidden"
+            android:theme="@style/Theme.SunBi.Launcher">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
         <activity
             android:name=".ui.AlarmActivity"
             android:exported="false"
