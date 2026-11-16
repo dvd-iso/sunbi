@@ -66,6 +66,9 @@
       "one": "{n} aparelho conectado",
       "other": "{n} aparelhos conectados"
     },
-    "settings": "Configurações do SunBi"
+    "settings": "Configurações do SunBi",
+    "humor_pick": "toque para marcar",
+    "down": "para baixo",
+    "up": "acelerado"
   }
 }

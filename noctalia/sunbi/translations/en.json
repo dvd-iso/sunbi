@@ -66,6 +66,9 @@
       "one": "{n} device connected",
       "other": "{n} devices connected"
     },
-    "settings": "SunBi settings"
+    "settings": "SunBi settings",
+    "humor_pick": "tap to pick",
+    "down": "down",
+    "up": "up"
   }
 }

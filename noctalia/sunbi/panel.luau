@@ -151,27 +151,44 @@ local function tasks()
   return ui.scroll({ gap = 2, flexGrow = 1 }, rows)
 end
 
+local function moodColor(v)
+  if v == 0 then
+    return "primary"
+  end
+  local dark = noctalia.isDarkMode()
+  if v < 0 then
+    return dark and "#8AB4F8" or "#3D6FD6" -- azul: para baixo
+  end
+  return dark and "#FFB866" or "#C26A00" -- âmbar: acelerado
+end
+
 local function mood()
-  local hb = {}
+  -- escala visual: bolinhas maiores nas pontas, preenchida a escolhida
+  local dots = {}
   for i = -3, 3 do
-    table.insert(hb, ui.button({
-      text = i > 0 and ("+" .. i) or tostring(i),
-      tooltip = S.HUMOR[i],
-      variant = day.humor == i and "primary" or "ghost",
-      selected = day.humor == i,
-      flexGrow = 1,
-      fontSize = 13,
-      height = 30,
-      onClick = function() send("humor", tostring(i)) end,
+    local sel = day.humor == i
+    local size = 14 + 4 * math.abs(i)
+    local color = moodColor(i)
+    table.insert(dots, ui.column({ align = "center", justify = "center", width = 36, height = 36, radius = 18,
+      fill = sel and (color .. (string.sub(color, 1, 1) == "#" and "44" or "/0.25")) or nil,
+      tooltip = S.HUMOR[i], onClick = function() send("humor", tostring(i)) end }, {
+      ui.box({ width = size, height = size, radius = size / 2,
+        fill = sel and color or (string.sub(color, 1, 1) == "#" and (color .. "66") or (color .. "/0.4")) }),
     }))
   end
   local children = {
-    ui.row({ align = "center", gap = 8, tooltip = I.t("ui.humor_hint") }, {
+    ui.row({ align = "center", gap = 8 }, {
       ui.label({ text = I.t("ui.humor"), fontSize = 14, fontWeight = "semibold", maxLines = 1 }),
       ui.spacer({ flexGrow = 1 }),
-      ui.label({ text = day.humorLabel or "", fontSize = 12, fontWeight = "semibold", color = "primary", maxLines = 1 }),
+      ui.label({ text = day.humorLabel or I.t("ui.humor_pick"), fontSize = 13, fontWeight = "semibold",
+        color = day.humor ~= nil and moodColor(day.humor) or "on_surface_variant", maxLines = 1 }),
     }),
-    ui.row({ gap = 0 }, hb),
+    ui.row({ justify = "space_between", align = "center" }, dots),
+    ui.row({ align = "center" }, {
+      ui.label({ text = I.t("ui.down"), fontSize = 11, color = moodColor(-2), maxLines = 1 }),
+      ui.spacer({ flexGrow = 1 }),
+      ui.label({ text = I.t("ui.up"), fontSize = 11, color = moodColor(2), maxLines = 1 }),
+    }),
   }
   local hasNote = (day.note or "") ~= ""
   if showNote or hasNote then
