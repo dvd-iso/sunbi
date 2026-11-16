@@ -154,7 +154,6 @@ internal fun Root(launch: Launch = Launch()) {
     // gamificação: lida a cada mudança nos registros (a leitura observa o Repo)
     val stats = com.dvdiso.sunbi.Game.stats(now)
     var achievements by rememberSaveable { mutableStateOf(false) }
-    Celebrations(stats)
     if (achievements) AchievementsSheet(stats) { achievements = false }
     var tick by remember { mutableLongStateOf(0L) }
     var focusTask by remember { mutableStateOf<Task?>(null) }
@@ -163,6 +162,8 @@ internal fun Root(launch: Launch = Launch()) {
     // Ajustes é uma tela à parte (índice 3), aberta pela engrenagem; voltar retorna à aba anterior
     var prevTab by rememberSaveable { mutableIntStateOf(0) }
     var checkin by remember { mutableStateOf<Pair<String, Int>?>(null) }
+    // comemoração só com a tela livre: nunca por cima do check-in, do foco ou das conquistas
+    Celebrations(stats, paused = checkin != null || focusOpen || achievements)
     // para onde "voltar" leva a partir da Rotina (uma aba ou Ajustes)
     var routineBack by rememberSaveable { mutableIntStateOf(0) }
     val openSettings = { if (tab < SETTINGS) prevTab = tab; tab = SETTINGS }

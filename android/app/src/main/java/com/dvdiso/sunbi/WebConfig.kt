@@ -1,6 +1,8 @@
 package com.dvdiso.sunbi
 
 import android.content.Context
+import android.net.wifi.WifiManager
+import android.os.PowerManager
 import org.json.JSONArray
 import org.json.JSONObject
 import java.security.SecureRandom
@@ -23,26 +25,74 @@ object WebConfig {
 
     fun newPin(): String = "%06d".format(SecureRandom().nextInt(1_000_000))
 
-    fun enable(on: Boolean) {
+    /** Desliga sozinho depois deste tempo sem nenhum acesso à página. */
+    const val IDLE_MS = 60 * 60_000L
+
+    @Volatile var lastUse = 0L
+    private var wifiLock: WifiManager.WifiLock? = null
+    private var wakeLock: PowerManager.WakeLock? = null
+
+    fun enable(ctx: Context?, on: Boolean) {
         Prefs.webConfig = on
         if (on && Prefs.webPin.length != 6) Prefs.webPin = newPin()
         fails = 0
+        lastUse = System.currentTimeMillis()
+        ctx?.let { keepAwake(it, on) }
+    }
+
+    /**
+     * Com a tela apagada, o Wi-Fi de muitos celulares (Samsung incluso) entra em economia e
+     * derruba conexões que chegam de outro aparelho. Enquanto o modo está ligado, o Wi-Fi e a
+     * CPU ficam acordados; o desligamento automático limita o gasto de bateria.
+     */
+    @Synchronized
+    fun keepAwake(ctx: Context, on: Boolean) {
+        val app = ctx.applicationContext
+        if (on) {
+            if (wifiLock == null) {
+                @Suppress("DEPRECATION")
+                wifiLock = runCatching {
+                    app.getSystemService(WifiManager::class.java)
+                        .createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "sunbi:webconfig")
+                        .apply { setReferenceCounted(false); acquire() }
+                }.getOrNull()
+            }
+            if (wakeLock == null) {
+                wakeLock = runCatching {
+                    app.getSystemService(PowerManager::class.java)
+                        .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "sunbi:webconfig")
+                        .apply { setReferenceCounted(false); acquire(IDLE_MS + 5 * 60_000L) }
+                }.getOrNull()
+            }
+        } else {
+            runCatching { wifiLock?.release() }
+            runCatching { wakeLock?.release() }
+            wifiLock = null
+            wakeLock = null
+        }
+    }
+
+    /** Chamado a cada minuto pelo serviço: desliga o modo esquecido ligado. */
+    fun checkIdle(ctx: Context, now: Long = System.currentTimeMillis()) {
+        if (Prefs.webConfig && now - lastUse > IDLE_MS) enable(ctx, false)
     }
 
     /** Trata uma chamada. Devolve null quando a rota não é da página (segue para o protocolo de sync). */
     fun handle(ctx: Context, method: String, uri: String, pin: String?, query: Map<String, String>, body: String?): Res? {
         if (uri == "/" || uri == "/index.html") {
             if (!Prefs.webConfig) return Res(404, OFF_HTML, "text/html; charset=utf-8")
+            lastUse = System.currentTimeMillis()
             val html = runCatching { ctx.assets.open("web/index.html").bufferedReader().readText() }.getOrNull()
                 ?: return Res(500, "<p>página não encontrada no app</p>", "text/html; charset=utf-8")
             return Res(200, html, "text/html; charset=utf-8")
         }
         if (!uri.startsWith("/api/")) return null
         if (!Prefs.webConfig) return err(403, "modo complexo desligado")
+        lastUse = System.currentTimeMillis()
         if (pin == null || pin != Prefs.webPin) {
             fails++
             if (fails >= 5) {
-                enable(false)
+                enable(ctx, false)
                 return err(403, "PIN errado 5 vezes: o modo complexo foi desligado; ligue de novo no app")
             }
             return err(401, "PIN errado")

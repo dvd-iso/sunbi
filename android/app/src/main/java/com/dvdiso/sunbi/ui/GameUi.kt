@@ -86,7 +86,7 @@ fun GameStrip(stats: Game.Stats, modifier: Modifier = Modifier, onOpen: () -> Un
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
-                    "${animatedInt(stats.streak)} ${if (stats.streak == 1) "dia" else "dias"} seguidos" +
+                    "${animatedInt(stats.streak)} ${if (stats.streak == 1) "dia seguido" else "dias seguidos"}" +
                         if (stats.todayXp > 0) "  ·  hoje +${stats.todayXp} XP" else "",
                     style = MaterialTheme.typography.titleMediumEmphasized, maxLines = 1, overflow = TextOverflow.Ellipsis,
                 )
@@ -174,15 +174,16 @@ sealed class Celebration {
  * nível novo. Na primeira vez (instalação antiga com histórico) só anota, sem festa atrasada.
  */
 @Composable
-fun Celebrations(stats: Game.Stats) {
+fun Celebrations(stats: Game.Stats, paused: Boolean = false) {
     var show by remember { mutableStateOf<Celebration?>(null) }
-    LaunchedEffect(stats.level, stats.badges) {
+    LaunchedEffect(stats.level, stats.badges, paused) {
         if (Prefs.seenLevel == 0) {
             Prefs.seenLevel = stats.level
             Prefs.seenBadges = stats.badges
             return@LaunchedEffect
         }
-        if (show != null) return@LaunchedEffect
+        // com o check-in ou outra folha aberta, espera fechar: uma janela por vez
+        if (show != null || paused) return@LaunchedEffect
         if (stats.level > Prefs.seenLevel) {
             Prefs.seenLevel = stats.level
             show = Celebration.LevelUp(stats.level, stats.levelName)

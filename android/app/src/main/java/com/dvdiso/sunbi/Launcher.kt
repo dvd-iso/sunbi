@@ -20,9 +20,17 @@ import java.text.Normalizer
  */
 object Launcher {
     /** Um app que pode ser aberto. [key] identifica pacote + atividade + usuário (perfil de trabalho). */
-    data class AppEntry(val label: String, val component: ComponentName, val user: UserHandle, val userSerial: Long) {
+    /**
+     * Um app que pode ser aberto. [label] é o nome mostrado (o que a pessoa deu, se renomeou);
+     * [original] é o nome do próprio app. A busca acha pelos dois.
+     */
+    data class AppEntry(
+        val label: String, val component: ComponentName, val user: UserHandle, val userSerial: Long,
+        val original: String = label,
+    ) {
         val key: String get() = "${component.flattenToShortString()}#$userSerial"
-        val search: String = fold(label)
+        val search: String = fold(if (original == label) label else "$label $original")
+        val renamed: Boolean get() = original != label
     }
 
     private val activity = ComponentName("com.dvdiso.sunbi", "com.dvdiso.sunbi.ui.LauncherActivity")
@@ -50,11 +58,21 @@ object Launcher {
         ctx.getSystemService(RoleManager::class.java)?.isRoleHeld(RoleManager.ROLE_HOME) == true
     }.getOrDefault(false)
 
-    /** Pede ao sistema para escolher o SunBi como tela inicial (diálogo do próprio Android). */
-    fun requestDefaultIntent(ctx: Context): Intent? {
+    /** Pedido do papel HOME (diálogo do próprio Android), ou null se o sistema não oferece. */
+    fun roleRequestIntent(ctx: Context): Intent? = runCatching {
         val rm = ctx.getSystemService(RoleManager::class.java) ?: return null
-        if (!rm.isRoleAvailable(RoleManager.ROLE_HOME)) return Intent(Settings.ACTION_HOME_SETTINGS)
-        return rm.createRequestRoleIntent(RoleManager.ROLE_HOME)
+        if (!rm.isRoleAvailable(RoleManager.ROLE_HOME)) null else rm.createRequestRoleIntent(RoleManager.ROLE_HOME)
+    }.getOrNull()
+
+    /**
+     * Abre a tela "App de início" dos ajustes do Android. É o caminho que sempre funciona,
+     * inclusive quando o diálogo do papel HOME não aparece (alguns Samsung, ou depois de recusas).
+     */
+    fun openHomeSettings(ctx: Context) {
+        for (action in listOf(Settings.ACTION_HOME_SETTINGS, Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS, Settings.ACTION_SETTINGS)) {
+            val ok = runCatching { ctx.startActivity(Intent(action).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); true }.getOrDefault(false)
+            if (ok) return
+        }
     }
 
     // ── apps ────────────────────────────────────────────────────────────────
@@ -70,10 +88,25 @@ object Launcher {
             val list = runCatching { la.getActivityList(null, u) }.getOrNull() ?: continue
             for (a in list) {
                 if (a.componentName == activity) continue
-                out += AppEntry(a.label.toString(), a.componentName, u, serial)
+                out += withName(AppEntry(a.label.toString(), a.componentName, u, serial))
             }
         }
-        return out.sortedWith(compareBy({ it.search }, { it.userSerial }))
+        return sorted(out)
+    }
+
+    fun sorted(list: List<AppEntry>): List<AppEntry> = list.sortedWith(compareBy({ fold(it.label) }, { it.userSerial }))
+
+    /** Aplica o nome que a pessoa deu ao app, se houver. */
+    fun withName(app: AppEntry): AppEntry {
+        val custom = Prefs.launcherNames[app.key]?.takeIf { it.isNotBlank() } ?: return app.copy(label = app.original)
+        return app.copy(label = custom)
+    }
+
+    /** Renomeia (nome vazio volta ao original). Devolve o app com o nome novo. */
+    fun rename(app: AppEntry, name: String): AppEntry {
+        val n = name.trim()
+        Prefs.launcherNames = if (n.isEmpty() || n == app.original) Prefs.launcherNames - app.key else Prefs.launcherNames + (app.key to n)
+        return withName(app)
     }
 
     fun launch(ctx: Context, app: AppEntry): Boolean = runCatching {

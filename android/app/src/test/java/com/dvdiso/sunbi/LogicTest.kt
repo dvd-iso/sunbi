@@ -294,7 +294,7 @@ class LogicTest {
         assertEquals(404, WebConfig.handle(ctx, "GET", "/", null, emptyMap(), null)!!.status)
         assertEquals(403, WebConfig.handle(ctx, "GET", "/api/config", "000000", emptyMap(), null)!!.status)
         assertNull(WebConfig.handle(ctx, "POST", "/v1/merge", null, emptyMap(), "{}")) // rota do protocolo
-        WebConfig.enable(true)
+        WebConfig.enable(null, true)
         val pin = Prefs.webPin
         assertEquals(6, pin.length)
         val page = WebConfig.handle(ctx, "GET", "/", null, emptyMap(), null)!!
@@ -312,7 +312,7 @@ class LogicTest {
 
     @Test fun webConfigEditsRoutinePlanAndDay() {
         val ctx = org.robolectric.RuntimeEnvironment.getApplication()
-        WebConfig.enable(true)
+        WebConfig.enable(null, true)
         val pin = Prefs.webPin
         val body = JSONObject()
             .put("tasks", org.json.JSONArray().put(JSONObject().put("time", "08:00").put("label", "Acordar").put("anchor", true)))
@@ -354,6 +354,16 @@ class LogicTest {
         Launcher.setHidden(apps[0], true)
         assertEquals(listOf(apps[1].key), Launcher.favorites()) // escondido sai dos favoritos
         assertTrue(apps[0].key in Launcher.hidden())
+        // renomear: mostra o nome novo, busca acha pelos dois, nome vazio volta ao original
+        val r = Launcher.rename(apps[3], "Música")
+        assertEquals("Música", r.label)
+        assertEquals("Spotify", r.original)
+        assertTrue(r.renamed)
+        assertEquals(listOf("Música"), Launcher.filter(listOf(r), "spot").map { it.label })
+        assertEquals(listOf("Música"), Launcher.filter(listOf(r), "mus").map { it.label })
+        assertEquals("Música", Launcher.withName(apps[3]).label) // guardado
+        assertEquals("Spotify", Launcher.rename(apps[3], " ").label)
+        assertFalse(Launcher.withName(apps[3]).renamed)
     }
 
     // ── dia difícil, alarme num aparelho só, lembretes, widget, Health Connect ──

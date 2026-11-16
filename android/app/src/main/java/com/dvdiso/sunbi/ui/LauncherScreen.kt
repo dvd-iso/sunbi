@@ -2,7 +2,6 @@ package com.dvdiso.sunbi.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -25,23 +24,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -59,15 +53,18 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.dvdiso.sunbi.Game
 import com.dvdiso.sunbi.Launcher
-import com.dvdiso.sunbi.Prefs
+import com.dvdiso.sunbi.LockService
 import com.dvdiso.sunbi.Repo
+import com.dvdiso.sunbi.Task
 import com.dvdiso.sunbi.today
 import kotlinx.coroutines.delay
 import java.time.LocalDate
@@ -80,16 +77,17 @@ private val HM = DateTimeFormatter.ofPattern("HH:mm")
 private val DATE = DateTimeFormatter.ofPattern("EEEE, d 'de' MMMM", PT)
 
 /**
- * Tela inicial: relógio, a tarefa da vez, o check-in e os apps favoritos em texto.
- * Deslizar para cima (ou tocar na seta) abre a gaveta com busca. Segurar um app abre as opções.
+ * Tela inicial, de propósito vazia: relógio, data, uma linha com a tarefa da vez e os apps
+ * favoritos em texto. Deslizar para cima abre todos os apps. Segurar um app abre as opções.
  */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun LauncherScreen(apps: List<Launcher.AppEntry>, homePressed: Long, onOpenSunBi: () -> Unit) {
     val ctx = LocalContext.current
     val cs = MaterialTheme.colorScheme
     var drawer by remember { mutableStateOf(false) }
     var tick by remember { mutableLongStateOf(0L) }
+    // estado local dos apps (favoritos, ocultos e nomes mudam na hora, sem esperar recarregar)
+    var list by remember(apps) { mutableStateOf(apps) }
     var favKeys by remember { mutableStateOf(Launcher.favorites()) }
     var hiddenKeys by remember { mutableStateOf(Launcher.hidden()) }
     var options by remember { mutableStateOf<Launcher.AppEntry?>(null) }
@@ -97,9 +95,9 @@ fun LauncherScreen(apps: List<Launcher.AppEntry>, homePressed: Long, onOpenSunBi
     LaunchedEffect(Unit) { while (true) { delay(10_000); tick++ } }
     BackHandler(enabled = drawer) { drawer = false }
 
-    val byKey = remember(apps) { apps.associateBy { it.key } }
+    val byKey = list.associateBy { it.key }
     val favorites = favKeys.mapNotNull { byKey[it] }
-    val visible = remember(apps, hiddenKeys) { apps.filter { it.key !in hiddenKeys } }
+    val visible = list.filter { it.key !in hiddenKeys }
     val open: (Launcher.AppEntry) -> Unit = { app ->
         Feedback.tap()
         if (!Launcher.launch(ctx, app)) Feedback.error()
@@ -107,7 +105,7 @@ fun LauncherScreen(apps: List<Launcher.AppEntry>, homePressed: Long, onOpenSunBi
     }
 
     // o papel de parede fica atrás; um véu da cor de superfície mantém a leitura e o tema
-    Box(Modifier.fillMaxSize().background(cs.surface.copy(alpha = 0.86f))) {
+    Box(Modifier.fillMaxSize().background(cs.surface.copy(alpha = 0.88f))) {
         AnimatedContent(
             drawer,
             transitionSpec = {
@@ -116,27 +114,35 @@ fun LauncherScreen(apps: List<Launcher.AppEntry>, homePressed: Long, onOpenSunBi
             },
             label = "drawer",
         ) { d ->
-            if (d) AppDrawer(visible, favKeys, onOpen = open, onLongPress = { options = it })
+            if (d) AppDrawer(visible, hiddenKeys.size, onOpen = open, onLongPress = { options = it }, onClose = { drawer = false })
             else Home(tick, favorites, onOpenSunBi, onOpenDrawer = { Feedback.tap(); drawer = true }, onOpen = open, onLongPress = { options = it })
         }
     }
 
     options?.let { app ->
-        val fav = app.key in favKeys
-        EditorSheet(app.label, if (fav) "Favorito" else null, onDismiss = { options = null }) {
-            Button(onClick = { Feedback.toggle(!fav); Launcher.toggleFavorite(app); favKeys = Launcher.favorites(); options = null },
-                shapes = ButtonDefaults.shapes(), modifier = Modifier.fillMaxWidth()) {
-                Text(if (fav) "Tirar dos favoritos" else "Adicionar aos favoritos (${favorites.size}/${Launcher.MAX_FAVORITES})")
-            }
-            OutlinedButton(onClick = { Feedback.tick(); Launcher.setHidden(app, true); hiddenKeys = Launcher.hidden(); favKeys = Launcher.favorites(); options = null },
-                shapes = ButtonDefaults.shapes(), modifier = Modifier.fillMaxWidth()) { Text("Esconder da lista") }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TextButton(onClick = { Launcher.appInfo(ctx, app); options = null }, modifier = Modifier.weight(1f)) { Text("Informações") }
-                TextButton(onClick = { Launcher.uninstall(ctx, app); options = null }, modifier = Modifier.weight(1f)) { Text("Desinstalar", color = cs.error) }
-            }
-            Text("Apps escondidos voltam em Ajustes → Tela inicial.", style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
-        }
+        AppOptionsSheet(
+            app, isFavorite = app.key in favKeys, favoriteCount = favorites.size,
+            onDismiss = { options = null },
+            onFavorite = { Launcher.toggleFavorite(app); favKeys = Launcher.favorites(); options = null },
+            onRename = { name ->
+                val renamed = Launcher.rename(app, name)
+                list = Launcher.sorted(list.map { if (it.key == app.key) renamed else it })
+                options = null
+            },
+            onHide = { Launcher.setHidden(app, true); hiddenKeys = Launcher.hidden(); favKeys = Launcher.favorites(); options = null },
+            onInfo = { Launcher.appInfo(ctx, app); options = null },
+            onUninstall = { Launcher.uninstall(ctx, app); options = null },
+        )
     }
+}
+
+private fun minutes(t: String): Int? = runCatching { LocalTime.parse(t).toSecondOfDay() / 60 }.getOrNull()
+
+/** A tarefa da vez (atrasada há até 3 h, senão a próxima), igual ao cartão "Agora" do app. */
+private fun currentTask(day: String): Task? {
+    val now = LocalTime.now().toSecondOfDay() / 60
+    val pending = Repo.tasksFor(day).filter { !Repo.done(day, it.id) && minutes(it.time) != null }
+    return pending.lastOrNull { val m = minutes(it.time)!!; m <= now && now - m <= 180 } ?: pending.firstOrNull { minutes(it.time)!! > now }
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -147,68 +153,78 @@ private fun Home(
 ) {
     @Suppress("UNUSED_EXPRESSION") tick
     val cs = MaterialTheme.colorScheme
-    val day = today()
-    val tasks = Repo.tasksFor(day)
-    val stats = Game.stats(day)
-    val now = LocalTime.now()
-    var lockHelp by remember { mutableStateOf(false) }
     val ctx = LocalContext.current
+    val day = today()
+    val task = currentTask(day)
+    var lockHelp by remember { mutableStateOf(false) }
     Column(
         Modifier.fillMaxSize().safeDrawingPadding()
             .pointerInput(Unit) {
                 var total = 0f
                 detectVerticalDragGestures(onDragStart = { total = 0f }, onDragEnd = { if (total < -120f) onOpenDrawer() }) { _, dy -> total += dy }
             }
-            // toque duplo no fundo: trava a tela (com o serviço de acessibilidade ligado)
-            .pointerInput(Unit) { detectTapGestures(onDoubleTap = { if (!com.dvdiso.sunbi.LockService.lock()) lockHelp = true else Feedback.tap() }) }
-            .verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+            // dois toques no fundo: trava a tela (com o serviço de acessibilidade ligado)
+            .pointerInput(Unit) { detectTapGestures(onDoubleTap = { if (LockService.lock()) Feedback.tap() else lockHelp = true }) }
+            .semantics { contentDescription = "Tela inicial. Deslize para cima para ver todos os apps." }
+            .padding(horizontal = 28.dp, vertical = 24.dp),
     ) {
-        // relógio e data; a flor abre o SunBi
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(now.format(HM), style = MaterialTheme.typography.displayLargeEmphasized, fontWeight = FontWeight.Bold, color = cs.onSurface)
-                Text(LocalDate.parse(day).format(DATE).replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.titleMedium, color = cs.onSurfaceVariant)
-                if (stats.streak > 0) {
-                    Text("🔥 ${stats.streak} ${if (stats.streak == 1) "dia" else "dias"} · nível ${stats.level}", style = MaterialTheme.typography.labelLarge, color = cs.primary, modifier = Modifier.padding(top = 4.dp))
-                }
-            }
-            SunBiMark(Modifier.clip(CircleShape).bouncyClick(label = "Abrir o SunBi") { Feedback.tap(); onOpenSunBi() },
-                size = 56.dp, sunglasses = Repo.isOff(day))
-        }
-        if (tasks.isNotEmpty()) NowCard(tasks, tick, onFocus = {}, Modifier.enterFromBelow(0))
-        if (!Repo.checkedIn(day)) CheckinSummary(day, Modifier.enterFromBelow(1)) { onOpenSunBi() }
+        Text(LocalTime.now().format(HM), style = MaterialTheme.typography.displayLargeEmphasized, fontWeight = FontWeight.Bold, color = cs.onSurface)
+        Text(LocalDate.parse(day).format(DATE), style = MaterialTheme.typography.titleMedium, color = cs.onSurfaceVariant)
 
-        // favoritos em texto, como nos launchers minimalistas
-        Column(Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            if (favorites.isEmpty()) {
-                Text("Segure um app na lista para deixá-lo aqui.", style = MaterialTheme.typography.bodyLarge, color = cs.onSurfaceVariant)
-            }
+        // uma linha só: a tarefa da vez; tocar marca como feita
+        if (task != null) {
+            Spacer(Modifier.height(28.dp))
+            TaskLine(day, task)
+        }
+
+        Spacer(Modifier.weight(1f))
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             for ((i, app) in favorites.withIndex()) {
-                AppRow(app, big = true, modifier = Modifier.enterFromBelow(2 + i), onOpen = onOpen, onLongPress = onLongPress)
+                AppRow(app, big = true, modifier = Modifier.enterFromBelow(i), onOpen = onOpen, onLongPress = onLongPress)
             }
+        }
+        if (favorites.isEmpty()) {
+            Text("Deslize para cima e segure um app para deixá-lo aqui.", style = MaterialTheme.typography.bodyLarge, color = cs.onSurfaceVariant)
         }
         Spacer(Modifier.weight(1f))
-        TextButton(onClick = onOpenDrawer, modifier = Modifier.fillMaxWidth()) {
-            Icon(Icons.Filled.KeyboardArrowUp, null)
-            Spacer(Modifier.width(6.dp))
-            Text("Todos os apps")
+        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            SunBiMark(Modifier.clip(CircleShape).bouncyClick(label = "Abrir o SunBi") { Feedback.tap(); onOpenSunBi() },
+                size = 40.dp, sunglasses = Repo.isOff(day))
         }
     }
     if (lockHelp) {
-        EditorSheet("Travar a tela com dois toques", "Para isso o Android pede um serviço de acessibilidade. O do SunBi só trava a tela: não lê a tela nem outros apps.", { lockHelp = false }) {
-            Button(onClick = { com.dvdiso.sunbi.LockService.openSettings(ctx); lockHelp = false }, shapes = ButtonDefaults.shapes(), modifier = Modifier.fillMaxWidth()) {
+        EditorSheet("Travar a tela com dois toques", "O Android pede um serviço de acessibilidade para isso. O do SunBi só trava a tela: não lê a tela nem outros apps.", { lockHelp = false }) {
+            Button(onClick = { LockService.openSettings(ctx); lockHelp = false }, shapes = ButtonDefaults.shapes(), modifier = Modifier.fillMaxWidth()) {
                 Text("Abrir Acessibilidade")
             }
-            Text("Lá, ligue \"SunBi · travar a tela\". Depois, dois toques no fundo da tela inicial travam o telefone.", style = MaterialTheme.typography.bodyMedium, color = cs.onSurfaceVariant)
+            Text("Lá, ligue \"SunBi · travar a tela\".", style = MaterialTheme.typography.bodyMedium, color = cs.onSurfaceVariant)
         }
     }
 }
 
 @Composable
+private fun TaskLine(day: String, task: Task) {
+    val cs = MaterialTheme.colorScheme
+    var done by remember(task.id) { mutableStateOf(false) }
+    Row(
+        Modifier.clip(MaterialTheme.shapes.large)
+            .bouncyClick(label = "Marcar como feita") { done = true; toggleTask(Feedback, day, task.id, true) }
+            .padding(vertical = 6.dp, horizontal = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        MorphCheck(done, size = 22.dp)
+        Spacer(Modifier.width(12.dp))
+        Text(task.time, style = MaterialTheme.typography.titleMedium, color = cs.primary)
+        Spacer(Modifier.width(10.dp))
+        Text(task.label, style = MaterialTheme.typography.titleMedium, color = cs.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            textDecoration = if (done) TextDecoration.LineThrough else null)
+    }
+}
+
+@Composable
 private fun AppDrawer(
-    apps: List<Launcher.AppEntry>, favKeys: List<String>,
-    onOpen: (Launcher.AppEntry) -> Unit, onLongPress: (Launcher.AppEntry) -> Unit,
+    apps: List<Launcher.AppEntry>, hiddenCount: Int,
+    onOpen: (Launcher.AppEntry) -> Unit, onLongPress: (Launcher.AppEntry) -> Unit, onClose: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
     var query by remember { mutableStateOf("") }
@@ -218,7 +234,14 @@ private fun AppDrawer(
     // uma só correspondência: abre sozinho (busca de launcher)
     LaunchedEffect(shown.size, query) { if (query.length >= 2 && shown.size == 1) onOpen(shown.single()) }
 
-    Column(Modifier.fillMaxSize().safeDrawingPadding().imePadding()) {
+    Column(
+        Modifier.fillMaxSize().safeDrawingPadding().imePadding()
+            .pointerInput(Unit) {
+                // puxar para baixo no topo fecha a lista
+                var total = 0f
+                detectVerticalDragGestures(onDragStart = { total = 0f }, onDragEnd = { if (total > 160f) onClose() }) { _, dy -> total += dy }
+            },
+    ) {
         OutlinedTextField(
             query, { query = it },
             placeholder = { Text("Buscar app") }, singleLine = true,
@@ -228,12 +251,15 @@ private fun AppDrawer(
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
             keyboardActions = KeyboardActions(onGo = { shown.firstOrNull()?.let(onOpen) }),
         )
-        LazyColumn(contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            items(shown, key = { it.key }) { app ->
-                AppRow(app, big = false, star = app.key in favKeys, onOpen = onOpen, onLongPress = onLongPress)
+        LazyColumn(contentPadding = PaddingValues(horizontal = 24.dp, vertical = 4.dp)) {
+            items(shown, key = { it.key }) { app -> AppRow(app, big = false, onOpen = onOpen, onLongPress = onLongPress) }
+            if (shown.isEmpty()) item { Text("Nenhum app com \"$query\"", Modifier.padding(8.dp), style = MaterialTheme.typography.bodyLarge, color = cs.onSurfaceVariant) }
+            item {
+                Text(
+                    "Segure um app para favoritar, renomear ou ocultar." + if (hiddenCount > 0) " Ocultos: $hiddenCount (Ajustes → Tela inicial)." else "",
+                    Modifier.padding(8.dp, 16.dp), style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant,
+                )
             }
-            if (shown.isEmpty()) item { Text("Nenhum app com \"$query\"", style = MaterialTheme.typography.bodyLarge, color = cs.onSurfaceVariant) }
-            item { Spacer(Modifier.height(24.dp)) }
         }
     }
 }
@@ -241,24 +267,70 @@ private fun AppDrawer(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun AppRow(
-    app: Launcher.AppEntry, big: Boolean, modifier: Modifier = Modifier, star: Boolean = false,
+    app: Launcher.AppEntry, big: Boolean, modifier: Modifier = Modifier,
     onOpen: (Launcher.AppEntry) -> Unit, onLongPress: (Launcher.AppEntry) -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
     Row(
         modifier.fillMaxWidth().clip(MaterialTheme.shapes.large)
-            .pointerInput(app.key) {
-                detectTapGestures(onTap = { onOpen(app) }, onLongPress = { Feedback.tick(); onLongPress(app) })
-            }
-            .padding(horizontal = 8.dp, vertical = if (big) 12.dp else 10.dp),
+            .pointerInput(app.key) { detectTapGestures(onTap = { onOpen(app) }, onLongPress = { Feedback.tick(); onLongPress(app) }) }
+            .padding(horizontal = 4.dp, vertical = if (big) 8.dp else 11.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             app.label, Modifier.weight(1f),
-            style = if (big) MaterialTheme.typography.headlineSmallEmphasized else MaterialTheme.typography.titleMedium,
+            style = if (big) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.titleMedium,
             color = cs.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis,
         )
         if (app.userSerial != 0L) Tag("trabalho", cs.secondaryContainer, cs.onSecondaryContainer)
-        if (star) Text("★", color = cs.primary, fontSize = 14.sp, modifier = Modifier.padding(start = 8.dp))
+    }
+}
+
+/** Opções de um app: uma lista curta, uma ação por linha. Renomear abre um campo no lugar. */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun AppOptionsSheet(
+    app: Launcher.AppEntry, isFavorite: Boolean, favoriteCount: Int,
+    onDismiss: () -> Unit, onFavorite: () -> Unit, onRename: (String) -> Unit,
+    onHide: () -> Unit, onInfo: () -> Unit, onUninstall: () -> Unit,
+) {
+    var renaming by remember { mutableStateOf(false) }
+    var name by remember { mutableStateOf(app.label) }
+    EditorSheet(app.label, if (app.renamed) "Nome original: ${app.original}" else null, onDismiss) {
+        if (renaming) {
+            OutlinedTextField(
+                name, { name = it }, label = { Text("Nome") }, singleLine = true,
+                modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large,
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { Feedback.toggle(true); onRename(name) }),
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (app.renamed) TextButton(onClick = { Feedback.tick(); onRename("") }) { Text("Voltar ao original") }
+                Spacer(Modifier.weight(1f))
+                Button(onClick = { Feedback.toggle(true); onRename(name) }, enabled = name.isNotBlank(), shapes = ButtonDefaults.shapes()) { Text("Salvar") }
+            }
+        } else {
+        val full = !isFavorite && favoriteCount >= Launcher.MAX_FAVORITES
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            val rows = listOf(
+                (if (isFavorite) "Tirar da tela inicial" else "Pôr na tela inicial") to (if (full) "A tela inicial já tem ${Launcher.MAX_FAVORITES} apps" else null),
+                "Renomear" to null,
+                "Ocultar" to "Some da lista; volta em Ajustes → Tela inicial",
+                "Informações do app" to null,
+                "Desinstalar" to null,
+            )
+            rows.forEachIndexed { i, (title, sub) ->
+                NavRow(title, sub, i, rows.size) {
+                    when (i) {
+                        0 -> if (!full) { Feedback.toggle(!isFavorite); onFavorite() } else Feedback.error()
+                        1 -> { Feedback.tap(); renaming = true }
+                        2 -> { Feedback.tick(); onHide() }
+                        3 -> onInfo()
+                        else -> onUninstall()
+                    }
+                }
+            }
+        }
+        }
     }
 }

@@ -136,8 +136,9 @@ rotina de folga. Toque de novo para voltar.
 **Bloco de foco (TDAH):** segurar uma tarefa abre um cronômetro de 5 minutos (o difícil é
 começar), com o primeiro passo da tarefa em destaque.
 
-**Dia difícil:** um toque em **"Só o essencial"** encolhe a rotina do dia para as âncoras e os
-remédios. O resto espera, sem culpa, e volta quando a pessoa quiser.
+**Dia difícil:** quando o humor do check-in vem **para baixo** (−2 ou −3), o app pergunta uma vez
+se a pessoa quer deixar o dia **só com o essencial**: âncoras e remédios. O resto espera, sem
+culpa. Enquanto vale, um selo pequeno em Hoje avisa e, com um toque, volta à rotina inteira.
 
 **Lembretes e companhia:**
 
@@ -176,15 +177,17 @@ No Quest e em telas largas, a navegação vira um trilho lateral.
 ### Tela inicial (modo launcher)
 
 Em **Ajustes → Tela inicial**, o SunBi pode virar a tela inicial do telefone, no espírito dos
-launchers minimalistas: relógio grande, a **tarefa da vez com Concluído**, o convite ao check-in
-e até oito apps favoritos **em texto**, sem grade de ícones. Deslizar para cima abre a lista de
-todos os apps com busca que ignora acentos e abre sozinha quando sobra um só resultado. Segurar
-um app favorita, esconde, abre as informações ou desinstala. A flor abre o SunBi. Mesmas cores,
-formas, sons e vibrações do app; o papel de parede aparece por trás de um véu da cor do tema.
+launchers minimalistas, e de propósito quase vazio: relógio, data, **uma linha com a tarefa da
+vez** (um toque marca como feita) e até oito apps favoritos **em texto**, sem grade de ícones.
+Deslizar para cima abre todos os apps, com busca que ignora acentos e abre sozinha quando sobra
+um só resultado. Segurar um app abre as opções: pôr na tela inicial, **renomear**, **ocultar**,
+informações e desinstalar. A flor, embaixo, abre o SunBi. Mesmas cores, formas, sons e vibrações
+do app; o papel de parede aparece por trás de um véu da cor do tema.
 
 <p align="center">
   <img src="docs/telas/launcher.png" width="24%" alt="Tela inicial: relógio, tarefa da vez e favoritos em texto">
   <img src="docs/telas/launcher-apps.png" width="24%" alt="Lista de apps com busca">
+  <img src="docs/telas/launcher-opcoes.png" width="24%" alt="Opções de um app: tela inicial, renomear, ocultar">
 </p>
 
 ### Modo complexo

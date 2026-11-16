@@ -67,7 +67,7 @@ label.sw:last-child { border: 0; }
 <div id="gate" class="card" style="display:none">
   <h3>PIN do modo complexo</h3>
   <p class="hint">O app mostra o PIN em <b>Ajustes → Modo complexo</b>. Cinco erros desligam o modo.</p>
-  <input id="pin" type="text" inputmode="numeric" maxlength="6" placeholder="000000" autofocus>
+  <input id="pin" type="text" inputmode="numeric" maxlength="12" placeholder="000 000" autofocus>
   <p><button id="enter">Entrar</button></p>
   <p class="hint" id="gateMsg"></p>
 </div>
@@ -204,7 +204,7 @@ async function start() {
   loadDays();
 }
 function gate(msg) { $('#gate').style.display = ''; $('#app').style.display = 'none'; $('#gateMsg').textContent = msg; $('#status').textContent = 'aguardando PIN'; }
-$('#enter').onclick = () => { pin = $('#pin').value.trim(); start(); };
+$('#enter').onclick = () => { pin = $('#pin').value.replace(/\D/g, ''); start(); };
 $('#pin').addEventListener('keydown', e => { if (e.key === 'Enter') $('#enter').click(); });
 
 // ── navegação ──

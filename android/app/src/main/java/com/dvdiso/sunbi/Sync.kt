@@ -231,7 +231,10 @@ class SyncService : Service() {
         SyncManager.loadManualPeers()
         scope.launch {
             while (true) {
-                SyncManager.syncAll()
+                if (Prefs.syncEnabled) SyncManager.syncAll()
+                WebConfig.checkIdle(applicationContext)
+                // nada mais para fazer: sem sync e sem modo complexo, o serviço pode parar
+                if (!Prefs.syncEnabled && !Prefs.webConfig) { stopSelf(); break }
                 delay(60_000)
             }
         }

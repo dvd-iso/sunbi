@@ -51,6 +51,8 @@ class App : Application() {
         }
         AlarmScheduler.scheduleAll(this)
         Reminders.schedule(this)
+        // processo reiniciado com o modo complexo ligado: mantém o Wi-Fi acordado de novo
+        if (Prefs.webConfig) WebConfig.enable(this, true)
     }
 }
 

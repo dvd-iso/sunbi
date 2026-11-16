@@ -128,6 +128,10 @@ fun TodayScreen(
             AnimatedVisibility(off != null, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
                 OffBadge(day, off)
             }
+            // dia difícil (ligado no check-in): só um selo; tocar volta à rotina inteira
+            AnimatedVisibility(Repo.isHard(day), enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
+                HardBadge { Feedback.toggle(false); Repo.setHard(day, false) }
+            }
         }
         if (isToday) {
             item(key = "game") { GameStrip(stats, Modifier.animateItem().enterFromBelow(0), onOpen = onAchievements) }
@@ -334,14 +338,6 @@ private fun RoutineHeader(day: String, total: Int, done: Int, allDone: Boolean, 
                 CircularWavyProgressIndicator(progress = { frac }, modifier = Modifier.size(44.dp))
             }
         }
-        // dia difícil: um toque encolhe a rotina para âncoras e remédios (e volta quando quiser)
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                if (hard) "Dia difícil: só âncoras e remédios hoje. O resto espera." else "Dia difícil? Dá para ficar só com o essencial.",
-                Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = cs.onSurfaceVariant,
-            )
-            TextButton(onClick = { Feedback.toggle(!hard); Repo.setHard(day, !hard) }) { Text(if (hard) "Rotina inteira" else "Só o essencial") }
-        }
         AnimatedVisibility(allDone, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer), shape = MaterialTheme.shapes.large) {
                 Text(
@@ -385,6 +381,18 @@ private fun TaskItem(day: String, t: Task, index: Int, count: Int, isToday: Bool
 }
 
 /** Selo que explica por que o dia usa a rotina de folga. */
+@Composable
+private fun HardBadge(onOff: () -> Unit) {
+    val cs = MaterialTheme.colorScheme
+    Text(
+        "Só o essencial hoje · toque para voltar à rotina inteira",
+        Modifier.padding(top = 4.dp).clip(MaterialTheme.shapes.large).background(cs.secondaryContainer)
+            .bouncyClick(label = "Voltar à rotina inteira", onClick = onOff)
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        style = MaterialTheme.typography.bodyMedium, color = cs.onSecondaryContainer, fontWeight = FontWeight.SemiBold,
+    )
+}
+
 @Composable
 private fun OffBadge(day: String, off: Repo.OffReason?) {
     val cs = MaterialTheme.colorScheme

@@ -150,34 +150,57 @@ fun SettingsScreen(contentPadding: PaddingValues, onBack: () -> Unit, onRoutine:
 private fun LauncherCard() {
     val ctx = LocalContext.current
     var on by remember { mutableStateOf(Launcher.isEnabled(ctx)) }
+    var isDefault by remember { mutableStateOf(Launcher.isDefault(ctx)) }
     var hidden by remember { mutableStateOf(Launcher.hidden()) }
     val apps = remember { Launcher.apps(ctx).associateBy { it.key } }
     val cs = MaterialTheme.colorScheme
+    // o diálogo do Android responde aqui; se não virou padrão (ou nem apareceu), abre "App de início"
+    val ask = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult(),
+    ) {
+        isDefault = Launcher.isDefault(ctx)
+        if (!isDefault) Launcher.openHomeSettings(ctx)
+    }
+    // ao voltar dos ajustes do Android, atualiza o estado
+    val owner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(owner) {
+        val obs = androidx.lifecycle.LifecycleEventObserver { _, e ->
+            if (e == androidx.lifecycle.Lifecycle.Event.ON_RESUME) isDefault = Launcher.isDefault(ctx)
+        }
+        owner.lifecycle.addObserver(obs)
+        onDispose { owner.lifecycle.removeObserver(obs) }
+    }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        SwitchRow("Usar o SunBi como tela inicial", "Deslize para cima para ver todos os apps; segure um app para favoritar ou esconder", on) {
+        SwitchRow("Usar o SunBi como tela inicial", null, on) {
             Feedback.tick()
             Launcher.setEnabled(ctx, it)
             on = it
         }
         androidx.compose.animation.AnimatedVisibility(on) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                if (Launcher.isDefault(ctx)) {
-                    Text("O SunBi é a tela inicial padrão. Para trocar, use o botão abaixo ou Ajustes do Android → Apps padrão.", style = MaterialTheme.typography.bodyMedium, color = cs.onSurfaceVariant)
+                if (isDefault) {
+                    Text("Pronto: o SunBi é a sua tela inicial.", style = MaterialTheme.typography.bodyLarge, color = cs.primary, fontWeight = FontWeight.SemiBold)
                 } else {
-                    Text("Falta escolher o SunBi como padrão: o Android pergunta ao apertar o botão.", style = MaterialTheme.typography.bodyMedium, color = cs.onSurfaceVariant)
+                    Button(onClick = {
+                        Feedback.tap()
+                        val req = Launcher.roleRequestIntent(ctx)
+                        val asked = req != null && runCatching { ask.launch(req); true }.getOrDefault(false)
+                        if (!asked) Launcher.openHomeSettings(ctx)
+                    }, shapes = ButtonDefaults.shapes(), modifier = Modifier.fillMaxWidth().height(52.dp)) {
+                        Text("Definir como tela inicial")
+                    }
+                    Text("Se aparecer a lista de apps de início, escolha SunBi.", style = MaterialTheme.typography.bodyMedium, color = cs.onSurfaceVariant)
                 }
-                Button(onClick = {
-                    Feedback.tap()
-                    Launcher.requestDefaultIntent(ctx)?.let { runCatching { ctx.startActivity(it) } }
-                }, shapes = ButtonDefaults.shapes(), modifier = Modifier.fillMaxWidth()) {
-                    Text(if (Launcher.isDefault(ctx)) "Trocar a tela inicial padrão" else "Definir como tela inicial padrão")
+                Text("Deslize para cima para ver todos os apps. Segure um app para favoritar, renomear ou ocultar.",
+                    style = MaterialTheme.typography.bodyMedium, color = cs.onSurfaceVariant)
+                if (isDefault) {
+                    TextButton(onClick = { Feedback.tap(); Launcher.openHomeSettings(ctx) }) { Text("Trocar a tela inicial") }
                 }
                 if (hidden.isNotEmpty()) {
-                    Label("Apps escondidos")
-                    for (k in hidden.sorted()) {
-                        val app = apps[k]
+                    Label("Apps ocultos")
+                    for (k in hidden.sortedBy { apps[it]?.label ?: it }) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(app?.label ?: k.substringBefore('#'), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+                            Text(apps[k]?.label ?: k.substringBefore('/'), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
                             TextButton(onClick = {
                                 Feedback.tick()
                                 Prefs.launcherHidden = Prefs.launcherHidden - k
@@ -202,7 +225,7 @@ private fun WebConfigCard() {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         SwitchRow("Ligar o modo complexo", "Rotinas, sinais, planos, pessoas, registros, ajustes e backup", on) {
             Feedback.tick()
-            WebConfig.enable(it)
+            WebConfig.enable(ctx, it)
             on = it
             pin = Prefs.webPin
             if (it) SyncManager.start(ctx)
@@ -219,7 +242,7 @@ private fun WebConfigCard() {
                     }
                 }
                 Text(
-                    "Os dois precisam estar na mesma rede. A página só funciona com o modo ligado; cinco PINs errados desligam. Desligue quando terminar.",
+                    "Os dois precisam estar na mesma rede Wi-Fi. Digite o endereço com http:// no começo. Desliga sozinho depois de 1 hora sem uso; cinco PINs errados também desligam.",
                     style = MaterialTheme.typography.bodyMedium, color = cs.onSurfaceVariant,
                 )
                 TextButton(onClick = { Feedback.tick(); Prefs.webPin = WebConfig.newPin(); pin = Prefs.webPin }) { Text("Gerar outro PIN") }

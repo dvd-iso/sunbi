@@ -102,6 +102,13 @@ object Prefs {
     var launcherHidden: Set<String>
         get() = sp.getStringSet("launcherHidden", emptySet())!!.toSet()
         set(v) = sp.edit().putStringSet("launcherHidden", v).apply()
+    /** Nomes que a pessoa deu aos apps no launcher (chave do app → nome). */
+    var launcherNames: Map<String, String>
+        get() = runCatching {
+            val o = JSONObject(sp.getString("launcherNames", "{}")!!)
+            o.keys().asSequence().associateWith { o.optString(it) }
+        }.getOrDefault(emptyMap())
+        set(v) = sp.edit().putString("launcherNames", JSONObject(v).toString()).apply()
 
     // Gamificação: o que já foi comemorado neste aparelho
     var seenBadges: Set<String>

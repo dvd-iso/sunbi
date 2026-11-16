@@ -20,6 +20,11 @@
 
     <queries>
         <package android:name="com.google.android.apps.healthdata" />
+        <!-- modo launcher: no Android 11+ só aparecem os apps que o SunBi declara que vai listar -->
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
     </queries>
 
     <application

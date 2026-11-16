@@ -121,11 +121,23 @@ private fun HumorStep(day: String, onNext: () -> Unit) {
     val fb = rememberFeedback()
     val current = Repo.humor(day)
     var picked by remember { mutableStateOf<Int?>(null) }
+    // humor para baixo: pergunta uma vez se quer deixar o dia só com o essencial
+    var offerEssential by remember { mutableStateOf(false) }
+    var offered by remember { mutableStateOf(false) }
     LaunchedEffect(picked) {
-        if (picked != null) {
-            delay(280) // deixa ver a escolha antes de avançar
-            onNext()
-        }
+        val p = picked ?: return@LaunchedEffect
+        delay(280) // deixa ver a escolha antes de avançar
+        if (p <= -2 && !offered && !Repo.isHard(day) && Repo.tasksFor(day).isNotEmpty()) {
+            offered = true
+            offerEssential = true
+        } else onNext()
+    }
+    if (offerEssential) {
+        EssentialOffer(
+            onYes = { Feedback.toggle(true); Repo.setHard(day, true); offerEssential = false; onNext() },
+            onNo = { Feedback.tick(); offerEssential = false; onNext() },
+        )
+        return
     }
     StepTitle(1, "Como está o seu humor hoje?", "Pense no dia como um todo.")
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -156,6 +168,19 @@ private fun HumorStep(day: String, onNext: () -> Unit) {
                 Text(if (v > 0) "+$v" else "$v", style = MaterialTheme.typography.titleMedium, color = tone)
             }
         }
+    }
+}
+
+/** Pergunta curta depois de um humor para baixo. */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun EssentialOffer(onYes: () -> Unit, onNo: () -> Unit) {
+    Text("Quer deixar hoje só o essencial?", style = MaterialTheme.typography.headlineSmallEmphasized)
+    Text("A rotina de hoje fica só com as âncoras e os remédios. O resto espera, sem culpa.",
+        style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedButton(onClick = onNo, shapes = ButtonDefaults.shapes(), modifier = Modifier.weight(1f).height(52.dp)) { Text("Não") }
+        Button(onClick = onYes, shapes = ButtonDefaults.shapes(), modifier = Modifier.weight(1f).height(52.dp)) { Text("Só o essencial") }
     }
 }
 

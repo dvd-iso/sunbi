@@ -9,6 +9,9 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.longClick
+import androidx.compose.ui.test.swipeUp
 import com.dvdiso.sunbi.ui.Root
 import com.dvdiso.sunbi.ui.SunBiTheme
 import com.dvdiso.sunbi.ui.ThemeState
@@ -213,8 +216,30 @@ class ScreenshotTest {
         Prefs.launcherFavorites = listOf(apps[0].key, apps[5].key, apps[4].key, apps[3].key)
         rule.setContent { SunBiTheme { com.dvdiso.sunbi.ui.LauncherScreen(apps, 0L) {} } }
         save("claro-20-launcher")
-        rule.onNodeWithText("Todos os apps").performClick()
+        // segurar um app abre as opções (favoritar, renomear, ocultar...)
+        rule.onNodeWithText("Telefone").performTouchInput { longClick() }
+        save("claro-22-launcher-opcoes")
+        rule.onNodeWithText("Renomear").performClick()
+        save("claro-23-launcher-renomear")
+        rule.onNodeWithText("Salvar").performClick()
+        // deslizar para cima abre todos os apps
+        rule.onNodeWithContentDescription("Tela inicial", substring = true).performTouchInput { swipeUp() }
+        rule.waitUntil(5000) { rule.onAllNodesWithText("Buscar app").fetchSemanticsNodes().isNotEmpty() }
         save("claro-21-launcher-apps")
+    }
+
+    /** Humor bem para baixo no check-in oferece deixar o dia só com o essencial. */
+    @Test fun hardDayOffer() {
+        Seed.clear()
+        rule.setContent { SunBiTheme { Root() } }
+        rule.onNodeWithText("Registrar").performClick()
+        rule.onNodeWithText("Para baixo").performClick()
+        rule.waitUntil(5000) { rule.onAllNodesWithText("Quer deixar hoje só o essencial?").fetchSemanticsNodes().isNotEmpty() }
+        save("claro-24-checkin-essencial")
+        rule.onNodeWithText("Só o essencial").performClick()
+        rule.waitUntil(5000) { rule.onAllNodesWithText("Pronto").fetchSemanticsNodes().isNotEmpty() }
+        assertTrue(Repo.isHard(today()))
+        assertTrue(Repo.tasksFor(today()).all { it.anchor || it.med })
     }
 
     @Test fun crisis() {

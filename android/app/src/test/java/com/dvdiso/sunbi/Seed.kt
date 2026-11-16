@@ -7,6 +7,9 @@ object Seed {
     fun clear() {
         Prefs.onboarded = true // os testes das abas já passaram pelo tour
         Prefs.userName = ""
+        Prefs.launcherNames = emptyMap()
+        Prefs.launcherFavorites = emptyList()
+        Prefs.launcherHidden = emptySet()
         val snap = Repo.snapshot().getJSONObject("entries")
         for (k in snap.keys()) if (k.matches(Regex("""\d{4}-\d{2}-\d{2}/.*"""))) Repo.set(k, null)
         Repo.set("vacation", null)
