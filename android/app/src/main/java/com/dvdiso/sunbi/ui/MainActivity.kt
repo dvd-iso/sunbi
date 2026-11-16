@@ -123,8 +123,21 @@ private val DESTS = listOf(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun Root() {
+    // primeira vez: tour que monta a rotina (ou código de pareamento)
+    var onboarded by remember { mutableStateOf(Prefs.onboarded) }
+    var aiKickoff by remember { mutableStateOf<String?>(null) }
+    if (!onboarded) {
+        OnboardingScreen { ai -> aiKickoff = ai; onboarded = true }
+        return
+    }
     var tab by rememberSaveable { mutableIntStateOf(0) }
+    LaunchedEffect(aiKickoff) { if (aiKickoff != null) tab = TAB_AI }
     var now by remember { mutableStateOf(today()) }
+    // gamificação: lida a cada mudança nos registros (a leitura observa o Repo)
+    val stats = com.dvdiso.sunbi.Game.stats(now)
+    var achievements by rememberSaveable { mutableStateOf(false) }
+    Celebrations(stats)
+    if (achievements) AchievementsSheet(stats) { achievements = false }
     var tick by remember { mutableLongStateOf(0L) }
     var focusTask by remember { mutableStateOf<Task?>(null) }
     var focusOpen by remember { mutableStateOf(false) }
@@ -217,11 +230,12 @@ internal fun Root() {
                     ) { t ->
                         when (t) {
                             0 -> TodayScreen(
-                                now, tick, pad, onFocus = openFocus, onOpenPlan = { tab = TAB_PLAN }, onSettings = openSettings,
+                                now, tick, pad, stats, onFocus = openFocus, onOpenPlan = { tab = TAB_PLAN }, onSettings = openSettings,
                                 onCheckin = { d, step -> checkin = d to step }, onEditRoutine = openRoutine,
+                                onAchievements = { achievements = true },
                             )
                             1 -> HistoryScreen(now, pad, onSettings = openSettings)
-                            TAB_AI -> SunAIScreen(chatPad)
+                            TAB_AI -> SunAIScreen(chatPad, initial = aiKickoff, onInitialSent = { aiKickoff = null })
                             TAB_PLAN -> PlanScreen(pad, crisisRequest, { crisisRequest = false }, onSettings = openSettings)
                             ROUTINE -> RoutineScreen(pad) { tab = routineBack }
                             else -> SettingsScreen(pad, onBack = { tab = prevTab },

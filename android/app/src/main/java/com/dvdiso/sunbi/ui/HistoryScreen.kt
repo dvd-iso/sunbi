@@ -75,22 +75,22 @@ fun HistoryScreen(todayStr: String, contentPadding: PaddingValues, onSettings: (
         }
         item {
             val sl = days.mapNotNull { Repo.sleep(it) }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.enterFromBelow(0), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Stat("${days.count { Repo.checkedIn(it) }}", "dias com registro", Modifier.weight(1f))
                 Stat(if (sl.isEmpty()) "–" else "%.1f h".format(sl.average()).replace('.', ','), "de sono por noite", Modifier.weight(1f))
                 Stat(medAdherence(days)?.let { "$it%" } ?: "–", "dos remédios", Modifier.weight(1f))
             }
         }
         item {
-            SectionCard("Humor", subtitle = "Para cima: acelerado. Para baixo: para baixo.") { LifeChart(days) }
+            SectionCard("Humor", Modifier.enterFromBelow(1), subtitle = "Para cima: acelerado. Para baixo: para baixo.") { LifeChart(days) }
         }
         item {
-            SectionCard("Sono", subtitle = "Linha tracejada: o seu normal.") { SleepChart(days) }
+            SectionCard("Sono", Modifier.enterFromBelow(2), subtitle = "Linha tracejada: o seu normal.") { SleepChart(days) }
         }
         item {
             FilledTonalButton(
-                onClick = { showReport = true }, shapes = ButtonDefaults.shapes(),
-                modifier = Modifier.fillMaxWidth().height(56.dp),
+                onClick = { Feedback.tap(); showReport = true }, shapes = ButtonDefaults.shapes(),
+                modifier = Modifier.fillMaxWidth().height(56.dp).enterFromBelow(3),
             ) {
                 Icon(Icons.Filled.Share, null, Modifier.size(ButtonDefaults.IconSize))
                 Spacer(Modifier.width(ButtonDefaults.IconSpacing))
@@ -112,7 +112,7 @@ private fun ReportSheet(todayStr: String, n: Int, onDismiss: () -> Unit) {
     // psicólogo(a) primeiro, depois outros profissionais
     val sorted = contacts.sortedBy { c -> when { c.role.startsWith("Psicólog") -> 0; c.role != "Pessoa de confiança" -> 1; else -> 2 } }
     var to by remember { mutableStateOf(sorted.firstOrNull()) }
-    var name by remember { mutableStateOf(Prefs.reportName) }
+    var name by remember { mutableStateOf(Prefs.reportName.ifBlank { Prefs.userName }) }
     var file by remember { mutableStateOf<java.io.File?>(null) }
     var preview by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
     LaunchedEffect(n, to, name) {

@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SunBi · Modo complexo</title>
+<style>
+:root {
+  --bg: #fff8f2; --card: #fcf2e5; --card2: #f1e7d9; --ink: #1f1b13; --muted: #4d4639;
+  --primary: #7a5900; --on-primary: #fff; --pc: #ffdea1; --line: #d0c5b4; --ok: #4a6547; --err: #ba1a1a;
+  --up: #c26a00; --down: #3d6fd6; --r: 18px;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #17130b; --card: #1f1b13; --card2: #2e2921; --ink: #ebe1d4; --muted: #d0c5b4;
+    --primary: #f8bd2a; --on-primary: #402d00; --pc: #5c4300; --line: #4d4639; --ok: #b0cfa9; --err: #ffb4ab; --up: #ffb866; --down: #8ab4f8; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--ink); }
+header { display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--bg); z-index: 2; }
+header h1 { font-size: 18px; margin: 0; flex: 1; }
+header .st { color: var(--muted); font-size: 13px; }
+.layout { display: grid; grid-template-columns: 220px 1fr; min-height: calc(100vh - 57px); }
+nav { padding: 16px 12px; border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 4px; }
+nav a { display: block; padding: 10px 14px; border-radius: 999px; color: var(--ink); text-decoration: none; }
+nav a.on, nav a:hover { background: var(--pc); font-weight: 600; }
+main { padding: 20px 24px 60px; max-width: 980px; }
+section { display: none; } section.on { display: block; }
+h2 { font-size: 24px; margin: 4px 0 2px; } .sub { color: var(--muted); margin: 0 0 16px; }
+.card { background: var(--card); border-radius: var(--r); padding: 18px; margin-bottom: 14px; }
+.card h3 { margin: 0 0 10px; font-size: 16px; }
+table { width: 100%; border-collapse: collapse; }
+th { text-align: left; font-size: 12px; color: var(--muted); font-weight: 600; padding: 4px 6px; }
+td { padding: 4px 6px; vertical-align: middle; }
+input[type=text], input[type=time], input[type=tel], input[type=number], textarea, select {
+  width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--ink); font: inherit; }
+textarea { min-height: 96px; resize: vertical; }
+input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--primary); }
+button { font: inherit; font-weight: 600; border: 0; border-radius: 999px; padding: 10px 18px; cursor: pointer; background: var(--primary); color: var(--on-primary); }
+button.ghost { background: transparent; color: var(--primary); border: 1px solid var(--line); }
+button.tiny { padding: 4px 10px; font-size: 13px; }
+button.danger { background: var(--err); color: #fff; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.tabs { display: inline-flex; background: var(--card2); border-radius: 999px; padding: 4px; margin-bottom: 12px; }
+.tabs button { background: transparent; color: var(--ink); } .tabs button.on { background: var(--primary); color: var(--on-primary); }
+.hint { color: var(--muted); font-size: 13px; }
+.pill { display: inline-block; padding: 2px 10px; border-radius: 999px; background: var(--card2); font-size: 12px; font-weight: 600; }
+.stat { display: inline-block; background: var(--card2); border-radius: 14px; padding: 10px 14px; margin: 0 8px 8px 0; }
+.stat b { display: block; font-size: 22px; color: var(--primary); }
+label.sw { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--line); }
+label.sw:last-child { border: 0; }
+#toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 18px; border-radius: 999px; opacity: 0; transition: opacity .25s; pointer-events: none; }
+#toast.on { opacity: 1; }
+#gate { max-width: 420px; margin: 10vh auto; }
+#gate input { font-size: 28px; letter-spacing: 8px; text-align: center; }
+.humor { width: 72px; } .t { width: 92px; }
+@media (max-width: 720px) { .layout { grid-template-columns: 1fr; } nav { flex-direction: row; flex-wrap: wrap; border: 0; } .grid2 { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <span style="font-size:24px">🌻</span>
+  <h1>SunBi · Modo complexo</h1>
+  <span class="st" id="status">conectando…</span>
+</header>
+
+<div id="gate" class="card" style="display:none">
+  <h3>PIN do modo complexo</h3>
+  <p class="hint">O app mostra o PIN em <b>Ajustes → Modo complexo</b>. Cinco erros desligam o modo.</p>
+  <input id="pin" type="text" inputmode="numeric" maxlength="6" placeholder="000000" autofocus>
+  <p><button id="enter">Entrar</button></p>
+  <p class="hint" id="gateMsg"></p>
+</div>
+
+<div class="layout" id="app" style="display:none">
+<nav>
+  <a href="#rotina" class="on">Rotina</a>
+  <a href="#sinais">Sinais de alerta</a>
+  <a href="#planos">Planos</a>
+  <a href="#contatos">Pessoas</a>
+  <a href="#registros">Registros</a>
+  <a href="#ajustes">Ajustes</a>
+  <a href="#backup">Backup</a>
+</nav>
+<main>
+
+<section id="rotina" class="on">
+  <h2>Rotina</h2>
+  <p class="sub">Horário, o que fazer e o primeiro passo. Marque <b>remédio</b> e <b>âncora</b> (levantar, primeiro contato, começar o dia, jantar, deitar). Os alarmes tocam nesses horários.</p>
+  <div class="tabs"><button class="on" data-r="tasks">Dias de semana</button><button data-r="tasks_off">Folga e férias</button></div>
+  <div class="card">
+    <table id="tasks"><thead><tr><th>Hora</th><th>Tarefa</th><th>Primeiro passo</th><th>Rem.</th><th>Ânc.</th><th></th></tr></thead><tbody></tbody></table>
+    <p class="row"><button class="ghost tiny" id="addTask">+ Tarefa</button><button class="ghost tiny" id="sortTasks">Ordenar por hora</button><span style="flex:1"></span><button id="saveTasks">Salvar rotina</button></p>
+  </div>
+  <div class="card" id="offCard">
+    <h3>Quando usar a folga</h3>
+    <label class="sw">Sábados e domingos <input type="checkbox" id="offWeekends"></label>
+    <label class="sw">Feriados nacionais <input type="checkbox" id="offHolidays"></label>
+    <p class="hint" id="vacation"></p>
+  </div>
+</section>
+
+<section id="sinais">
+  <h2>Sinais de alerta</h2>
+  <p class="sub">Um por linha. Eles aparecem no check-in para marcar e entram no relatório.</p>
+  <div class="grid2">
+    <div class="card"><h3>Quando o humor sobe ↑</h3><textarea id="signsUp"></textarea></div>
+    <div class="card"><h3>Quando o humor desce ↓</h3><textarea id="signsDown"></textarea></div>
+  </div>
+  <p><button id="saveSigns">Salvar sinais</button></p>
+</section>
+
+<section id="planos">
+  <h2>Planos</h2>
+  <p class="sub">Um passo por linha. Combine com sua equipe num dia bom.</p>
+  <div class="grid2">
+    <div class="card"><h3>Quando o humor sobe, eu vou…</h3><textarea id="plan_up"></textarea></div>
+    <div class="card"><h3>Quando o humor desce, eu vou…</h3><textarea id="plan_down"></textarea></div>
+  </div>
+  <h3 style="margin:12px 0 6px">Plano de segurança (Stanley e Brown)</h3>
+  <div class="grid2">
+    <div class="card"><h3>Sinais de que uma crise está chegando</h3><textarea id="plan_warn"></textarea></div>
+    <div class="card"><h3>O que eu faço sozinho para me acalmar</h3><textarea id="plan_cope"></textarea></div>
+    <div class="card"><h3>Pessoas e lugares que me distraem</h3><textarea id="plan_distract"></textarea></div>
+    <div class="card"><h3>Deixar o ambiente mais seguro</h3><textarea id="plan_safe"></textarea></div>
+    <div class="card"><h3>Meus motivos para seguir em frente</h3><textarea id="plan_reasons"></textarea></div>
+  </div>
+  <p><button id="savePlan">Salvar planos</button></p>
+</section>
+
+<section id="contatos">
+  <h2>Pessoas e profissionais</h2>
+  <p class="sub">Quem você pode chamar. O psicólogo recebe o relatório no WhatsApp direto do app.</p>
+  <div class="card">
+    <table id="contacts"><thead><tr><th>Nome</th><th>Papel</th><th>Telefone</th><th></th></tr></thead><tbody></tbody></table>
+    <p class="row"><button class="ghost tiny" id="addContact">+ Pessoa</button><span style="flex:1"></span><button id="saveContacts">Salvar pessoas</button></p>
+  </div>
+</section>
+
+<section id="registros">
+  <h2>Registros</h2>
+  <p class="sub">Os últimos dias. Corrija aqui o que ficou errado no celular: humor (−3 a +3), horários de sono e a anotação.</p>
+  <div class="card">
+    <table id="days"><thead><tr><th>Dia</th><th>Humor</th><th>Deitei</th><th>Acordei</th><th>Sono</th><th>Rotina</th><th>Anotação</th><th></th></tr></thead><tbody></tbody></table>
+    <p class="row"><button class="ghost tiny" id="moreDays">Ver mais dias</button></p>
+  </div>
+</section>
+
+<section id="ajustes">
+  <h2>Ajustes</h2>
+  <p class="sub">O que vale neste aparelho e o seu nome nos relatórios.</p>
+  <div class="card">
+    <div class="grid2">
+      <label>Como quer ser chamado<input type="text" id="userName"></label>
+      <label>Nome no relatório em PDF<input type="text" id="reportName"></label>
+      <label>Eu cuido de<select id="focusArea"><option value="bipolar">Bipolaridade</option><option value="tdah">TDAH</option><option value="both">Os dois</option></select></label>
+      <label>Modelo da SunAI<select id="aiModel"><option>kimi-k3</option><option>glm-5.3</option><option>deepseek-v4-pro</option><option>qwen3.8-max</option><option>deepseek-v4.1-flash</option></select></label>
+      <label>Toque do alarme<select id="alarmSound"><option value="amanhecer">Amanhecer</option><option value="girassol">Girassol</option></select></label>
+    </div>
+    <label class="sw">Alarmes neste aparelho <input type="checkbox" id="alarms"></label>
+    <label class="sw">Sons e vibração <input type="checkbox" id="uiSounds"></label>
+    <label class="sw">Cores do sistema (Material You) <input type="checkbox" id="dynamicColor"></label>
+    <p><button id="savePrefs">Salvar ajustes</button></p>
+  </div>
+  <div class="card" id="statsCard"></div>
+</section>
+
+<section id="backup">
+  <h2>Backup</h2>
+  <p class="sub">Tudo o que o app guarda, num arquivo JSON. Importar mescla pelo mais recente, igual à sincronização.</p>
+  <div class="card">
+    <p class="row"><button id="export">Baixar backup</button><input type="file" id="importFile" accept="application/json"><button class="ghost" id="import">Importar</button></p>
+    <p class="hint">A chave da SunAI e o PIN nunca entram no backup.</p>
+  </div>
+</section>
+
+</main>
+</div>
+<div id="toast"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let pin = sessionStorage.getItem('sunbi-pin') || '';
+let cfg = null, routine = 'tasks', dayCount = 30;
+
+function toast(msg, bad) { const t = $('#toast'); t.textContent = msg; t.style.background = bad ? 'var(--err)' : 'var(--ink)'; t.classList.add('on'); setTimeout(() => t.classList.remove('on'), 2200); }
+
+async function api(path, body) {
+  const r = await fetch(path, { method: body ? 'POST' : 'GET', headers: { 'X-SunBi-Pin': pin, 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+  const j = await r.json().catch(() => ({}));
+  if (r.status === 401) { throw new Error('pin'); }
+  if (!r.ok) throw new Error(j.error || ('erro ' + r.status));
+  return j;
+}
+
+async function start() {
+  if (!pin) return gate('');
+  try { cfg = await api('/api/config'); } catch (e) { return gate(e.message === 'pin' ? 'PIN errado.' : e.message); }
+  sessionStorage.setItem('sunbi-pin', pin);
+  $('#gate').style.display = 'none'; $('#app').style.display = '';
+  $('#status').textContent = `${cfg.deviceName} · SunBi ${cfg.version}`;
+  render();
+  loadDays();
+}
+function gate(msg) { $('#gate').style.display = ''; $('#app').style.display = 'none'; $('#gateMsg').textContent = msg; $('#status').textContent = 'aguardando PIN'; }
+$('#enter').onclick = () => { pin = $('#pin').value.trim(); start(); };
+$('#pin').addEventListener('keydown', e => { if (e.key === 'Enter') $('#enter').click(); });
+
+// ── navegação ──
+document.querySelectorAll('nav a').forEach(a => a.onclick = e => { e.preventDefault(); show(a.getAttribute('href').slice(1)); });
+function show(id) { document.querySelectorAll('section').forEach(s => s.classList.toggle('on', s.id === id)); document.querySelectorAll('nav a').forEach(a => a.classList.toggle('on', a.getAttribute('href') === '#' + id)); history.replaceState(null, '', '#' + id); }
+if (location.hash) show(location.hash.slice(1));
+
+// ── rotina ──
+document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => { routine = b.dataset.r; document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b)); renderTasks(); });
+function taskRow(t) {
+  return `<tr data-id="${esc(t.id)}"><td><input class="t" type="time" value="${esc(t.time)}"></td><td><input type="text" value="${esc(t.label)}"></td><td><input type="text" value="${esc(t.step || '')}"></td>
+  <td><input type="checkbox" class="med" ${t.med ? 'checked' : ''}></td><td><input type="checkbox" class="anchor" ${t.anchor ? 'checked' : ''}></td><td><button class="ghost tiny del">✕</button></td></tr>`;
+}
+function renderTasks() {
+  $('#tasks tbody').innerHTML = (cfg[routine] || []).map(taskRow).join('') || '<tr><td colspan="6" class="hint">Nenhuma tarefa ainda. Adicione a primeira.</td></tr>';
+  $('#offCard').style.display = routine === 'tasks_off' ? '' : 'none';
+}
+function readTasks() {
+  return [...$('#tasks tbody').querySelectorAll('tr[data-id]')].map(tr => {
+    const i = tr.querySelectorAll('input');
+    return { id: tr.dataset.id, time: i[0].value, label: i[1].value.trim(), step: i[2].value.trim(), med: i[3].checked, anchor: i[4].checked };
+  });
+}
+$('#tasks').addEventListener('click', e => { if (e.target.classList.contains('del')) { e.target.closest('tr').remove(); } });
+$('#addTask').onclick = () => { const tb = $('#tasks tbody'); if (!tb.querySelector('tr[data-id]')) tb.innerHTML = ''; tb.insertAdjacentHTML('beforeend', taskRow({ id: 'w' + Date.now().toString(36), time: '12:00', label: '' })); tb.lastElementChild.querySelectorAll('input')[1].focus(); };
+$('#sortTasks').onclick = () => { cfg[routine] = readTasks().sort((a, b) => a.time.localeCompare(b.time)); renderTasks(); };
+$('#saveTasks').onclick = () => save({ [routine]: readTasks(), off: { weekends: $('#offWeekends').checked, holidays: $('#offHolidays').checked } }, 'Rotina salva');
+
+// ── sinais, planos, contatos, ajustes ──
+const lines = s => s.split('\n').map(x => x.trim()).filter(Boolean);
+$('#saveSigns').onclick = () => {
+  const keep = (pole, text) => lines(text).map(l => (cfg.signs.find(s => s.pole === pole && s.label === l) || { label: l, pole }));
+  save({ signs: [...keep('up', $('#signsUp').value), ...keep('down', $('#signsDown').value)] }, 'Sinais salvos');
+};
+const PLAN = ['up', 'down', 'warn', 'cope', 'distract', 'safe', 'reasons'];
+$('#savePlan').onclick = () => { const plan = {}; for (const s of PLAN) plan[s] = lines($('#plan_' + s).value); save({ plan }, 'Planos salvos'); };
+function contactRow(c) {
+  const roles = ['Psicólogo(a)', 'Psiquiatra', 'Pessoa de confiança'];
+  return `<tr><td><input type="text" value="${esc(c.name)}"></td><td><select>${roles.map(r => `<option ${r === c.role ? 'selected' : ''}>${r}</option>`).join('')}</select></td><td><input type="tel" value="${esc(c.phone)}"></td><td><button class="ghost tiny del">✕</button></td></tr>`;
+}
+$('#contacts').addEventListener('click', e => { if (e.target.classList.contains('del')) e.target.closest('tr').remove(); });
+$('#addContact').onclick = () => $('#contacts tbody').insertAdjacentHTML('beforeend', contactRow({ name: '', role: 'Psicólogo(a)', phone: '' }));
+$('#saveContacts').onclick = () => save({ contacts: [...$('#contacts tbody').querySelectorAll('tr')].map(tr => { const f = tr.querySelectorAll('input,select'); return { name: f[0].value.trim(), role: f[1].value, phone: f[2].value.trim() }; }) }, 'Pessoas salvas');
+$('#savePrefs').onclick = () => save({ prefs: { userName: $('#userName').value, reportName: $('#reportName').value, focusArea: $('#focusArea').value, aiModel: $('#aiModel').value,
+  alarmSound: $('#alarmSound').value, alarms: $('#alarms').checked, uiSounds: $('#uiSounds').checked, dynamicColor: $('#dynamicColor').checked } }, 'Ajustes salvos');
+
+async function save(body, msg) {
+  try { cfg = await api('/api/config', body); render(); toast(msg); } catch (e) { toast(e.message, true); }
+}
+
+function render() {
+  renderTasks();
+  $('#offWeekends').checked = cfg.off.weekends; $('#offHolidays').checked = cfg.off.holidays;
+  $('#vacation').textContent = cfg.vacation ? `Modo férias ligado desde ${cfg.vacation} (desligue tocando na flor, em Hoje).` : 'Modo férias desligado.';
+  $('#signsUp').value = cfg.signs.filter(s => s.pole === 'up').map(s => s.label).join('\n');
+  $('#signsDown').value = cfg.signs.filter(s => s.pole === 'down').map(s => s.label).join('\n');
+  for (const s of PLAN) $('#plan_' + s).value = (cfg.plan[s] || []).join('\n');
+  $('#contacts tbody').innerHTML = cfg.contacts.map(contactRow).join('');
+  const p = cfg.prefs;
+  $('#userName').value = p.userName; $('#reportName').value = p.reportName; $('#focusArea').value = p.focusArea; $('#aiModel').value = p.aiModel;
+  $('#alarmSound').value = p.alarmSound; $('#alarms').checked = p.alarms; $('#uiSounds').checked = p.uiSounds; $('#dynamicColor').checked = p.dynamicColor;
+  const st = cfg.stats;
+  $('#statsCard').innerHTML = `<h3>Progresso</h3><div class="stat"><b>${st.level}</b>nível · ${esc(st.levelName)}</div><div class="stat"><b>${st.xp}</b>XP</div><div class="stat"><b>${st.streak}</b>dias seguidos</div><div class="stat"><b>${st.bestStreak}</b>melhor sequência</div><div class="stat"><b>${st.badges.length}</b>conquistas</div>`;
+}
+
+// ── registros ──
+async function loadDays() {
+  try {
+    const days = await api('/api/days?n=' + dayCount);
+    $('#days tbody').innerHTML = days.slice().reverse().map(d => `<tr data-day="${d.day}">
+      <td>${d.day.slice(8)}/${d.day.slice(5, 7)} ${d.off ? '<span class="pill">folga</span>' : ''}</td>
+      <td><input class="humor" type="number" min="-3" max="3" value="${d.humor ?? ''}"></td>
+      <td><input class="t" type="time" value="${d.bed ?? ''}"></td><td><input class="t" type="time" value="${d.wake ?? ''}"></td>
+      <td>${d.sleep != null ? d.sleep.toFixed(1).replace('.', ',') + ' h' : '–'}</td><td>${d.done.length}/${d.total}</td>
+      <td><input type="text" value="${esc(d.note)}"></td><td><button class="tiny saveDay">Salvar</button></td></tr>`).join('');
+  } catch (e) { toast(e.message, true); }
+}
+$('#moreDays').onclick = () => { dayCount = Math.min(366, dayCount + 60); loadDays(); };
+$('#days').addEventListener('click', async e => {
+  if (!e.target.classList.contains('saveDay')) return;
+  const tr = e.target.closest('tr'); const i = tr.querySelectorAll('input');
+  const body = { day: tr.dataset.day, humor: i[0].value === '' ? null : +i[0].value, bed: i[1].value || null, wake: i[2].value || null, note: i[3].value };
+  try { await api('/api/day', body); toast('Dia salvo'); loadDays(); } catch (err) { toast(err.message, true); }
+});
+
+// ── backup ──
+$('#export').onclick = async () => {
+  try { const j = await api('/api/export'); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(j)], { type: 'application/json' })); a.download = `sunbi-backup-${new Date().toISOString().slice(0, 10)}.json`; a.click(); } catch (e) { toast(e.message, true); }
+};
+$('#import').onclick = async () => {
+  const f = $('#importFile').files[0]; if (!f) return toast('Escolha um arquivo', true);
+  try { const j = JSON.parse(await f.text()); const r = await api('/api/import', j); toast(`${r.merged} registros atualizados`); cfg = await api('/api/config'); render(); loadDays(); } catch (e) { toast(e.message, true); }
+};
+
+start();
+</script>
+</body>
+</html>

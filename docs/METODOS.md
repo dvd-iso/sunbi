@@ -150,6 +150,19 @@ nem muda o horário delas, faz poucas mudanças por vez, sempre com "Desfazer", 
 orienta CVV 188, SAMU 192 e o plano de segurança. Os registros dos últimos 31 dias são enviados ao
 OpenCode Go a cada pergunta, só depois do consentimento da pessoa.
 
+## 8b. Pontos, níveis e conquistas (gamificação sem culpa)
+
+Elementos de jogo (pontos, níveis, sequências, medalhas) aumentam o uso de apps de saúde, mas
+em pessoas com oscilação de humor uma sequência que zera pode virar mais um motivo de culpa na
+descida, e metas infladas podem alimentar a subida. Por isso o SunBi segue três regras:
+
+- **Nada é perdido.** Pontos e conquistas só somam. A sequência de dias ignora dias de folga sem
+  registro e, quando quebra, não apaga a melhor sequência nem os pontos.
+- **Recompensa o que protege o humor**, não o excesso: pontos pelo check-in, por tarefas feitas,
+  pela rotina inteira e pelas âncoras no horário. Não há pontos por fazer mais do que a rotina.
+- **Comemora uma vez e segue.** Cada conquista aparece uma vez, com confete; não há ranking,
+  comparação com outras pessoas nem notificação de cobrança.
+
 ## 9. Bipolar e TDAH juntos
 
 Cerca de 1 em 6 pessoas com bipolar também tem TDAH, e a combinação está associada a curso

@@ -12,6 +12,7 @@ import androidx.compose.ui.test.performClick
 import com.dvdiso.sunbi.ui.Root
 import com.dvdiso.sunbi.ui.SunBiTheme
 import com.dvdiso.sunbi.ui.ThemeState
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -160,6 +161,46 @@ class ScreenshotTest {
         }, today(), 14, "Dra. Ana (Psicólogo(a))")
         val dir = File("build/shots").apply { mkdirs() }
         pages.forEachIndexed { i, b -> File(dir, "relatorio-pagina-${i + 1}.png").outputStream().use { b.compress(Bitmap.CompressFormat.PNG, 100, it) } }
+    }
+
+    /** Tour inicial: boas-vindas, nome, horários, remédios e a rotina montada. */
+    @Test fun onboarding() {
+        Prefs.onboarded = false
+        rule.setContent { SunBiTheme { Root() } }
+        save("tour-1-ola")
+        rule.onNodeWithText("Vamos lá").performClick()
+        save("tour-2-nome")
+        rule.onNodeWithText("Pular").performClick()
+        rule.onNodeWithText("Continuar").performClick() // cuidar de
+        save("tour-3-sono")
+        rule.onNodeWithText("Continuar").performClick()
+        save("tour-4-folga")
+        rule.onNodeWithText("Continuar").performClick()
+        rule.onNodeWithText("Manhã e noite").performClick()
+        save("tour-5-remedios")
+        rule.onNodeWithText("Continuar").performClick()
+        rule.onNodeWithText("Continuar").performClick() // dia
+        rule.onNodeWithText("Continuar").performClick() // refeições
+        save("tour-6-extras")
+        rule.onNodeWithText("Montar minha rotina").performClick()
+        save("tour-7-pronto")
+        rule.onNodeWithText("Começar").performClick()
+        rule.waitUntil(5000) { rule.onAllNodesWithText("Histórico").fetchSemanticsNodes().isNotEmpty() }
+        assertTrue(Prefs.onboarded)
+        assertTrue(Repo.tasks().any { it.med })
+        save("tour-8-hoje")
+    }
+
+    /** Conquistas e a comemoração de uma conquista nova. */
+    @Test fun achievements() {
+        Prefs.seenLevel = 1 // conquistas novas desde a última vez são comemoradas
+        Prefs.seenBadges = emptySet()
+        rule.setContent { SunBiTheme { Root() } }
+        rule.waitUntil(5000) { rule.onAllNodesWithText("Que legal").fetchSemanticsNodes().isNotEmpty() }
+        save("claro-18-conquista")
+        rule.onNodeWithText("Que legal").performClick()
+        rule.onNodeWithContentDescription("Conquistas").performClick()
+        save("claro-19-conquistas")
     }
 
     @Test fun crisis() {

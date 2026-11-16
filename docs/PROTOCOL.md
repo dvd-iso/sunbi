@@ -67,6 +67,10 @@ nesse dia ou antes; senão folga em feriado nacional (com `off/holidays`) ou sá
 
 Quem não conhece uma chave apenas a guarda e repassa, então versões diferentes convivem.
 
+Um aparelho recém-instalado **não tem `tasks` nem `tasks_off`** até o tour inicial montar a
+rotina (ou até receber a de outro aparelho). O plugin do Noctalia semeia a rotina padrão com
+`t = 1`, que perde para qualquer rotina montada ou editada.
+
 ## Descoberta
 
 - DNS-SD/mDNS, tipo `_sunbi._tcp.local.`, porta padrão **47321**.
@@ -94,6 +98,22 @@ Corpo do `POST /v1/merge`:
 - `listen` (padrão `true`): `false` diz que quem chama **não tem servidor** (o plugin do
   Noctalia). O app então só registra o aparelho como "conectado" e não tenta chamá-lo de volta.
   Com `true`, o app adiciona quem chamou como par, o que ajuda quando o mDNS só funciona num sentido.
+
+## Página do modo complexo (só no app)
+
+Na mesma porta, o app serve uma página de configuração para o navegador, **fora do protocolo
+de sync**: ela usa o cabeçalho `X-SunBi-Pin` (PIN de 6 dígitos mostrado em Ajustes) e só
+responde com o modo ligado. Cinco PINs errados desligam o modo.
+
+| Rota | Descrição |
+| --- | --- |
+| `GET /` | a página (HTML) |
+| `GET /api/config` | rotinas, sinais, planos, contatos, folga, ajustes e estatísticas |
+| `POST /api/config` | corpo com qualquer subconjunto das chaves acima; valida horários e devolve a configuração nova |
+| `GET /api/days?n=60` | os últimos `n` dias (humor, sono, níveis, sinais, acontecimentos, anotação, tarefas feitas) |
+| `POST /api/day` | `{"day": "AAAA-MM-DD", ...}` edita um dia |
+| `GET /api/export` | o estado completo (backup) |
+| `POST /api/import` | mescla um backup pela regra LWW; devolve quantos registros mudaram |
 
 ## Quando sincronizar
 

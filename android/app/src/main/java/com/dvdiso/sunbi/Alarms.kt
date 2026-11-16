@@ -38,6 +38,7 @@ class App : Application() {
         Repo.init(this)
         Focus.restore()
         Sfx.init(this)
+        Haptics.init(this)
         SunAI.init(this)
         Notifications.createChannels(this)
         Repo.addListener { keys ->

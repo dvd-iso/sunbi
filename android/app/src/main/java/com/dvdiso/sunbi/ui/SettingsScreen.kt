@@ -73,10 +73,8 @@ import com.dvdiso.sunbi.Repo
 import com.dvdiso.sunbi.RingService
 import com.dvdiso.sunbi.Sfx
 import com.dvdiso.sunbi.SyncManager
-import com.dvdiso.sunbi.Task
+import com.dvdiso.sunbi.WebConfig
 import com.dvdiso.sunbi.isQuest
-import com.dvdiso.sunbi.newId
-import java.time.LocalTime
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -90,16 +88,21 @@ fun SettingsScreen(contentPadding: PaddingValues, onBack: () -> Unit, onRoutine:
             })
         }
         item { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { PermissionHints() } }
-        item { GeneralCard() }
+        item { GeneralCard(Modifier.enterFromBelow(0)) }
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                NavRow("Rotina e horários", "Semana e folga · ${Repo.tasks().size} e ${Repo.offTasks().size} tarefas", 0, 3) { onRoutine() }
-                NavRow("SunAI", if (Prefs.aiKey.isBlank()) "Assistente com IA · configurar a chave" else "Assistente com IA · ${Prefs.aiModel}", 1, 3) { onSunAI() }
+            Column(Modifier.enterFromBelow(1), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                NavRow("Rotina e horários", "Semana e folga · ${Repo.tasks().size} e ${Repo.offTasks().size} tarefas", 0, 4) { Feedback.tap(); onRoutine() }
+                NavRow("SunAI", if (Prefs.aiKey.isBlank()) "Assistente com IA · configurar a chave" else "Assistente com IA · ${Prefs.aiModel}", 1, 4) { Feedback.tap(); onSunAI() }
                 NavRow(
                     "Sincronização",
                     "Código ${Prefs.key} · " + when (peers.size) { 0 -> "nenhum aparelho"; 1 -> "1 aparelho"; else -> "${peers.size} aparelhos" },
-                    2, 3,
-                ) { sheet = "sync" }
+                    2, 4,
+                ) { Feedback.tap(); sheet = "sync" }
+                NavRow(
+                    "Modo complexo",
+                    if (Prefs.webConfig) "Ligado · configure tudo pelo navegador do computador" else "Configuração completa pelo computador",
+                    3, 4,
+                ) { Feedback.tap(); sheet = "web" }
             }
         }
         item {
@@ -117,6 +120,48 @@ fun SettingsScreen(contentPadding: PaddingValues, onBack: () -> Unit, onRoutine:
             "Seus aparelhos se encontram na rede de casa e trocam os dados direto entre si, sem servidor.",
             { sheet = null },
         ) { SyncCard() }
+        "web" -> EditorSheet(
+            "Modo complexo",
+            "Uma página servida por este aparelho para configurar o SunBi inteiro com calma, no computador.",
+            { sheet = null },
+        ) { WebConfigCard() }
+    }
+}
+
+/** Liga a página de configuração e mostra o endereço e o PIN. */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun WebConfigCard() {
+    val ctx = LocalContext.current
+    var on by remember { mutableStateOf(Prefs.webConfig) }
+    var pin by remember { mutableStateOf(Prefs.webPin) }
+    val cs = MaterialTheme.colorScheme
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        SwitchRow("Ligar o modo complexo", "Rotinas, sinais, planos, pessoas, registros, ajustes e backup", on) {
+            Feedback.tick()
+            WebConfig.enable(it)
+            on = it
+            pin = Prefs.webPin
+            if (it) SyncManager.start(ctx)
+        }
+        androidx.compose.animation.AnimatedVisibility(on) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                val ip = SyncManager.localIp(ctx)
+                Card(shape = MaterialTheme.shapes.extraLarge, colors = CardDefaults.cardColors(containerColor = cs.primaryContainer, contentColor = cs.onPrimaryContainer)) {
+                    Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text("Abra no computador", style = MaterialTheme.typography.labelLarge)
+                        Text(if (ip != null) "http://$ip:${SyncManager.PORT}/" else "Conecte este aparelho ao Wi-Fi", style = MaterialTheme.typography.titleLargeEmphasized)
+                        Text("PIN", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 8.dp))
+                        Text(pin.chunked(3).joinToString(" "), style = MaterialTheme.typography.displaySmallEmphasized, fontWeight = FontWeight.Bold)
+                    }
+                }
+                Text(
+                    "Os dois precisam estar na mesma rede. A página só funciona com o modo ligado; cinco PINs errados desligam. Desligue quando terminar.",
+                    style = MaterialTheme.typography.bodyMedium, color = cs.onSurfaceVariant,
+                )
+                TextButton(onClick = { Feedback.tick(); Prefs.webPin = WebConfig.newPin(); pin = Prefs.webPin }) { Text("Gerar outro PIN") }
+            }
+        }
     }
 }
 
@@ -135,7 +180,7 @@ private fun SwitchRow(title: String, subtitle: String?, checked: Boolean, onChan
 /** Tudo o que é liga/desliga num cartão só. */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun GeneralCard() {
+private fun GeneralCard(modifier: Modifier = Modifier) {
     val ctx = LocalContext.current
     var dyn by remember { mutableStateOf(Prefs.dynamicColor) }
     var ui by remember { mutableStateOf(Prefs.uiSounds) }
@@ -143,16 +188,16 @@ private fun GeneralCard() {
     var tone by remember { mutableStateOf(Prefs.alarmSound) }
     var preview by remember { mutableStateOf<MediaPlayer?>(null) }
     DisposableEffect(Unit) { onDispose { preview?.release() } }
-    SectionCard("Geral") {
+    SectionCard("Geral", modifier) {
         SwitchRow("Cores do sistema", "Acompanha o papel de parede (Material You)", dyn) {
             dyn = it
             Prefs.dynamicColor = it
             ThemeState.load()
         }
-        SwitchRow("Sons e vibração", "Ao marcar tarefas, no humor e no foco", ui) {
+        SwitchRow("Sons e vibração", "Cada ação tem um toque próprio: marcar, fechar o dia, conquistas", ui) {
             ui = it
             Prefs.uiSounds = it
-            if (it) Sfx.play(Sfx.S.POP)
+            if (it) Feedback.toggle(true)
         }
         SwitchRow("Alarmes neste aparelho", if (isQuest()) "No Quest só toca com o headset ligado" else "Sem soneca: só Feito ou Parar", alarms) {
             alarms = it
@@ -245,7 +290,7 @@ private fun SyncCard() {
             SyncManager.start(ctx)
         }, shapes = ButtonDefaults.shapes()) { Text("Salvar e reconectar") }
 
-        localIp(ctx)?.let { ip ->
+        SyncManager.localIp(ctx)?.let { ip ->
             Text(
                 "Este aparelho: $ip:${SyncManager.PORT}. Se o PC não achar sozinho, coloque esse endereço em Aparelhos manuais no plugin do Noctalia.",
                 style = MaterialTheme.typography.bodyMedium, color = cs.onSurfaceVariant,
@@ -305,13 +350,6 @@ private fun SyncCard() {
         }
     }
 }
-
-/** IPv4 da rede atual (Wi-Fi), para cadastrar este aparelho manualmente em outro. */
-private fun localIp(ctx: Context): String? = runCatching {
-    val cm = ctx.getSystemService(ConnectivityManager::class.java)
-    cm.getLinkProperties(cm.activeNetwork)?.linkAddresses
-        ?.map { it.address }?.firstOrNull { it is Inet4Address && !it.isLoopbackAddress }?.hostAddress
-}.getOrNull()
 
 private fun agoLabel(ms: Long): String {
     val m = (System.currentTimeMillis() - ms) / 60_000

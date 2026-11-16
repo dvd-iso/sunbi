@@ -113,19 +113,49 @@ object SyncManager {
         return ok
     }
 
+    /** Sobe o serviço (servidor + descoberta). O modo complexo também precisa do servidor. */
     fun start(ctx: Context) {
-        if (!Prefs.syncEnabled) return
+        if (!Prefs.syncEnabled && !Prefs.webConfig) return
         ContextCompat.startForegroundService(ctx, Intent(ctx, SyncService::class.java))
     }
+
+    /** IPv4 da rede atual (Wi-Fi), para mostrar o endereço deste aparelho. */
+    fun localIp(ctx: Context): String? = runCatching {
+        val cm = ctx.getSystemService(android.net.ConnectivityManager::class.java)
+        cm.getLinkProperties(cm.activeNetwork)?.linkAddresses
+            ?.map { it.address }?.firstOrNull { it is java.net.Inet4Address && !it.isLoopbackAddress }?.hostAddress
+    }.getOrNull()
 
     fun stop(ctx: Context) {
         ctx.stopService(Intent(ctx, SyncService::class.java))
     }
 }
 
-/** Servidor HTTP do protocolo (docs/PROTOCOL.md). */
-class PeerServer : NanoHTTPD(SyncManager.PORT) {
+/** Servidor HTTP do protocolo (docs/PROTOCOL.md) e da página do modo complexo (WebConfig). */
+class PeerServer(private val ctx: Context) : NanoHTTPD(SyncManager.PORT) {
+    private fun readBody(s: IHTTPSession): String? {
+        val len = s.headers["content-length"]?.toIntOrNull() ?: 0
+        if (len > 5_000_000) return null
+        val buf = ByteArray(len)
+        var off = 0
+        while (off < len) {
+            val n = s.inputStream.read(buf, off, len - off)
+            if (n < 0) break
+            off += n
+        }
+        return String(buf, 0, off, Charsets.UTF_8)
+    }
+
     override fun serve(s: IHTTPSession): Response {
+        // página do modo complexo (PIN próprio, só com o modo ligado)
+        if (s.uri == "/" || s.uri == "/index.html" || s.uri.startsWith("/api/")) {
+            val body = if (s.method == Method.POST) readBody(s) ?: return json(Response.Status.BAD_REQUEST, JSONObject().put("error", "grande demais")) else null
+            val query = s.parameters.mapValues { it.value.firstOrNull() ?: "" }
+            WebConfig.handle(ctx, s.method.name, s.uri, s.headers["x-sunbi-pin"], query, body)?.let { r ->
+                return newFixedLengthResponse(Response.Status.lookup(r.status) ?: Response.Status.OK, r.type, r.body)
+                    .apply { addHeader("Cache-Control", "no-store") }
+            }
+        }
         val key = s.headers["x-sunbi-key"] ?: ""
         if (!key.equals(Prefs.key, ignoreCase = true)) {
             return json(Response.Status.UNAUTHORIZED, JSONObject().put("error", "código de pareamento inválido"))
@@ -135,16 +165,8 @@ class PeerServer : NanoHTTPD(SyncManager.PORT) {
             "/v1/state" -> json(Response.Status.OK, Repo.snapshot())
             "/v1/merge" -> {
                 if (s.method != Method.POST) return json(Response.Status.METHOD_NOT_ALLOWED, JSONObject())
-                val len = s.headers["content-length"]?.toIntOrNull() ?: 0
-                if (len > 5_000_000) return json(Response.Status.BAD_REQUEST, JSONObject().put("error", "grande demais"))
-                val buf = ByteArray(len)
-                var off = 0
-                while (off < len) {
-                    val n = s.inputStream.read(buf, off, len - off)
-                    if (n < 0) break
-                    off += n
-                }
-                val body = runCatching { JSONObject(String(buf, 0, off, Charsets.UTF_8)) }.getOrNull()
+                val raw = readBody(s) ?: return json(Response.Status.BAD_REQUEST, JSONObject().put("error", "grande demais"))
+                val body = runCatching { JSONObject(raw) }.getOrNull()
                     ?: return json(Response.Status.BAD_REQUEST, JSONObject().put("error", "JSON inválido"))
                 Repo.merge(body.optJSONObject("entries"))
                 val dev = body.optString("device")
@@ -187,7 +209,7 @@ class SyncService : Service() {
             startForeground(Notifications.SYNC_ID, n)
         }
 
-        server = PeerServer().also {
+        server = PeerServer(applicationContext).also {
             try {
                 it.start(NanoHTTPD.SOCKET_READ_TIMEOUT, false)
             } catch (e: Exception) {

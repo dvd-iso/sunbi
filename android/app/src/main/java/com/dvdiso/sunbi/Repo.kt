@@ -57,9 +57,42 @@ object Prefs {
                 .putString("device", "$prefix-${hex(3)}")
                 .putString("name", Build.MODEL ?: prefix)
                 .putString("key", hex(4).uppercase())
+                .putBoolean("onboarded", false)
                 .apply()
+        } else if (!sp.contains("onboarded")) {
+            // instalação de antes do tour: já tem rotina, não precisa passar por ele
+            sp.edit().putBoolean("onboarded", true).apply()
         }
     }
+
+    /** Passou pelo tour inicial (ou veio de uma versão anterior). */
+    var onboarded: Boolean
+        get() = sp.getBoolean("onboarded", false)
+        set(v) = sp.edit().putBoolean("onboarded", v).apply()
+    /** Como a pessoa quer ser chamada (opcional). */
+    var userName: String
+        get() = sp.getString("userName", "")!!
+        set(v) = sp.edit().putString("userName", v.trim()).apply()
+    /** O que a pessoa cuida: "bipolar", "tdah" ou "both". */
+    var focusArea: String
+        get() = sp.getString("focusArea", "both")!!
+        set(v) = sp.edit().putString("focusArea", v).apply()
+
+    // Modo complexo: página de configuração servida pelo próprio app, para abrir no computador
+    var webConfig: Boolean
+        get() = sp.getBoolean("webConfig", false)
+        set(v) = sp.edit().putBoolean("webConfig", v).apply()
+    var webPin: String
+        get() = sp.getString("webPin", "")!!
+        set(v) = sp.edit().putString("webPin", v).apply()
+
+    // Gamificação: o que já foi comemorado neste aparelho
+    var seenBadges: Set<String>
+        get() = sp.getStringSet("seenBadges", emptySet())!!.toSet()
+        set(v) = sp.edit().putStringSet("seenBadges", v).apply()
+    var seenLevel: Int
+        get() = sp.getInt("seenLevel", 0)
+        set(v) = sp.edit().putInt("seenLevel", v).apply()
 
     private fun hex(bytes: Int): String {
         val b = ByteArray(bytes).also { SecureRandom().nextBytes(it) }
@@ -235,10 +268,19 @@ object Repo {
                 for (k in obj.keys()) parseRec(obj.optJSONObject(k))?.let { entries[k] = it }
             }
         }
-        // t = 1: qualquer versão editada em outro aparelho vence a padrão
-        if (!entries.containsKey("tasks")) entries["tasks"] = Rec(tasksToJson(DEFAULT_TASKS), 1, "")
+        // t = 1: qualquer versão editada em outro aparelho vence a padrão.
+        // A rotina não é semeada: ela nasce no tour inicial (ou chega de outro aparelho).
         if (!entries.containsKey("signs")) entries["signs"] = Rec(signsToJson(DEFAULT_SIGNS), 1, "")
-        if (!entries.containsKey("tasks_off")) entries["tasks_off"] = Rec(tasksToJson(DEFAULT_OFF_TASKS), 1, "")
+    }
+
+    /** Dias (AAAA-MM-DD) que têm algum registro. */
+    fun recordedDays(): Set<String> {
+        observed.longValue
+        return synchronized(this) {
+            entries.mapNotNullTo(HashSet()) { (k, r) ->
+                if (k.length > 11 && k[10] == '/' && k[4] == '-' && r.v != null && r.v != false) k.substring(0, 10) else null
+            }
+        }
     }
 
     fun addListener(fn: (Set<String>) -> Unit) { listeners.add(fn) }
@@ -308,11 +350,13 @@ object Repo {
 
     // ── rotina ──────────────────────────────────────────────────────────────
 
-    /** Rotina de dias de semana. */
-    fun tasks(): List<Task> = parseTasks(get("tasks") as? JSONArray) ?: DEFAULT_TASKS
+    /** Rotina de dias de semana (vazia até o tour montar uma ou outro aparelho mandar). */
+    fun tasks(): List<Task> = parseTasks(get("tasks") as? JSONArray) ?: emptyList()
 
     /** Rotina de folga (fins de semana, feriados, modo férias). */
-    fun offTasks(): List<Task> = parseTasks(get("tasks_off") as? JSONArray) ?: DEFAULT_OFF_TASKS
+    fun offTasks(): List<Task> = parseTasks(get("tasks_off") as? JSONArray) ?: emptyList()
+
+    fun hasRoutine(): Boolean = tasks().isNotEmpty() || offTasks().isNotEmpty()
 
     fun setOffTasks(list: List<Task>) = set("tasks_off", tasksToJson(list))
 

@@ -82,13 +82,20 @@ private val SUGGESTIONS = listOf(
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun SunAIScreen(contentPadding: PaddingValues) {
+fun SunAIScreen(contentPadding: PaddingValues, initial: String? = null, onInitialSent: () -> Unit = {}) {
     var ready by remember { mutableStateOf(Prefs.aiConsent && Prefs.aiKey.isNotBlank()) }
     var setup by remember { mutableStateOf(false) }
     if (!ready) {
         SunAISetup(contentPadding) { ready = true }
         return
     }
+    SunAIChat(contentPadding, initial, onInitialSent, onDisconnect = { ready = false })
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun SunAIChat(contentPadding: PaddingValues, initial: String?, onInitialSent: () -> Unit, onDisconnect: () -> Unit) {
+    var setup by remember { mutableStateOf(false) }
 
     val msgs = remember { mutableStateListOf<SunAI.Msg>().apply { addAll(SunAI.load()) } }
     var input by remember { mutableStateOf("") }
@@ -101,7 +108,7 @@ fun SunAIScreen(contentPadding: PaddingValues) {
 
     fun send(q: String) {
         if (q.isBlank() || busy) return
-        fb.tick()
+        fb.send()
         msgs += SunAI.Msg("user", q.trim())
         input = ""
         busy = true
@@ -109,10 +116,18 @@ fun SunAIScreen(contentPadding: PaddingValues) {
             val reply = runCatching { SunAI.ask(msgs.dropLast(1), q.trim()) }
                 .getOrElse { SunAI.Msg("error", it.message ?: "Não consegui falar com o OpenCode Go.") }
             msgs += reply
-            if (reply.changes.isNotEmpty()) fb.toggle(true)
+            when {
+                reply.role == "error" -> fb.error()
+                reply.changes.isNotEmpty() -> fb.toggle(true)
+                else -> fb.tap()
+            }
             SunAI.save(msgs)
             busy = false
         }
+    }
+    // pergunta que veio do tour inicial ("Refinar com a SunAI")
+    LaunchedEffect(initial) {
+        if (initial != null) { send(initial); onInitialSent() }
     }
     LaunchedEffect(msgs.size, busy) {
         val last = msgs.size + (if (busy) 1 else 0) - 1
@@ -160,7 +175,7 @@ fun SunAIScreen(contentPadding: PaddingValues) {
                             sug,
                             Modifier.fillMaxWidth().clip(MaterialTheme.shapes.large)
                                 .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                                .clickable { send(sug) }.padding(horizontal = 18.dp, vertical = 14.dp),
+                                .bouncyClick { send(sug) }.padding(horizontal = 18.dp, vertical = 14.dp),
                             style = MaterialTheme.typography.bodyLarge,
                         )
                     }
@@ -212,7 +227,7 @@ fun SunAIScreen(contentPadding: PaddingValues) {
         SunAISettingsSheet(
             onDismiss = { setup = false },
             onClear = { SunAI.clear(); msgs.clear(); setup = false },
-            onDisconnect = { Prefs.aiConsent = false; Prefs.aiKey = ""; setup = false; ready = false },
+            onDisconnect = { Prefs.aiConsent = false; Prefs.aiKey = ""; setup = false; onDisconnect() },
         )
     }
 }

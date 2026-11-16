@@ -60,9 +60,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.dvdiso.sunbi.Game
 import com.dvdiso.sunbi.HUMOR
 import com.dvdiso.sunbi.Insight
 import com.dvdiso.sunbi.InsightKind
+import com.dvdiso.sunbi.Prefs
 import com.dvdiso.sunbi.Repo
 import com.dvdiso.sunbi.Task
 import com.dvdiso.sunbi.insights
@@ -77,11 +79,13 @@ fun TodayScreen(
     todayStr: String,
     tick: Long,
     contentPadding: PaddingValues,
+    stats: Game.Stats,
     onFocus: (Task?) -> Unit,
     onOpenPlan: () -> Unit,
     onSettings: () -> Unit,
     onCheckin: (day: String, step: Int) -> Unit,
     onEditRoutine: () -> Unit,
+    onAchievements: () -> Unit,
 ) {
     var day by rememberSaveable { mutableStateOf(todayStr) }
     LaunchedEffect(todayStr) { if (day > todayStr) day = todayStr }
@@ -106,14 +110,14 @@ fun TodayScreen(
     LazyColumn(contentPadding = contentPadding, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item(key = "header") {
             ScreenHeader(
-                title = if (isToday) saudacao() else "Outro dia",
+                title = if (isToday) saudacao(Prefs.userName) else "Outro dia",
                 onSettings = onSettings,
                 leading = {
                     // tocar na flor liga/desliga o modo férias (rotina de folga)
                     SunBiMark(
-                        Modifier.clip(CircleShape).clickable(onClickLabel = "Modo férias") {
+                        Modifier.clip(CircleShape).bouncyClick(label = "Modo férias") {
                             val on = Repo.toggleOff(day)
-                            fb.toggle(on, completesDay = false)
+                            fb.vacation(on)
                         },
                         size = 44.dp, turns = turns, sunglasses = off != null,
                     )
@@ -126,13 +130,18 @@ fun TodayScreen(
             }
         }
         if (isToday) {
-            item(key = "now") { NowCard(tasks, tick, onFocus, Modifier.animateItem()) }
-            if (insight != null) item(key = "insight") { InsightCard(insight, onOpenPlan, Modifier.animateItem()) }
+            item(key = "game") { GameStrip(stats, Modifier.animateItem().enterFromBelow(0), onOpen = onAchievements) }
+            if (tasks.isNotEmpty()) item(key = "now") { NowCard(tasks, tick, onFocus, Modifier.animateItem().enterFromBelow(1)) }
+            if (insight != null) item(key = "insight") { InsightCard(insight, onOpenPlan, Modifier.animateItem().enterFromBelow(2)) }
         }
-        item(key = "checkin") { CheckinSummary(day, Modifier.animateItem()) { step -> onCheckin(day, step) } }
-        item(key = "routine-head") { RoutineHeader(tasks.size, done.size, allDone, off, onEditRoutine) }
+        item(key = "checkin") { CheckinSummary(day, Modifier.animateItem().enterFromBelow(3)) { step -> onCheckin(day, step) } }
+        if (tasks.isEmpty()) {
+            item(key = "empty") { EmptyRoutine(off, onEditRoutine, Modifier.animateItem().enterFromBelow(4)) }
+        } else {
+            item(key = "routine-head") { RoutineHeader(tasks.size, done.size, allDone, off, onEditRoutine) }
+        }
         itemsIndexed(pending, key = { _, t -> "task-" + t.id }) { i, t ->
-            TaskItem(day, t, i, pending.size, isToday, onFocus, Modifier.animateItem())
+            TaskItem(day, t, i, pending.size, isToday, onFocus, Modifier.animateItem().enterFromBelow(4 + i))
         }
         if (done.isNotEmpty()) {
             item(key = "done-toggle") {
@@ -168,13 +177,28 @@ private fun DayPicker(day: String, isToday: Boolean, onPrev: () -> Unit, onNext:
     }
 }
 
-private fun saudacao(): String {
+private fun saudacao(name: String): String {
     val h = LocalTime.now().hour
-    return when {
+    val s = when {
         h < 5 -> "Boa noite"
         h < 12 -> "Bom dia"
         h < 18 -> "Boa tarde"
         else -> "Boa noite"
+    }
+    return if (name.isBlank()) s else "$s, ${name.substringBefore(' ')}"
+}
+
+/** Sem rotina ainda (antes do tour terminar ou depois de apagar tudo). */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun EmptyRoutine(off: Repo.OffReason?, onEdit: () -> Unit, modifier: Modifier = Modifier) {
+    val cs = MaterialTheme.colorScheme
+    Card(modifier.fillMaxWidth(), shape = MaterialTheme.shapes.extraLarge, colors = CardDefaults.cardColors(containerColor = cs.surfaceContainerHigh)) {
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(if (off != null) "Sem rotina de folga ainda" else "Sem rotina ainda", style = MaterialTheme.typography.titleLargeEmphasized)
+            Text("Monte a sua em Rotina: dá para usar a sugerida e mudar o que quiser.", style = MaterialTheme.typography.bodyLarge, color = cs.onSurfaceVariant)
+            Button(onClick = onEdit, shapes = ButtonDefaults.shapes()) { Text("Montar rotina") }
+        }
     }
 }
 
@@ -240,7 +264,7 @@ private fun InsightCard(i: Insight, onOpenPlan: () -> Unit, modifier: Modifier =
     }
     var open by rememberSaveable { mutableStateOf(false) }
     Card(
-        modifier.fillMaxWidth().clickable { open = !open },
+        modifier.fillMaxWidth().bouncyClick { Feedback.tap(); open = !open },
         shape = MaterialTheme.shapes.extraLarge, colors = CardDefaults.cardColors(containerColor = bg, contentColor = fg),
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -261,7 +285,7 @@ private fun CheckinSummary(day: String, modifier: Modifier = Modifier, open: (st
     val cs = MaterialTheme.colorScheme
     if (h == null && s == null) {
         Card(
-            modifier.fillMaxWidth().clickable { open(0) }, shape = MaterialTheme.shapes.extraLarge,
+            modifier.fillMaxWidth().bouncyClick { Feedback.tap(); open(0) }, shape = MaterialTheme.shapes.extraLarge,
             colors = CardDefaults.cardColors(containerColor = cs.surfaceContainerHigh),
         ) {
             Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -275,7 +299,7 @@ private fun CheckinSummary(day: String, modifier: Modifier = Modifier, open: (st
         return
     }
     Card(
-        modifier.fillMaxWidth().clickable { open(0) }, shape = MaterialTheme.shapes.extraLarge,
+        modifier.fillMaxWidth().bouncyClick { Feedback.tap(); open(0) }, shape = MaterialTheme.shapes.extraLarge,
         colors = CardDefaults.cardColors(containerColor = cs.surfaceContainerLow),
     ) {
         Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {

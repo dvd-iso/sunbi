@@ -2,6 +2,14 @@ package com.dvdiso.sunbi.ui
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.EaseOutBack
+import androidx.compose.animation.core.animateIntAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.material3.ripple
+import androidx.compose.ui.composed
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -78,9 +86,7 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -96,7 +102,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.graphics.shapes.Morph
 import com.dvdiso.sunbi.HUMOR
-import com.dvdiso.sunbi.Prefs
+import com.dvdiso.sunbi.Haptics
 import com.dvdiso.sunbi.Repo
 import com.dvdiso.sunbi.Sfx
 import com.dvdiso.sunbi.sleepBaseline
@@ -107,31 +113,68 @@ import kotlin.math.ceil
 @Composable
 fun isNarrow(): Boolean = LocalConfiguration.current.screenWidthDp < 380
 
-/** Som + vibração leve para as ações da interface (desligáveis em Ajustes). */
-class Feedback(private val haptic: androidx.compose.ui.hapticfeedback.HapticFeedback) {
-    private fun buzz(t: HapticFeedbackType) {
-        if (Prefs.uiSounds) haptic.performHapticFeedback(t)
-    }
-
+/** Som + vibração com forma para cada ação da interface (desligáveis em Ajustes). */
+object Feedback {
     /** Marcar ou desmarcar uma tarefa; [completesDay] toca o acorde de dia completo. */
     fun toggle(done: Boolean, completesDay: Boolean = false) {
         when {
-            completesDay -> { Sfx.play(Sfx.S.CHIME); buzz(HapticFeedbackType.Confirm) }
-            done -> { Sfx.play(Sfx.S.POP); buzz(HapticFeedbackType.ToggleOn) }
-            else -> { Sfx.play(Sfx.S.UNPOP); buzz(HapticFeedbackType.ToggleOff) }
+            completesDay -> { Sfx.play(Sfx.S.CHIME); Haptics.play(Haptics.H.DAY_COMPLETE) }
+            done -> { Sfx.play(Sfx.S.POP); Haptics.play(Haptics.H.DONE) }
+            else -> { Sfx.play(Sfx.S.UNPOP); Haptics.play(Haptics.H.UNDONE) }
         }
     }
 
-    fun tick() {
-        Sfx.play(Sfx.S.TICK)
-        buzz(HapticFeedbackType.SegmentTick)
-    }
+    /** Escolha num grupo de botões, aba, chip. */
+    fun tick() { Sfx.play(Sfx.S.TICK); Haptics.play(Haptics.H.SELECT) }
+
+    /** Toque leve: abrir, avançar um passo. */
+    fun tap() { Haptics.play(Haptics.H.TAP) }
+    fun step() { Sfx.play(Sfx.S.TICK); Haptics.play(Haptics.H.STEP) }
+    fun send() { Sfx.play(Sfx.S.TICK); Haptics.play(Haptics.H.SEND) }
+    fun error() { Haptics.play(Haptics.H.ERROR) }
+    fun vacation(on: Boolean) { Sfx.play(if (on) Sfx.S.POP else Sfx.S.UNPOP); Haptics.play(if (on) Haptics.H.VACATION_ON else Haptics.H.VACATION_OFF) }
+    fun badge() { Sfx.play(Sfx.S.CHIME); Haptics.play(Haptics.H.BADGE) }
+    fun levelUp() { Sfx.play(Sfx.S.FOCUS_END); Haptics.play(Haptics.H.LEVEL_UP) }
+    fun streak() { Sfx.play(Sfx.S.POP); Haptics.play(Haptics.H.STREAK) }
 }
 
 @Composable
-fun rememberFeedback(): Feedback {
-    val h = LocalHapticFeedback.current
-    return remember(h) { Feedback(h) }
+fun rememberFeedback(): Feedback = Feedback
+
+/**
+ * Clique com "respiro": encolhe um pouco enquanto está pressionado e volta com mola.
+ * Usado nos cartões e blocos tocáveis, para toda a interface responder do mesmo jeito.
+ */
+fun Modifier.bouncyClick(label: String? = null, enabled: Boolean = true, onClick: () -> Unit): Modifier = composed {
+    val src = remember { MutableInteractionSource() }
+    val pressed by src.collectIsPressedAsState()
+    val s by animateFloatAsState(if (pressed) 0.96f else 1f, spring(dampingRatio = 0.5f, stiffness = 600f), label = "press")
+    this.scale(s).clickable(interactionSource = src, indication = ripple(), enabled = enabled, onClickLabel = label, onClick = onClick)
+}
+
+/** Entrada de item de lista: sobe e aparece, com um pequeno atraso por posição. */
+fun Modifier.enterFromBelow(index: Int): Modifier = composed {
+    val a = remember { Animatable(0f) }
+    LaunchedEffect(Unit) { a.animateTo(1f, tween(380, delayMillis = 45 * index.coerceAtMost(8), easing = EaseOutBack)) }
+    graphicsLayer {
+        alpha = a.value.coerceIn(0f, 1f)
+        translationY = (1f - a.value) * 28.dp.toPx()
+    }
+}
+
+/** Número que conta até o valor (ex.: 7 → 12 ao mudar o período). */
+@Composable
+fun animatedInt(value: Int): Int {
+    val v by animateIntAsState(value, spring(dampingRatio = 1f, stiffness = 60f), label = "count")
+    return v
+}
+
+/** Pulsa devagar, para chamar atenção sem gritar (chama da sequência, meta do dia). */
+fun Modifier.pulse(active: Boolean = true): Modifier = composed {
+    if (!active) return@composed this
+    val t = rememberInfiniteTransition(label = "pulse")
+    val s by t.animateFloat(1f, 1.12f, infiniteRepeatable(tween(900, easing = androidx.compose.animation.core.FastOutSlowInEasing), RepeatMode.Reverse), label = "s")
+    scale(s)
 }
 
 /** Marca uma tarefa no dia, com som, vibração e o acorde quando a rotina fecha. */
@@ -450,14 +493,16 @@ private fun DayAxis(days: List<String>) {
     }
 }
 
-/** Número grande com legenda, para os resumos. */
+/** Número grande com legenda, para os resumos. Se começar com um número inteiro, ele conta até o valor. */
 @Composable
 fun Stat(value: String, label: String, modifier: Modifier = Modifier) {
+    val digits = value.takeWhile { it.isDigit() }
+    val shown = if (digits.isNotEmpty() && digits.length <= 6) animatedInt(digits.toInt()).toString() + value.drop(digits.length) else value
     Column(
         modifier.clip(MaterialTheme.shapes.large).background(MaterialTheme.colorScheme.surfaceContainerHigh).padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        Text(value, style = MaterialTheme.typography.headlineSmallEmphasized, color = MaterialTheme.colorScheme.primary, maxLines = 1)
+        Text(shown, style = MaterialTheme.typography.headlineSmallEmphasized, color = MaterialTheme.colorScheme.primary, maxLines = 1)
         Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
     }
 }
@@ -467,7 +512,7 @@ fun Stat(value: String, label: String, modifier: Modifier = Modifier) {
 fun ValueTile(label: String, value: String?, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val cs = MaterialTheme.colorScheme
     Column(
-        modifier.clip(MaterialTheme.shapes.large).background(cs.surfaceContainerHigh).clickable(onClick = onClick)
+        modifier.clip(MaterialTheme.shapes.large).background(cs.surfaceContainerHigh).bouncyClick(onClick = { Feedback.tap(); onClick() })
             .padding(horizontal = 14.dp, vertical = 10.dp),
     ) {
         Text(label, style = MaterialTheme.typography.labelLarge, color = cs.onSurfaceVariant, maxLines = 1)

@@ -291,5 +291,5 @@ private val ABOUT = listOf(
     "Sono" to "Dormir menos e não sentir cansaço é um dos sinais mais comuns antes de uma subida. O SunBi compara suas noites com o seu próprio normal.",
     "Plano de segurança (Stanley-Brown)" to "Passos curtos e pessoais para atravessar uma crise: sinais, o que fazer sozinho, distrações, quem chamar, profissionais e deixar o ambiente mais seguro.",
     "TDAH: tornar o tempo e o começo visíveis" to "A TCC para TDAH em adultos trabalha com lembretes externos, planos do tipo quando-então e quebrar tarefas em passos pequenos. Por isso cada tarefa pode ter um primeiro passo, uma duração estimada e um bloco curto de foco.",
-    "Sem culpa" to "Não há sequências que zeram. Um dia sem registro não apaga nada: recomeçar faz parte.",
+    "Pontos e conquistas, sem culpa" to "Tarefas e check-ins dão pontos, níveis e conquistas, para a rotina ter um gostinho de jogo. Mas dia de folga não quebra a sequência, nada é perdido e não existe punição: recomeçar faz parte.",
 )

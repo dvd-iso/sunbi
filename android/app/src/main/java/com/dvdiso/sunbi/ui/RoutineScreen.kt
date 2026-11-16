@@ -91,6 +91,17 @@ fun RoutineScreen(contentPadding: PaddingValues, onBack: () -> Unit) {
         if (off) {
             item { OffAutoSwitches() }
         }
+        if (tasks.isEmpty()) {
+            item {
+                SectionCard(if (off) "Sem rotina de folga" else "Sem rotina ainda", container = MaterialTheme.colorScheme.surfaceContainerHigh) {
+                    Text("Comece pela rotina sugerida (as cinco âncoras do ritmo social, remédios e pausas) e mude o que quiser.",
+                        style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Button(onClick = { Feedback.toggle(true); store(off, if (off) Repo.DEFAULT_OFF_TASKS else Repo.DEFAULT_TASKS) }, shapes = ButtonDefaults.shapes()) {
+                        Text("Usar a rotina sugerida")
+                    }
+                }
+            }
+        }
         for (p in listOf("Manhã", "Tarde", "Noite")) {
             val list = groups[p] ?: continue
             item(key = "h-$off-$p") {
@@ -99,7 +110,7 @@ fun RoutineScreen(contentPadding: PaddingValues, onBack: () -> Unit) {
             }
             itemsIndexed(list, key = { _, t -> "t-$off-${t.id}" }) { i, t ->
                 SegmentedListItem(
-                    onClick = { editing = t },
+                    onClick = { Feedback.tap(); editing = t },
                     shapes = ListItemDefaults.segmentedShapes(i, list.size),
                     modifier = Modifier.animateItem(),
                     leadingContent = {
@@ -120,8 +131,8 @@ fun RoutineScreen(contentPadding: PaddingValues, onBack: () -> Unit) {
                     Spacer(Modifier.width(ButtonDefaults.IconSpacing))
                     Text("Nova tarefa", style = MaterialTheme.typography.titleMedium)
                 }
-                if (off) {
-                    OutlinedButton(onClick = { Repo.setOffTasks(Repo.tasks()) }, shapes = ButtonDefaults.shapes(), modifier = Modifier.fillMaxWidth()) {
+                if (off && Repo.tasks().isNotEmpty()) {
+                    OutlinedButton(onClick = { Feedback.toggle(true); Repo.setOffTasks(Repo.tasks()) }, shapes = ButtonDefaults.shapes(), modifier = Modifier.fillMaxWidth()) {
                         Text("Copiar a rotina dos dias de semana")
                     }
                 }

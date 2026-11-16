@@ -119,6 +119,8 @@ object SunAI {
         val d = LocalDate.parse(today)
         val sb = StringBuilder()
         val off = Repo.offReason(today)
+        if (Prefs.userName.isNotBlank()) sb.append("A pessoa se chama ${Prefs.userName}. ")
+        sb.append(when (Prefs.focusArea) { "bipolar" -> "Ela cuida do transtorno bipolar. "; "tdah" -> "Ela cuida do TDAH. "; else -> "Ela cuida de transtorno bipolar e TDAH. " })
         sb.append("Hoje é ${d.dayOfWeek.getDisplayName(TextStyle.FULL, PT)}, $today, ${nowHm()}. ")
         sb.append(if (off == null) "Hoje vale a rotina de semana.\n" else "Hoje vale a rotina de folga (${off.name.lowercase()}).\n")
         Repo.vacationSince()?.let { sb.append("Modo férias ligado desde $it.\n") }

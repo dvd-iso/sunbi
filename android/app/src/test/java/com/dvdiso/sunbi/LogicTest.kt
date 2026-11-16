@@ -215,6 +215,131 @@ class LogicTest {
         assertTrue(c.contains("humor +1"))
     }
 
+    // ── gamificação ─────────────────────────────────────────────────────────
+
+    @Test fun xpLevelsAndStreakSkipOffDays() {
+        assertEquals(1, Game.levelFor(0))
+        assertEquals(1, Game.levelFor(99))
+        assertEquals(2, Game.levelFor(100))
+        assertEquals(3, Game.levelFor(300))
+        assertEquals(300, Game.xpForLevel(3))
+        // sex 06/03 e seg 09/03 com registro; sáb e dom de folga sem nada: sequência de 3 até terça
+        Repo.set("2026-03-06/humor", 0)
+        Repo.set("2026-03-09/humor", 0)
+        Repo.set("2026-03-10/humor", 1)
+        assertEquals(3, Game.streak("2026-03-10"))
+        // quinta 05/03 sem nada (dia de semana) quebra
+        Repo.set("2026-03-04/humor", 0)
+        assertEquals(3, Game.streak("2026-03-10"))
+        // hoje ainda sem nada não quebra: conta a partir de ontem
+        assertEquals(3, Game.streak("2026-03-11"))
+        val st = Game.stats("2026-03-10")
+        assertEquals(3, st.streak)
+        assertTrue(st.bestStreak >= 3)
+        assertEquals(80, st.xp) // 4 check-ins × 20
+        assertTrue("first_checkin" in st.badges)
+        assertTrue("streak_3" in st.badges)
+        assertFalse("streak_7" in st.badges)
+    }
+
+    @Test fun fullRoutineDayGivesBonusAndBadge() {
+        for (t in Repo.tasksFor(day)) Repo.set("$day/done/${t.id}", t.time)
+        Repo.set("$day/humor", 0)
+        val n = Repo.tasksFor(day).size
+        assertEquals(10 * n + 20 + 30 + 15, Game.dayXp(day)) // tudo feito, no horário
+        val st = Game.stats(day)
+        assertTrue("full_1" in st.badges)
+        assertTrue("rhythm_1" in st.badges)
+        assertTrue(st.goalAnchors)
+    }
+
+    // ── tour inicial ────────────────────────────────────────────────────────
+
+    @Test fun routineBuilderFollowsAnswers() {
+        val a = Answers(name = "Davi", wake = "06:30", bed = "23:00", weekendDelta = 60, meds = "both", medAm = "07:00", medPm = "22:30",
+            dayKind = "study", start = "08:00", lunch = "12:00", dinner = "19:00", extras = setOf("contact", "dim"))
+        val w = RoutineBuilder.weekdays(a)
+        assertEquals(5, w.count { it.anchor })
+        assertEquals("06:30", w.first { it.id == "wake" }.time)
+        assertEquals("23:00", w.first { it.id == "bed" }.time)
+        assertEquals("Começar os estudos", w.first { it.id == "start" }.label)
+        assertEquals(2, w.count { it.med })
+        assertEquals("22:00", w.first { it.id == "dim" }.time) // 1 h antes de deitar
+        assertNull(w.firstOrNull { it.id == "water1" })
+        assertEquals(w.map { it.time }.sorted(), w.map { it.time })
+        val o = RoutineBuilder.offDays(a)
+        assertEquals("07:30", o.first { it.id == "wake" }.time) // 1 h depois
+        assertEquals("07:00", o.first { it.id == "medam" }.time) // remédio não muda
+        assertEquals("00:00", o.first { it.id == "bed" }.time)
+        RoutineBuilder.apply(a)
+        assertEquals("Davi", Prefs.userName)
+        assertEquals(w, Repo.tasks())
+        assertTrue(RoutineBuilder.kickoff(a).contains("06:30"))
+    }
+
+    @Test fun freshInstallHasNoRoutineUntilTour() {
+        Repo.set("tasks", null)
+        Repo.set("tasks_off", null)
+        assertTrue(Repo.tasks().isEmpty())
+        assertFalse(Repo.hasRoutine())
+        assertEquals(0, Repo.percent(day))
+        assertNull(rhythm(day))
+    }
+
+    // ── modo complexo ───────────────────────────────────────────────────────
+
+    @Test fun webConfigNeedsModeAndPin() {
+        val ctx = org.robolectric.RuntimeEnvironment.getApplication()
+        Prefs.webConfig = false
+        assertEquals(404, WebConfig.handle(ctx, "GET", "/", null, emptyMap(), null)!!.status)
+        assertEquals(403, WebConfig.handle(ctx, "GET", "/api/config", "000000", emptyMap(), null)!!.status)
+        assertNull(WebConfig.handle(ctx, "POST", "/v1/merge", null, emptyMap(), "{}")) // rota do protocolo
+        WebConfig.enable(true)
+        val pin = Prefs.webPin
+        assertEquals(6, pin.length)
+        val page = WebConfig.handle(ctx, "GET", "/", null, emptyMap(), null)!!
+        assertEquals(200, page.status)
+        assertTrue(page.body.contains("Modo complexo"))
+        assertEquals(401, WebConfig.handle(ctx, "GET", "/api/config", "nope", emptyMap(), null)!!.status)
+        val ok = WebConfig.handle(ctx, "GET", "/api/config", pin, emptyMap(), null)!!
+        assertEquals(200, ok.status)
+        val cfg = JSONObject(ok.body)
+        assertEquals(Repo.tasks().size, cfg.getJSONArray("tasks").length())
+        // cinco erros desligam o modo
+        repeat(5) { WebConfig.handle(ctx, "GET", "/api/config", "nope", emptyMap(), null) }
+        assertFalse(Prefs.webConfig)
+    }
+
+    @Test fun webConfigEditsRoutinePlanAndDay() {
+        val ctx = org.robolectric.RuntimeEnvironment.getApplication()
+        WebConfig.enable(true)
+        val pin = Prefs.webPin
+        val body = JSONObject()
+            .put("tasks", org.json.JSONArray().put(JSONObject().put("time", "08:00").put("label", "Acordar").put("anchor", true)))
+            .put("plan", JSONObject().put("up", org.json.JSONArray(listOf("Dormir cedo"))))
+            .put("contacts", org.json.JSONArray().put(JSONObject().put("name", "Ana").put("role", "Psicólogo(a)").put("phone", "11 9")))
+            .put("prefs", JSONObject().put("userName", "Davi").put("alarmSound", "girassol"))
+        val r = WebConfig.handle(ctx, "POST", "/api/config", pin, emptyMap(), body.toString())!!
+        assertEquals(r.body, 200, r.status)
+        assertEquals(listOf("Acordar"), Repo.tasks().map { it.label })
+        assertEquals(listOf("Dormir cedo"), Repo.planList("up"))
+        assertEquals("Ana", Repo.contacts().single().name)
+        assertEquals("Davi", Prefs.userName)
+        assertEquals("girassol", Prefs.alarmSound)
+        // horário inválido é recusado sem mexer em nada
+        val bad = WebConfig.handle(ctx, "POST", "/api/config", pin, emptyMap(),
+            JSONObject().put("tasks", org.json.JSONArray().put(JSONObject().put("time", "25:00").put("label", "x"))).toString())!!
+        assertEquals(400, bad.status)
+        assertEquals(1, Repo.tasks().size)
+        val d = WebConfig.handle(ctx, "POST", "/api/day", pin, emptyMap(),
+            JSONObject().put("day", day).put("humor", 2).put("bed", "23:00").put("wake", "07:00").put("note", "ok").toString())!!
+        assertEquals(200, d.status)
+        assertEquals(2, Repo.humor(day))
+        assertEquals(8.0, Repo.sleep(day)!!, 0.01)
+        val days = WebConfig.handle(ctx, "GET", "/api/days", pin, mapOf("n" to "3"), null)!!
+        assertEquals(3, org.json.JSONArray(days.body).length())
+    }
+
     @Test fun whatsappNumberGetsCountryCode() {
         assertEquals("5511987654321", Share.waNumber("(11) 98765-4321"))
         assertEquals("5511987654321", Share.waNumber("+55 11 98765-4321"))
