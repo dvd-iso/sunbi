@@ -164,14 +164,18 @@ export function offReason(entries, day) {
   return null;
 }
 
-/** A rotina já chegou de algum aparelho (ou só temos a de reserva)? */
-export const hasRoutine = entries => Array.isArray(get(entries, 'tasks')) && get(entries, 'tasks').length > 0;
+const stored = (entries, key) => { const v = get(entries, key); return Array.isArray(v) && v.length > 0 ? v : null; };
+
+/** Alguma rotina já chegou de algum aparelho (ou só temos a de reserva)? */
+export const hasRoutine = entries => Boolean(stored(entries, 'tasks') || stored(entries, 'tasks_off'));
 
 /** A rotina que vale no dia, em ordem de horário. Dia difícil: só âncoras e remédios. */
 export function tasks(entries, day) {
   const off = day && offReason(entries, day);
-  const stored = get(entries, off ? 'tasks_off' : 'tasks');
-  const list = (Array.isArray(stored) && stored.length ? stored : off ? DEFAULT_OFF_TASKS : DEFAULT_TASKS)
+  // a rotina de reserva só vale enquanto nenhuma chegou do celular; depois, uma rotina vazia
+  // (folga sem tarefas, por exemplo) é vazia mesmo, igual ao app
+  const base = hasRoutine(entries) ? stored(entries, off ? 'tasks_off' : 'tasks') ?? [] : off ? DEFAULT_OFF_TASKS : DEFAULT_TASKS;
+  const list = base
     .filter(t => isObj(t) && t.id)
     .slice()
     .sort((a, b) => String(a.time).localeCompare(String(b.time)));

@@ -319,12 +319,19 @@ object Repo {
         if (!entries.containsKey("signs")) entries["signs"] = Rec(signsToJson(DEFAULT_SIGNS), 1, "")
     }
 
+    private val dayCache = HashMap<String, Boolean>()
+
+    /** É uma data de verdade? Uma chave como "2026-02-30/…" (importada ou de outro aparelho) não pode derrubar o app. */
+    fun isDay(s: String): Boolean = synchronized(dayCache) {
+        dayCache.getOrPut(s) { runCatching { LocalDate.parse(s) }.isSuccess }
+    }
+
     /** Dias (AAAA-MM-DD) que têm algum registro. */
     fun recordedDays(): Set<String> {
         observed.longValue
         return synchronized(this) {
             entries.mapNotNullTo(HashSet()) { (k, r) ->
-                if (k.length > 11 && k[10] == '/' && k[4] == '-' && r.v != null && r.v != false) k.substring(0, 10) else null
+                if (k.length > 11 && k[10] == '/' && k[4] == '-' && r.v != null && r.v != false) k.substring(0, 10).takeIf(::isDay) else null
             }
         }
     }
@@ -446,7 +453,7 @@ object Repo {
     enum class OffReason { VACATION, WEEKEND, HOLIDAY, MANUAL }
 
     /** Início do modo férias (AAAA-MM-DD) ou null. */
-    fun vacationSince(): String? = (get("vacation") as? JSONObject)?.optString("since")?.ifBlank { null }
+    fun vacationSince(): String? = (get("vacation") as? JSONObject)?.optString("since")?.takeIf { it.length == 10 && isDay(it) }
 
     fun offWeekends(): Boolean = get("off/weekends") as? Boolean ?: true
     fun offHolidays(): Boolean = get("off/holidays") as? Boolean ?: true
@@ -458,7 +465,7 @@ object Repo {
             false -> return null
         }
         vacationSince()?.let { if (day >= it) return OffReason.VACATION }
-        val d = LocalDate.parse(day)
+        val d = runCatching { LocalDate.parse(day) }.getOrNull() ?: return null
         if (offHolidays() && Holidays.name(d) != null) return OffReason.HOLIDAY
         if (offWeekends() && d.dayOfWeek.value >= 6) return OffReason.WEEKEND
         return null
@@ -479,8 +486,9 @@ object Repo {
         }
         if (since != null) {
             // fim das férias: os dias passados ficam marcados como folga no histórico
-            var d = LocalDate.parse(since)
             val t = LocalDate.parse(today)
+            // no máximo um ano para trás: uma data antiga demais não vira milhares de gravações
+            var d = maxOf(LocalDate.parse(since), t.minusDays(366))
             while (d.isBefore(t)) {
                 if (get("$d/off") == null) set("$d/off", true)
                 d = d.plusDays(1)
@@ -560,7 +568,8 @@ object Repo {
     fun setSleepTimes(day: String, bed: String?, wake: String?) {
         set("$day/bed", bed)
         set("$day/wake", wake)
-        sleep(day)?.let { set("$day/sleep", it) } // mantém o número para a extensão e versões antigas
+        // mantém o número para a extensão e versões antigas; sem os dois horários, ele sai junto
+        set("$day/sleep", if (bed != null && wake != null) sleep(day) else null)
     }
 
     fun note(day: String): String = get("$day/note") as? String ?: ""
@@ -622,4 +631,7 @@ object Repo {
     }
 }
 
-fun newId(prefix: String): String = prefix + System.currentTimeMillis().toString(36)
+private val idCounter = java.util.concurrent.atomic.AtomicInteger()
+
+/** Id novo: o contador separa ids criados no mesmo milissegundo. */
+fun newId(prefix: String): String = prefix + System.currentTimeMillis().toString(36) + (idCounter.incrementAndGet() % 1296).toString(36)

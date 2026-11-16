@@ -267,7 +267,8 @@ fun MorphCheck(checked: Boolean, modifier: Modifier = Modifier, size: Dp = 36.dp
         pop.snapTo(0.82f)
         pop.animateTo(1f, androidx.compose.animation.core.spring(dampingRatio = 0.35f, stiffness = 500f))
     }
-    val fill = androidx.compose.ui.graphics.lerp(cs.surfaceContainerHighest, cs.primary, p)
+    // vazio: anel na cor de contorno, visível sobre qualquer fundo de linha
+    val fill = androidx.compose.ui.graphics.lerp(cs.outlineVariant, cs.primary, p)
     Box(
         modifier.size(size).scale(pop.value).rotate(p * 40f).clip(MorphShape(morph, p)).background(fill),
         contentAlignment = Alignment.Center,
@@ -276,6 +277,7 @@ fun MorphCheck(checked: Boolean, modifier: Modifier = Modifier, size: Dp = 36.dp
             Icon(Icons.Filled.Check, null, tint = cs.onPrimary, modifier = Modifier.size(size * 0.55f).scale(p).rotate(-p * 40f))
         } else {
             Box(Modifier.size(size * 0.72f).clip(CircleShape).background(cs.surface))
+
         }
     }
 }
@@ -358,7 +360,7 @@ fun <T> ChoiceGroup(
                 } else ToggleButtonDefaults.colors(),
                 contentPadding = PaddingValues(horizontal = 0.dp),
             ) {
-                Text(label, maxLines = 1, softWrap = false, overflow = TextOverflow.Clip, fontWeight = FontWeight.SemiBold)
+                Text(label, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = androidx.compose.ui.text.style.TextAlign.Center, fontWeight = FontWeight.SemiBold)
             }
         }
     }

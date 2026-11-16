@@ -53,7 +53,8 @@ async function call(addr, path, key, body, timeout) {
     signal: AbortSignal.timeout(timeout),
     cache: 'no-store',
   });
-  if (res.status === 401) throw new Error('key');
+  // 429: o celular parou de atender este endereço depois de vários códigos errados
+  if (res.status === 401 || res.status === 429) throw new Error('key');
   if (!res.ok) throw new Error(`http ${res.status}`);
   return res.json();
 }
@@ -183,12 +184,14 @@ async function refresh() {
   const view = S.dayView(entries, day);
 
   if (paired && cfg.notify && S.ringsHere(entries, cfg.device)) {
-    const today = fired[day] ?? [];
-    const due = S.due(view, nowMin, today);
-    if (due.length) {
-      for (const t of due) await notify(day, t).catch(() => {});
+    // dentro da fila: o relógio e um clique podem chegar juntos, e cada tarefa avisa uma vez só
+    await exclusive(async () => {
+      const today = ((await api.storage.local.get('fired')).fired ?? {})[day] ?? [];
+      const due = S.due(view, nowMin, today);
+      if (!due.length) return;
       await api.storage.local.set({ fired: { [day]: [...today, ...due.map(t => t.id)] } }); // só hoje: os dias antigos saem
-    }
+      for (const t of due) await notify(day, t).catch(() => {});
+    });
   }
   // tarefa feita (aqui ou no celular): o aviso dela some
   const open = await api.notifications.getAll().catch(() => ({}));

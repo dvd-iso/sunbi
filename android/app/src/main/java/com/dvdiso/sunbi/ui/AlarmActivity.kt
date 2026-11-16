@@ -1,5 +1,7 @@
 package com.dvdiso.sunbi.ui
 
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -71,7 +73,8 @@ internal fun AlarmScreen(time: String, label: String, step: String, onDone: () -
     // Surface define a cor do texto (onSurface); sem ela o texto ficava preto no tema escuro
     Surface(Modifier.fillMaxSize(), color = cs.surface, contentColor = cs.onSurface) {
     Column(
-        Modifier.fillMaxSize().safeDrawingPadding().padding(28.dp),
+        // rola quando a tela é baixa (celular deitado, fonte grande): Parar nunca fica de fora
+        Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(28.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -87,7 +90,7 @@ internal fun AlarmScreen(time: String, label: String, step: String, onDone: () -
         Button(
             onClick = onDone,
             shapes = ButtonDefaults.shapes(),
-            modifier = Modifier.fillMaxWidth().widthIn(max = 480.dp).height(ButtonDefaults.LargeContainerHeight),
+            modifier = Modifier.widthIn(max = 480.dp).fillMaxWidth().height(ButtonDefaults.LargeContainerHeight),
             contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.LargeContainerHeight),
         ) {
             Icon(Icons.Filled.Check, null, Modifier.size(ButtonDefaults.LargeIconSize))
@@ -98,7 +101,7 @@ internal fun AlarmScreen(time: String, label: String, step: String, onDone: () -
         OutlinedButton(
             onClick = onStop,
             shapes = ButtonDefaults.shapes(),
-            modifier = Modifier.fillMaxWidth().widthIn(max = 480.dp).height(ButtonDefaults.MediumContainerHeight),
+            modifier = Modifier.widthIn(max = 480.dp).fillMaxWidth().height(ButtonDefaults.MediumContainerHeight),
         ) { Text("Parar", style = MaterialTheme.typography.titleMedium) }
     }
     }

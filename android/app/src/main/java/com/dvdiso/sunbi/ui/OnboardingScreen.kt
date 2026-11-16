@@ -1,5 +1,11 @@
 package com.dvdiso.sunbi.ui
 
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.selection.toggleable
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.animateFloatAsState
@@ -86,7 +92,8 @@ private const val LAST = QUESTIONS + 1
 @Composable
 fun OnboardingScreen(onDone: (aiKickoff: String?) -> Unit) {
     var step by rememberSaveable { mutableIntStateOf(0) }
-    var a by remember { mutableStateOf(Answers()) }
+    // rememberSaveable: girar a tela ou trocar o tema no meio do tour não apaga as respostas
+    var a by rememberSaveable { mutableStateOf(Answers()) }
     var pairing by rememberSaveable { mutableStateOf(false) }
     val progress by animateFloatAsState(if (pairing) 1f else step.toFloat() / LAST, MaterialTheme.motionScheme.defaultSpatialSpec(), label = "tour")
     BackHandler(enabled = step > 0 || pairing) { if (pairing) pairing = false else step-- }
@@ -153,7 +160,7 @@ private fun Title(kicker: String, title: String, hint: String? = null) {
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun Next(text: String = "Continuar", enabled: Boolean = true, onClick: () -> Unit) {
-    Button(onClick = onClick, enabled = enabled, shapes = ButtonDefaults.shapes(), modifier = Modifier.fillMaxWidth().height(56.dp)) {
+    Button(onClick = onClick, enabled = enabled, shapes = ButtonDefaults.shapes(), modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) {
         Text(text, style = MaterialTheme.typography.titleMedium)
     }
 }
@@ -322,7 +329,7 @@ private fun ExtrasStep(a: Answers, set: (Answers) -> Unit, next: () -> Unit) {
 private fun RemindersStep(a: Answers, set: (Answers) -> Unit, next: () -> Unit) {
     Title(kicker(10), "Como você quer ser lembrado?", "Tudo isso muda depois em Ajustes.")
     ToggleRow("Alarme na hora de cada tarefa", a.alarms, "Toca até você marcar Concluído ou Parar. Desligado, a rotina fica só na tela.") { set(a.copy(alarms = it)) }
-    ToggleRow("Lembrete do registro às 21h", a.checkinReminder, "Só se você ainda não tiver registrado o dia.") { set(a.copy(checkinReminder = it)) }
+    ToggleRow("Lembrete de check-in às 21h", a.checkinReminder, "Só se você ainda não tiver registrado o dia.") { set(a.copy(checkinReminder = it)) }
     ToggleRow("Sons e vibração no app", a.sounds) { set(a.copy(sounds = it)) }
     Next(onClick = next)
 }
@@ -360,7 +367,7 @@ private fun ToggleRow(title: String, checked: Boolean, subtitle: String? = null,
     val cs = MaterialTheme.colorScheme
     Row(
         Modifier.fillMaxWidth().clip(MaterialTheme.shapes.large).background(cs.surfaceContainerHigh)
-            .bouncyClick { Feedback.tick(); onChange(!checked) }.padding(horizontal = 18.dp, vertical = 12.dp),
+            .toggleable(checked, role = Role.Switch) { Feedback.tick(); onChange(it) }.padding(horizontal = 18.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
@@ -368,7 +375,8 @@ private fun ToggleRow(title: String, checked: Boolean, subtitle: String? = null,
             if (subtitle != null) Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = cs.onSurfaceVariant)
         }
         Spacer(Modifier.width(12.dp))
-        androidx.compose.material3.Switch(checked = checked, onCheckedChange = { Feedback.tick(); onChange(it) })
+        // a linha inteira é o interruptor (um alvo só para o toque e para o leitor de tela)
+        androidx.compose.material3.Switch(checked = checked, onCheckedChange = null)
     }
 }
 
@@ -383,7 +391,7 @@ private fun ReviewStep(a: Answers, onFinish: (ai: Boolean) -> Unit) {
     SectionCard("Folga e férias", container = cs.surfaceContainer) { for ((i, t) in off.withIndex()) PreviewRow(t, i) }
     Next("Começar", onClick = { onFinish(false) })
     if (a.ai) {
-        OutlinedButton(onClick = { onFinish(true) }, shapes = ButtonDefaults.shapes(), modifier = Modifier.fillMaxWidth().height(52.dp)) {
+        OutlinedButton(onClick = { onFinish(true) }, shapes = ButtonDefaults.shapes(), modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
             SunBiMark(size = 22.dp)
             Spacer(Modifier.width(10.dp))
             Text("Refinar com ${a.assistant.ifBlank { "a assistente" }}")
@@ -395,7 +403,7 @@ private fun ReviewStep(a: Answers, onFinish: (ai: Boolean) -> Unit) {
 private fun PreviewRow(t: Task, index: Int) {
     val cs = MaterialTheme.colorScheme
     Row(Modifier.enterFromBelow(index), verticalAlignment = Alignment.CenterVertically) {
-        Text(t.time, style = MaterialTheme.typography.titleMedium, color = cs.primary, modifier = Modifier.width(56.dp))
+        Text(t.time, style = MaterialTheme.typography.titleMedium, color = cs.primary, modifier = Modifier.widthIn(min = 56.dp).padding(end = 8.dp))
         Text(t.label, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
         if (t.med) Tag("remédio", cs.tertiaryContainer, cs.onTertiaryContainer)
         else if (t.anchor) Tag("âncora", cs.primaryContainer, cs.onPrimaryContainer)
@@ -407,7 +415,7 @@ private fun PreviewRow(t: Task, index: Int) {
 @Composable
 private fun PairStep(onDone: () -> Unit) {
     val ctx = LocalContext.current
-    var key by remember { mutableStateOf("") }
+    var key by rememberSaveable { mutableStateOf("") }
     Title("Parear", "Qual é o código de pareamento?", "Ele aparece no outro aparelho em Ajustes → Sincronização. Os dois precisam estar na mesma rede Wi-Fi.")
     OutlinedTextField(
         key, { key = it.uppercase().take(12) }, label = { Text("Código") }, singleLine = true,
@@ -439,6 +447,7 @@ private fun <T> OptionList(options: List<Pair<T, String>>, selected: T, onPick: 
             Row(
                 Modifier.fillMaxWidth().clip(MaterialTheme.shapes.large)
                     .background(if (on) cs.primaryContainer else cs.surfaceContainerHigh)
+                    .semantics { role = Role.RadioButton; selected = on }
                     .bouncyClick { Feedback.tick(); onPick(v) }
                     .padding(horizontal = 18.dp, vertical = 16.dp),
                 verticalAlignment = Alignment.CenterVertically,

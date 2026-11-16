@@ -276,7 +276,7 @@ private fun AboutSheet(onDismiss: () -> Unit) {
                 Text(b, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Text(
-                "O SunBi ajuda a organizar e observar. Ele não diagnostica, não substitui tratamento e não deve ser usado para mudar remédios por conta própria. As referências completas estão em docs/METODOS.md no repositório.",
+                "O SunBi ajuda a organizar e observar. Ele não diagnostica, não substitui tratamento e não deve ser usado para mudar remédios por conta própria. As pesquisas por trás de cada parte estão na página do projeto.",
                 style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold,
             )
             Spacer(Modifier.height(24.dp))
@@ -285,11 +285,11 @@ private fun AboutSheet(onDismiss: () -> Unit) {
 }
 
 private val ABOUT = listOf(
-    "Ritmo social (IPSRT)" to "Horários regulares para levantar, falar com alguém, começar o dia, jantar e deitar ajudam a estabilizar o relógio biológico. Essas são as âncoras da rotina; o histórico mostra quantas foram feitas a até 45 minutos do horário (ideia do Social Rhythm Metric).",
+    "Ritmo social (IPSRT)" to "Horários regulares para levantar, falar com alguém, começar o dia, jantar e deitar ajudam a estabilizar o relógio biológico. Essas são as âncoras da rotina; o relatório da consulta mostra quantas foram feitas a até 45 minutos do horário (ideia do Social Rhythm Metric).",
     "Registro diário do humor (NIMH Life Chart)" to "Uma nota por dia, de -3 a +3, mais sono, energia, irritação e ansiedade. Olhar o desenho das semanas ajuda você e sua equipe a ver padrões e a resposta ao tratamento.",
     "Sinais de alerta e plano de ação (psicoeducação)" to "Cada pessoa tem seus sinais. Aprender a reconhecê-los cedo e ter um plano combinado é um dos pilares da psicoeducação para o transtorno bipolar, junto com a regularidade e a adesão ao tratamento.",
     "Sono" to "Dormir menos e não sentir cansaço é um dos sinais mais comuns antes de uma subida. O SunBi compara suas noites com o seu próprio normal.",
     "Plano de segurança (Stanley-Brown)" to "Passos curtos e pessoais para atravessar uma crise: sinais, o que fazer sozinho, distrações, quem chamar, profissionais e deixar o ambiente mais seguro.",
-    "TDAH: tornar o tempo e o começo visíveis" to "A TCC para TDAH em adultos trabalha com lembretes externos, planos do tipo quando-então e quebrar tarefas em passos pequenos. Por isso cada tarefa pode ter um primeiro passo, uma duração estimada e um bloco curto de foco.",
+    "TDAH: tornar o tempo e o começo visíveis" to "A TCC para TDAH em adultos trabalha com lembretes externos, planos do tipo quando-então e quebrar tarefas em passos pequenos. Por isso cada tarefa pode ter um primeiro passo e um bloco curto de foco.",
     "Pontos e conquistas, sem culpa" to "Tarefas e check-ins dão pontos, níveis e conquistas, para a rotina ter um gostinho de jogo. Mas dia de folga não quebra a sequência, nada é perdido e não existe punição: recomeçar faz parte.",
 )

@@ -179,12 +179,12 @@ private fun EssentialOffer(onYes: () -> Unit, onNo: () -> Unit) {
     Text("A rotina de hoje fica só com as âncoras e os remédios. O resto espera, sem culpa.",
         style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedButton(onClick = onNo, shapes = ButtonDefaults.shapes(), modifier = Modifier.weight(1f).height(52.dp)) { Text("Não") }
-        Button(onClick = onYes, shapes = ButtonDefaults.shapes(), modifier = Modifier.weight(1f).height(52.dp)) { Text("Só o essencial") }
+        OutlinedButton(onClick = onNo, shapes = ButtonDefaults.shapes(), modifier = Modifier.weight(1f).heightIn(min = 52.dp)) { Text("Não") }
+        Button(onClick = onYes, shapes = ButtonDefaults.shapes(), modifier = Modifier.weight(1f).heightIn(min = 52.dp)) { Text("Só o essencial") }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 private fun SleepStep(day: String, onBack: () -> Unit, onNext: () -> Unit, onDone: () -> Unit) {
     var editing by remember { mutableStateOf<String?>(null) }
@@ -205,9 +205,9 @@ private fun SleepStep(day: String, onBack: () -> Unit, onNext: () -> Unit, onDon
         )
     }
     HealthButton(day)
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+    // quebra de linha em tela estreita ou fonte grande, em vez de espremer o "Pronto"
+    FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         TextButton(onClick = onBack) { Text("Voltar") }
-        Spacer(Modifier.weight(1f))
         OutlinedButton(onClick = onNext, shapes = ButtonDefaults.shapes()) { Text("Mais detalhes") }
         Button(onClick = onDone, shapes = ButtonDefaults.shapes()) { Text("Pronto") }
     }

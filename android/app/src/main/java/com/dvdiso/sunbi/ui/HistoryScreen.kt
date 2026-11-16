@@ -1,5 +1,6 @@
 package com.dvdiso.sunbi.ui
 
+import androidx.compose.foundation.layout.heightIn
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -86,7 +87,7 @@ fun HistoryScreen(todayStr: String, contentPadding: PaddingValues, onSettings: (
                 Text(parts.joinToString(" · "), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Button(
                     onClick = { Feedback.tap(); showReport = true }, shapes = ButtonDefaults.shapes(),
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
                 ) {
                     Icon(Icons.Filled.Share, null, Modifier.size(ButtonDefaults.IconSize))
                     Spacer(Modifier.width(ButtonDefaults.IconSpacing))
@@ -95,7 +96,7 @@ fun HistoryScreen(todayStr: String, contentPadding: PaddingValues, onSettings: (
             }
         }
         item {
-            SectionCard("Humor", Modifier.enterFromBelow(1), subtitle = "Para cima: acelerado. Para baixo: para baixo.") { LifeChart(days) }
+            SectionCard("Humor", Modifier.enterFromBelow(1), subtitle = "Barras para cima: humor acelerado. Para baixo: humor baixo.") { LifeChart(days) }
         }
         item {
             SectionCard("Sono", Modifier.enterFromBelow(2), subtitle = "Linha tracejada: o seu normal.") { SleepChart(days) }
@@ -163,7 +164,7 @@ private fun ReportSheet(todayStr: String, n: Int, onDismiss: () -> Unit) {
         Button(
             onClick = { file?.let { Share.pdfToWhatsApp(ctx, it, to?.phone, message) } },
             enabled = file != null, shapes = ButtonDefaults.shapes(),
-            modifier = Modifier.fillMaxWidth().height(56.dp),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
         ) {
             Icon(Icons.Filled.Share, null, Modifier.size(ButtonDefaults.IconSize))
             Spacer(Modifier.width(ButtonDefaults.IconSpacing))

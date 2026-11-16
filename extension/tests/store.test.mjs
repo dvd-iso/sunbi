@@ -66,6 +66,9 @@ test('rotina do celular, em ordem; dia difícil só com âncoras e remédios', (
   ], 5, 'android-1');
   assert.equal(S.hasRoutine(e), true);
   assert.deepEqual(S.tasks(e, '2026-11-16').map(t => t.id), ['a', 'm', 'b']);
+  // folga sem rotina própria: vazia, como no app (nada de avisar tarefas de reserva)
+  assert.deepEqual(S.tasks(e, '2026-11-14'), []);
+  assert.deepEqual(S.due(S.dayView(e, '2026-11-14'), 8 * 60 + 15, []), []);
   S.set(e, '2026-11-16/hard', true, 6, 'android-1');
   assert.deepEqual(S.tasks(e, '2026-11-16').map(t => t.id), ['a', 'm']);
 });

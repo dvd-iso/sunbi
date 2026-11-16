@@ -1,5 +1,7 @@
 package com.dvdiso.sunbi.ui
 
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.layout.heightIn
 import android.app.NotificationManager
 import android.content.Context
 import android.media.MediaPlayer
@@ -222,7 +224,7 @@ private fun LauncherCard() {
                         val req = Launcher.roleRequestIntent(ctx)
                         val asked = req != null && runCatching { ask.launch(req); true }.getOrDefault(false)
                         if (!asked) Launcher.openHomeSettings(ctx)
-                    }, shapes = ButtonDefaults.shapes(), modifier = Modifier.fillMaxWidth().height(52.dp)) {
+                    }, shapes = ButtonDefaults.shapes(), modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
                         Text("Definir como tela inicial")
                     }
                     Text("Se aparecer a lista de apps de início, escolha SunBi.", style = MaterialTheme.typography.bodyMedium, color = cs.onSurfaceVariant)
@@ -271,7 +273,7 @@ private fun AiCard(onChanged: (Boolean) -> Unit, onOpen: () -> Unit) {
             style = MaterialTheme.typography.bodyMedium, color = cs.onSurfaceVariant,
         )
         androidx.compose.animation.AnimatedVisibility(on) {
-            Button(onClick = { Feedback.tap(); onOpen() }, shapes = ButtonDefaults.shapes(), modifier = Modifier.fillMaxWidth().height(52.dp)) {
+            Button(onClick = { Feedback.tap(); onOpen() }, shapes = ButtonDefaults.shapes(), modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
                 Text(if (com.dvdiso.sunbi.Assistant.ready()) "Abrir a conversa" else "Configurar")
             }
         }
@@ -317,13 +319,18 @@ private fun WebConfigCard() {
 
 @Composable
 private fun SwitchRow(title: String, subtitle: String?, checked: Boolean, onChange: (Boolean) -> Unit) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+    // a linha inteira é o interruptor: um alvo grande, e o leitor de tela lê o título com o estado
+    Row(
+        Modifier.fillMaxWidth().clip(MaterialTheme.shapes.medium)
+            .toggleable(checked, role = androidx.compose.ui.semantics.Role.Switch, onValueChange = onChange).padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         Column(Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.bodyLarge)
             if (subtitle != null) Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Spacer(Modifier.width(12.dp))
-        Switch(checked = checked, onCheckedChange = onChange)
+        Switch(checked = checked, onCheckedChange = null)
     }
 }
 

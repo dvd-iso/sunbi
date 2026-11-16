@@ -1,5 +1,6 @@
 package com.dvdiso.sunbi.ui
 
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -100,7 +101,7 @@ private fun AssistantChat(contentPadding: PaddingValues, initial: String?, onIni
     var setup by remember { mutableStateOf(false) }
 
     val msgs = remember { mutableStateListOf<Assistant.Msg>().apply { addAll(Assistant.load()) } }
-    var input by remember { mutableStateOf("") }
+    var input by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var menu by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf(Assistant.name()) }
@@ -113,6 +114,7 @@ private fun AssistantChat(contentPadding: PaddingValues, initial: String?, onIni
         if (q.isBlank() || busy) return
         fb.send()
         msgs += Assistant.Msg("user", q.trim())
+        Assistant.save(msgs) // já fica guardada: sair da tela no meio da resposta não perde a pergunta
         input = ""
         busy = true
         scope.launch {
@@ -163,7 +165,8 @@ private fun AssistantChat(contentPadding: PaddingValues, initial: String?, onIni
         if (msgs.isEmpty() && !busy) {
             // tela vazia: a flor, uma pergunta e as sugestões
             Column(
-                Modifier.weight(1f).fillMaxWidth().padding(side),
+                // rola quando o teclado deixa pouco espaço, em vez de cortar as sugestões
+                Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(side),
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
@@ -214,7 +217,7 @@ private fun AssistantChat(contentPadding: PaddingValues, initial: String?, onIni
         // campo de mensagem com o botão de enviar dentro
         OutlinedTextField(
             input, { input = it },
-            placeholder = { Text("Escreva para $name") },
+            placeholder = { Text("Escreva para $name", maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) },
             modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = inputBottom),
             shape = MaterialTheme.shapes.extraLarge, maxLines = 5,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
@@ -309,12 +312,16 @@ private fun AssistantSetup(insets: PaddingValues, onDisable: () -> Unit, onReady
     var more by remember { mutableStateOf(false) }
     // muda a cada edição da conexão, para reavaliar se já dá para ativar
     var version by remember { mutableStateOf(0) }
+    val imeBottom = with(androidx.compose.ui.platform.LocalDensity.current) { WindowInsets.ime.getBottom(this).toDp() }
     val complete = remember(version) {
         Prefs.aiModel.isNotBlank() && Assistant.baseUrl().isNotBlank() && (Prefs.aiKey.length >= 8 || Prefs.aiProvider == "custom")
     }
     Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).imePadding()
-            .padding(start = 24.dp, end = 24.dp, top = insets.calculateTopPadding() + 12.dp, bottom = insets.calculateBottomPadding() + 24.dp),
+        // o teclado encolhe a área que rola (não o conteúdo), então o campo em foco fica à vista
+        Modifier.fillMaxSize()
+            .padding(top = insets.calculateTopPadding(), bottom = maxOf(imeBottom, insets.calculateBottomPadding()))
+            .verticalScroll(rememberScrollState())
+            .padding(start = 24.dp, end = 24.dp, top = 12.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Row(Modifier.enterFromBelow(0), verticalAlignment = Alignment.CenterVertically) {
@@ -356,7 +363,7 @@ private fun AssistantSetup(insets: PaddingValues, onDisable: () -> Unit, onReady
                 onReady()
             },
             enabled = agree && complete,
-            shapes = ButtonDefaults.shapes(), modifier = Modifier.fillMaxWidth().height(56.dp).enterFromBelow(4),
+            shapes = ButtonDefaults.shapes(), modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).enterFromBelow(4),
         ) { Text("Ativar", style = MaterialTheme.typography.titleMedium) }
         Text("Tudo isso muda depois em ⋮ → Nome, provedor e modelo.", style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
         // recusar é uma opção de verdade: a aba some e volta só se a pessoa ligar em Ajustes

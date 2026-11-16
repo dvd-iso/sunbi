@@ -39,7 +39,7 @@ data class Answers(
     val ai: Boolean = false,
     /** Nome que a pessoa quer dar à assistente (vazio = "Assistente"). */
     val assistant: String = "",
-) {
+) : java.io.Serializable {
     /** Valor antigo de [Prefs.focusArea], que outras partes ainda leem. */
     val focus: String
         get() = when {
@@ -89,11 +89,17 @@ object RoutineBuilder {
         else -> "Começar a primeira tarefa do dia"
     }
 
-    fun weekdays(a: Answers): List<Task> {
+    /** Soma minutos sem atravessar a meia-noite: o que passaria vira 23:55 (continua sendo "hoje à noite"). */
+    fun plusSameDay(hm: String, minutes: Int): String =
+        if (minutes > 0 && mins(hm) + minutes >= 24 * 60) "23:55" else plus(hm, minutes)
+
+    fun weekdays(a0: Answers): List<Task> {
+        // "começar o dia" antes de levantar não faz sentido: vale uma hora depois de acordar
+        val a = if (mins(a0.start) <= mins(a0.wake)) a0.copy(start = plusSameDay(a0.wake, 60)) else a0
         val out = ArrayList<Task>()
         out += Task("wake", a.wake, "Levantar da cama", anchor = true, step = "Sentar na cama e abrir a cortina")
         if ("am" in a.meds) out += Task("medam", a.medAm, "Remédio da manhã", med = true, step = "Pegar o copo d'água")
-        if ("hygiene" in a.extras) out += Task("hygiene", plus(a.wake, 15), "Banho e escovar os dentes", step = "Ir até o banheiro")
+        if ("hygiene" in a.extras) out += Task("hygiene", plus(a.wake, 10), "Banho e escovar os dentes", step = "Ir até o banheiro")
         if (a.breakfast) out += Task("breakfast", plus(a.wake, 30), "Café da manhã", step = "Ir até a cozinha")
         if ("contact" in a.extras) {
             var c = maxOf(mins(plus(a.wake, 60)), mins(a.start) - 30)
@@ -110,7 +116,7 @@ object RoutineBuilder {
         out += Task("dinner", a.dinner, "Jantar", anchor = true, step = "Pôr a mesa ou esquentar a comida")
         if ("fun" in a.extras) out += Task("fun", plus(a.dinner, 60), "Um tempo para algo que você gosta", step = "Escolher uma coisa só")
         if ("dim" in a.extras) out += Task("dim", plus(a.bed, -60), "Luz baixa e telas no modo noturno", step = "Apagar a luz principal")
-        if ("plan" in a.extras) out += Task("plan", plus(a.bed, -30), "Olhar o dia de amanhã", step = "Separar a primeira coisa de amanhã")
+        if ("plan" in a.extras) out += Task("plan", plus(a.bed, -20), "Olhar o dia de amanhã", step = "Separar a primeira coisa de amanhã")
         if ("pm" in a.meds) out += Task("medpm", a.medPm, "Remédio da noite", med = true, step = "Pegar o copo d'água")
         out += Task("bed", a.bed, "Deitar para dormir", anchor = true, step = "Deixar o celular fora da cama")
         return out.sortedBy { it.time }
@@ -120,11 +126,13 @@ object RoutineBuilder {
     fun offDays(a: Answers): List<Task> {
         val d = a.weekendDelta
         val wake = plus(a.wake, d)
-        val bed = plus(a.bed, d)
+        // deitar mais tarde na folga não pode cair no dia seguinte (o alarme tocaria na noite errada);
+        // quem já deita depois da meia-noite mantém o horário
+        val bed = if (mins(a.bed) >= 12 * 60) plusSameDay(a.bed, d) else plus(a.bed, d)
         val out = ArrayList<Task>()
         out += Task("wake", wake, "Levantar da cama", anchor = true, step = "Abrir a cortina e beber água")
         if ("am" in a.meds) out += Task("medam", a.medAm, "Remédio da manhã", med = true, step = "Pegar o copo d'água")
-        if ("hygiene" in a.extras) out += Task("hygiene", plus(wake, 15), "Banho e escovar os dentes", step = "Ir até o banheiro")
+        if ("hygiene" in a.extras) out += Task("hygiene", plus(wake, 10), "Banho e escovar os dentes", step = "Ir até o banheiro")
         if (a.breakfast) out += Task("breakfast", plus(wake, 30), "Café da manhã sem pressa")
         if ("contact" in a.extras) out += Task("contact", plus(wake, 120), "Falar com alguém ou sair de casa", anchor = true, step = "Mandar uma mensagem")
         out += Task("lunch", plus(a.lunch, 30), "Almoço")

@@ -102,13 +102,16 @@ object WebConfig {
             when (uri) {
                 "/api/config" -> if (method == "POST") {
                     applyConfig(JSONObject(body ?: "{}"))
+                    // ligar os alarmes ou o lembrete pela página precisa agendar na hora
+                    AlarmScheduler.scheduleAll(ctx)
+                    Reminders.schedule(ctx)
                     Res(200, config().toString())
                 } else Res(200, config().toString())
                 "/api/days" -> Res(200, days(query["n"]?.toIntOrNull()?.coerceIn(1, 366) ?: 60).toString())
                 "/api/day" -> if (method == "POST") {
                     val o = JSONObject(body ?: "{}")
                     val day = o.optString("day")
-                    if (!DAY.matches(day)) return err(400, "dia inválido")
+                    if (!DAY.matches(day) || !Repo.isDay(day)) return err(400, "dia inválido")
                     applyDay(day, o)
                     Res(200, dayJson(day).toString())
                 } else err(405, "use POST")

@@ -57,7 +57,8 @@ class SunBiWidget : AppWidgetProvider() {
                 setOnClickPendingIntent(R.id.w_root, PendingIntent.getActivity(ctx, 20, Intent(ctx, MainActivity::class.java),
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
                 if (c.taskId != null) {
-                    val i = Intent(ctx, SunBiWidget::class.java).setAction(DONE).putExtra("task", c.taskId)
+                    // o dia vai junto: tocar depois da meia-noite num widget ainda não atualizado marca o dia mostrado
+                    val i = Intent(ctx, SunBiWidget::class.java).setAction(DONE).putExtra("task", c.taskId).putExtra("day", today())
                     setOnClickPendingIntent(R.id.w_done, PendingIntent.getBroadcast(ctx, 21, i, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
                 }
             }
@@ -70,7 +71,7 @@ class SunBiWidget : AppWidgetProvider() {
     override fun onReceive(ctx: Context, intent: Intent) {
         super.onReceive(ctx, intent)
         if (intent.action == DONE) {
-            intent.getStringExtra("task")?.let { Repo.setDone(today(), it, true) }
+            intent.getStringExtra("task")?.let { Repo.setDone(intent.getStringExtra("day") ?: today(), it, true) }
             Sfx.play(Sfx.S.POP)
             Haptics.play(Haptics.H.DONE)
             update(ctx)

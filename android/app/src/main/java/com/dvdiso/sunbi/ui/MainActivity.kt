@@ -1,5 +1,13 @@
 package com.dvdiso.sunbi.ui
 
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.ui.text.style.TextOverflow
 import android.Manifest
 import android.os.Build
 import android.os.Bundle
@@ -99,7 +107,8 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT >= 33) askNotif.launch(Manifest.permission.POST_NOTIFICATIONS)
         SyncManager.start(this)
         ThemeState.load()
-        read(intent)
+        // só na primeira criação: ao girar a tela, o pedido da notificação não se repete
+        if (savedInstanceState == null) read(intent)
         setContent { SunBiTheme { Root(launch.value) } }
     }
 
@@ -117,6 +126,8 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         Focus.restore()
+        // rede de segurança: abrir o app sempre confere os alarmes dos próximos dias
+        com.dvdiso.sunbi.AlarmScheduler.scheduleAll(this)
         SyncManager.syncAllAsync()
     }
 }
@@ -200,6 +211,7 @@ internal fun Root(launch: Launch = Launch()) {
         focusOpen = true
     }
 
+    val ld = androidx.compose.ui.platform.LocalLayoutDirection.current
     BoxWithConstraints(Modifier.fillMaxSize()) {
         // Tablets e celular deitado: trilho lateral e conteúdo centralizado.
         val wide = maxWidth >= 600.dp
@@ -218,7 +230,7 @@ internal fun Root(launch: Launch = Launch()) {
                                         selected = tab == i, onClick = { if (tab != i) fb.tick(); tab = i },
                                         // sem o título, o nome da aba vira a descrição do ícone (leitor de tela)
                                         icon = { Icon(d.icon, if (labels) null else d.label) },
-                                        label = if (labels) { { Text(d.label) } } else null,
+                                        label = if (labels) { { Text(d.label, maxLines = 1, overflow = TextOverflow.Ellipsis) } } else null,
                                     )
                                 }
                             }
@@ -228,7 +240,8 @@ internal fun Root(launch: Launch = Launch()) {
                 }
             },
             floatingActionButton = {
-                if (focusEnd != null && !focusOpen) {
+                // na conversa, o botão cobriria o de enviar
+                if (focusEnd != null && !focusOpen && tab != TAB_AI) {
                     SmallExtendedFloatingActionButton(
                         onClick = { openFocus(null) },
                         icon = { Icon(Icons.Filled.PlayArrow, null) },
@@ -240,7 +253,11 @@ internal fun Root(launch: Launch = Launch()) {
         ) { inner ->
             Row(Modifier.fillMaxSize()) {
                 if (wide) {
-                    NavigationRail(Modifier.padding(inner)) {
+                    // o Scaffold já entrega as margens do sistema em [inner]; o trilho não soma as dele
+                    NavigationRail(
+                        Modifier.padding(start = inner.calculateStartPadding(ld), top = inner.calculateTopPadding()),
+                        windowInsets = WindowInsets(0, 0, 0, 0),
+                    ) {
                         Spacer(Modifier.weight(1f))
                         dests.forEach { (i, d) ->
                             NavigationRailItem(
@@ -252,13 +269,16 @@ internal fun Root(launch: Launch = Launch()) {
                     }
                 }
                 Box(Modifier.weight(1f).fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+                    // celular deitado: a barra do sistema ou o recorte da câmera ficam dos lados
+                    val sideStart = if (wide) 0.dp else inner.calculateStartPadding(ld)
+                    val sideEnd = inner.calculateEndPadding(ld)
                     val pad = PaddingValues(
-                        start = 16.dp, end = 16.dp,
+                        start = 16.dp + sideStart, end = 16.dp + sideEnd,
                         top = inner.calculateTopPadding() + 8.dp,
                         bottom = inner.calculateBottomPadding() + 88.dp,
                     )
                     // a conversa da assistente cuida das próprias margens e do teclado
-                    val chatPad = PaddingValues(top = inner.calculateTopPadding() + 4.dp, bottom = inner.calculateBottomPadding())
+                    val chatPad = PaddingValues(start = sideStart, end = sideEnd, top = inner.calculateTopPadding() + 4.dp, bottom = inner.calculateBottomPadding())
                     val enter = MaterialTheme.motionScheme.defaultEffectsSpec<Float>()
                     val exit = MaterialTheme.motionScheme.fastEffectsSpec<Float>()
                     val slide = MaterialTheme.motionScheme.defaultSpatialSpec<IntOffset>()
@@ -332,7 +352,7 @@ private fun mmss(ms: Long): String {
  * Bloco de foco (TDAH): escolhe um tempo curto e começa pelo primeiro passo.
  * Cinco minutos é o padrão de propósito: o difícil é começar.
  */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class, ExperimentalLayoutApi::class)
 @Composable
 private fun FocusSheet(task: Task?, onDismiss: () -> Unit) {
     val ctx = LocalContext.current
@@ -349,7 +369,7 @@ private fun FocusSheet(task: Task?, onDismiss: () -> Unit) {
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberBottomSheetState(SheetValue.Hidden, enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded))) {
         Column(
-            Modifier.fillMaxWidth().padding(horizontal = 24.dp).navigationBarsPadding(),
+            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp).navigationBarsPadding(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
@@ -364,7 +384,7 @@ private fun FocusSheet(task: Task?, onDismiss: () -> Unit) {
                 Button(
                     onClick = { Focus.start(ctx, task?.id ?: "", minutes) },
                     shapes = ButtonDefaults.shapes(),
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
                 ) {
                     Icon(Icons.Filled.PlayArrow, null)
                     Spacer(Modifier.width(8.dp))
@@ -381,7 +401,8 @@ private fun FocusSheet(task: Task?, onDismiss: () -> Unit) {
                     )
                     Text(mmss(left), style = MaterialTheme.typography.displayMediumEmphasized, fontWeight = FontWeight.Bold)
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                // em tela estreita os três botões não cabem numa linha: quebram em vez de espremer
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedButton(onClick = { Focus.stop(ctx) }, shapes = ButtonDefaults.shapes()) { Text("Parar") }
                     FilledTonalButton(onClick = { Focus.extend(ctx, 5) }, shapes = ButtonDefaults.shapes()) { Text("+5 min") }
                     if (task != null && task.id.isNotEmpty()) {

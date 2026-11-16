@@ -318,11 +318,57 @@ class LogicTest {
         val o = RoutineBuilder.offDays(a)
         assertEquals("07:30", o.first { it.id == "wake" }.time) // 1 h depois
         assertEquals("07:00", o.first { it.id == "medam" }.time) // remédio não muda
-        assertEquals("00:00", o.first { it.id == "bed" }.time)
+        assertEquals("23:55", o.first { it.id == "bed" }.time) // não atravessa a meia-noite
         RoutineBuilder.apply(a)
         assertEquals("Davi", Prefs.userName)
         assertEquals(w, Repo.tasks())
         assertTrue(RoutineBuilder.kickoff(a).contains("06:30"))
+    }
+
+    @Test fun routineBuilderHandlesOddHours() {
+        // "começar o dia" antes de levantar vira uma hora depois de acordar
+        val w = RoutineBuilder.weekdays(Answers(wake = "10:00", start = "09:00"))
+        assertEquals("11:00", w.first { it.id == "start" }.time)
+        // os extras do tour não caem no mesmo minuto dos remédios
+        val all = RoutineBuilder.weekdays(Answers(meds = setOf("am", "mid", "pm"), extras = EXTRAS.map { it.first }.toSet()))
+        val medTimes = all.filter { it.med }.map { it.time }
+        assertTrue(all.filter { !it.med }.none { it.time in medTimes })
+        // quem deita depois da meia-noite mantém o horário na folga
+        assertEquals("01:30", RoutineBuilder.offDays(Answers(bed = "00:30", weekendDelta = 60)).first { it.id == "bed" }.time)
+    }
+
+    @Test fun invalidDayKeysDoNotBreakTheApp() {
+        Repo.merge(JSONObject().put("2026-02-30/note", JSONObject().put("v", "x").put("t", 5).put("d", "y")))
+        assertTrue("2026-02-30" !in Repo.recordedDays())
+        assertNull(Repo.offReason("2026-02-30"))
+        Game.stats() // não lança
+        Repo.set("vacation", JSONObject().put("since", "ontem"))
+        assertNull(Repo.vacationSince())
+        Repo.set("vacation", null)
+        Repo.set("2026-02-30/note", null)
+    }
+
+    @Test fun clearingSleepTimesClearsTheHours() {
+        val day = "2026-01-06"
+        Repo.setSleepTimes(day, "23:00", "07:00")
+        assertEquals(8.0, Repo.sleep(day)!!, 0.01)
+        Repo.setSleepTimes(day, null, "07:00")
+        assertNull(Repo.sleep(day))
+        Repo.set("$day/wake", null)
+    }
+
+    @Test fun assistantTreatsJsonNullAsAbsent() {
+        val s = Assistant.Session()
+        val t = Repo.tasks().first { !it.med }
+        val r = Assistant.exec(s, "update_task", JSONObject().put("routine", "semana").put("id", t.id)
+            .put("time", JSONObject.NULL).put("label", JSONObject.NULL).put("step", JSONObject.NULL).put("anchor", JSONObject.NULL))
+        assertTrue(r, r.startsWith("ok"))
+        assertEquals(t, Repo.tasks().first { it.id == t.id })
+        Assistant.undo(Assistant.Msg("assistant", "", s.changes, s.undo))
+    }
+
+    @Test fun newIdsAreUniqueInTheSameMillisecond() {
+        assertEquals(200, (1..200).map { newId("w") }.toSet().size)
     }
 
     @Test fun routineBuilderIsGeneric() {

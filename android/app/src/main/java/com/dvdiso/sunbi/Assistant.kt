@@ -293,29 +293,32 @@ Mudar a rotina:
             }
             if (off) Repo.setOffTasks(l) else Repo.setTasks(l)
         }
+        // um campo com null no JSON conta como ausente (no Android, optString devolveria o texto "null")
+        fun str(k: String, default: String = ""): String = if (args.has(k) && !args.isNull(k)) args.optString(k, default) else default
+        fun flag(k: String, default: Boolean): Boolean = if (args.has(k) && !args.isNull(k)) args.optBoolean(k, default) else default
         return when (name) {
             "add_task" -> {
-                val time = args.optString("time")
-                val text = args.optString("label").trim()
+                val time = str("time")
+                val text = str("label").trim()
                 if (!HM.matches(time)) return "erro: horário inválido, use HH:MM"
                 if (text.isEmpty()) return "erro: falta o texto da tarefa"
-                val t = Task(newId("ai"), time, text, med = args.optBoolean("med", false),
-                    anchor = args.optBoolean("anchor", false), step = args.optString("step", "").trim())
+                val t = Task(newId("ai"), time, text.take(200), med = flag("med", false),
+                    anchor = flag("anchor", false), step = str("step").trim().take(200))
                 store(list + t)
                 s.changes += Change("add", label, "${t.time} ${t.label}")
                 "ok: adicionada com id ${t.id}"
             }
             "update_task" -> {
-                val id = args.optString("id")
+                val id = str("id")
                 val old = list.firstOrNull { it.id == id } ?: return "erro: não existe tarefa com id $id na rotina $label"
-                val time = args.optString("time", old.time).ifBlank { old.time }
+                val time = str("time", old.time).ifBlank { old.time }
                 if (!HM.matches(time)) return "erro: horário inválido, use HH:MM"
                 if (old.med && time != old.time) return "erro: horário de remédio só a pessoa muda, com orientação médica"
                 val nt = old.copy(
                     time = time,
-                    label = args.optString("label", old.label).ifBlank { old.label },
-                    step = if (args.has("step")) args.optString("step").trim() else old.step,
-                    anchor = if (args.has("anchor")) args.optBoolean("anchor") else old.anchor,
+                    label = str("label", old.label).trim().take(200).ifBlank { old.label },
+                    step = str("step", old.step).trim().take(200),
+                    anchor = flag("anchor", old.anchor),
                 )
                 store(list.map { if (it.id == id) nt else it })
                 s.changes += Change("update", label, "${old.time} ${old.label} → ${nt.time} ${nt.label}")

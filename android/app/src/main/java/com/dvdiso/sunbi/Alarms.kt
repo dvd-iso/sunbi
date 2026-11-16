@@ -40,6 +40,7 @@ class App : Application() {
         Sfx.init(this)
         Haptics.init(this)
         Assistant.init(this)
+        com.dvdiso.sunbi.ui.ThemeState.load()
         Notifications.createChannels(this)
         Repo.addListener { keys ->
             // rotina, folga, férias, dia difícil ou aparelho dos alarmes mudaram: reagenda hoje e amanhã
@@ -117,6 +118,13 @@ object AlarmScheduler {
         return PendingIntent.getBroadcast(ctx, key.hashCode(), i, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     }
 
+    private const val LOOK_AHEAD_DAYS = 8L
+    const val DAILY = "com.dvdiso.sunbi.DAILY"
+
+    private fun daily(ctx: Context): PendingIntent =
+        PendingIntent.getBroadcast(ctx, 78, Intent(ctx, AlarmReceiver::class.java).setAction(DAILY),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+
     fun next(time: String): Long? {
         val t = runCatching { LocalTime.parse(time) }.getOrNull() ?: return null
         val zone = ZoneId.systemDefault()
@@ -131,7 +139,10 @@ object AlarmScheduler {
         val now = ZonedDateTime.now(zone).plusSeconds(5)
         val wanted = LinkedHashMap<String, Long>()
         if (Prefs.alarmsEnabled && Repo.ringsHere()) {
-            for (offset in 0L..1L) {
+            // hoje e amanhã sempre; se nenhum dos dois tiver alarme (folga com a rotina vazia,
+            // feriado), segue até achar o próximo dia que tenha, para a corrente não se quebrar
+            for (offset in 0L..LOOK_AHEAD_DAYS) {
+                if (offset > 1 && wanted.isNotEmpty()) break
                 val date = LocalDate.now(zone).plusDays(offset)
                 val day = date.toString()
                 for (task in Repo.tasksFor(day)) {
@@ -141,6 +152,9 @@ object AlarmScheduler {
                 }
             }
         }
+        // revisão diária logo depois da meia-noite: não depende de um alarme ter tocado na véspera
+        val midnight = ZonedDateTime.of(LocalDate.now(zone).plusDays(1), LocalTime.of(0, 1), zone).toInstant().toEpochMilli()
+        runCatching { am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, midnight, daily(ctx)) }
         for (old in Prefs.scheduledIds - wanted.keys) am.cancel(pi(ctx, old))
         val show = PendingIntent.getActivity(ctx, 0, Intent(ctx, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
         for ((key, at) in wanted) {
@@ -159,10 +173,12 @@ object AlarmScheduler {
 
 class AlarmReceiver : BroadcastReceiver() {
     override fun onReceive(ctx: Context, intent: Intent) {
+        // primeiro reagenda (também na revisão diária, que não traz tarefa); nada aqui pode
+        // impedir o alarme de tocar, então o widget é atualizado com proteção
+        AlarmScheduler.scheduleAll(ctx)
+        runCatching { SunBiWidget.update(ctx) }
         val id = intent.getStringExtra("task") ?: return
         val day = intent.getStringExtra("day") ?: today()
-        AlarmScheduler.scheduleAll(ctx) // agenda o de amanhã
-        SunBiWidget.update(ctx) // a tarefa da vez mudou
         // a rotina pode ter mudado (férias ligadas depois de agendar): só toca se a tarefa ainda vale
         if (!Prefs.alarmsEnabled || !Repo.ringsHere() || Repo.done(day, id) || Repo.tasksFor(day).none { it.id == id }) return
         val i = Intent(ctx, RingService::class.java).setAction(RingService.START).putExtra("task", id).putExtra("day", day)
@@ -174,7 +190,8 @@ class BootReceiver : BroadcastReceiver() {
     override fun onReceive(ctx: Context, intent: Intent) {
         AlarmScheduler.scheduleAll(ctx)
         Reminders.schedule(ctx)
-        SunBiWidget.update(ctx)
+        Focus.rearm(ctx) // o fim de um bloco de foco em andamento some ao reiniciar
+        runCatching { SunBiWidget.update(ctx) }
         if (intent.action == Intent.ACTION_BOOT_COMPLETED || intent.action == Intent.ACTION_MY_PACKAGE_REPLACED) {
             runCatching { SyncManager.start(ctx) }
         }
@@ -197,6 +214,11 @@ class RingService : Service() {
         val ringing = MutableStateFlow<Task?>(null)
     }
 
+    /** Dia do alarme que está tocando: "Concluído" depois da meia-noite ainda marca o dia certo. */
+    private var ringDay = today()
+    /** Alarmes que chegaram enquanto outro tocava (duas tarefas no mesmo minuto): tocam em seguida. */
+    private val queue = ArrayDeque<Pair<String, Task>>()
+
     private var player: MediaPlayer? = null
     private val handler = Handler(Looper.getMainLooper())
     private val timeout = Runnable { finish() }
@@ -217,12 +239,18 @@ class RingService : Service() {
         when (intent?.action) {
             START -> {
                 val id = intent.getStringExtra("task")
-                val task = (Repo.tasksFor(today()) + Repo.tasks()).firstOrNull { it.id == id } ?: Task(id ?: "?", "", "Alarme")
-                start(task)
+                val day = intent.getStringExtra("day") ?: today()
+                val task = (Repo.tasksFor(day) + Repo.tasks()).firstOrNull { it.id == id } ?: Task(id ?: "?", "", "Alarme")
+                val cur = ringing.value
+                when {
+                    cur == null -> start(day, task)
+                    cur.id == task.id && ringDay == day -> {} // o mesmo alarme de novo
+                    queue.none { it.first == day && it.second.id == task.id } -> queue.addLast(day to task)
+                }
             }
             DONE -> {
                 val id = intent.getStringExtra("task") ?: ringing.value?.id
-                if (id != null) Repo.setDone(today(), id, true)
+                if (id != null) Repo.setDone(intent.getStringExtra("day") ?: ringDay, id, true)
                 finish()
             }
             else -> finish()
@@ -231,10 +259,11 @@ class RingService : Service() {
     }
 
     private fun action(act: String, id: String, code: Int): PendingIntent =
-        PendingIntent.getService(this, code, Intent(this, RingService::class.java).setAction(act).putExtra("task", id),
+        PendingIntent.getService(this, code, Intent(this, RingService::class.java).setAction(act).putExtra("task", id).putExtra("day", ringDay),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
 
-    private fun start(task: Task) {
+    private fun start(day: String, task: Task) {
+        ringDay = day
         ringing.value = task
         val full = PendingIntent.getActivity(this, 1, Intent(this, AlarmActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_USER_ACTION),
@@ -296,11 +325,17 @@ class RingService : Service() {
         player = null
         getSystemService(Vibrator::class.java)?.cancel()
         ringing.value = null
+        // havia outro alarme esperando (mesmo horário): toca agora, se ainda não foi feito
+        while (queue.isNotEmpty()) {
+            val (day, task) = queue.removeFirst()
+            if (!Repo.done(day, task.id)) { start(day, task); return }
+        }
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
 
     override fun onDestroy() {
+        queue.clear()
         if (ringing.value != null) finish()
         super.onDestroy()
     }
@@ -348,6 +383,12 @@ object Focus {
         ctx.getSystemService(AlarmManager::class.java).cancel(pi(ctx))
         Prefs.focusEnd = 0
         end.value = null
+    }
+
+    /** Depois de reiniciar o aparelho: agenda de novo o fim do bloco em andamento. */
+    fun rearm(ctx: Context) {
+        val at = Prefs.focusEnd
+        if (at > System.currentTimeMillis()) { end.value = at; schedule(ctx, at) }
     }
 
     private fun schedule(ctx: Context, at: Long) {

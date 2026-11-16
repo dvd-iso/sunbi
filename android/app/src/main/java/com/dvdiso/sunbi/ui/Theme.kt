@@ -83,7 +83,7 @@ private val SunShapes = Shapes(
 /** Cores para a escala de humor: azul para baixo, âmbar para cima (legível nos dois temas). */
 object MoodColors {
     fun down(cs: ColorScheme, dark: Boolean) = if (dark) Color(0xFF8AB4F8) else Color(0xFF3D6FD6)
-    fun up(cs: ColorScheme, dark: Boolean) = if (dark) Color(0xFFFFB866) else Color(0xFFC26A00)
+    fun up(cs: ColorScheme, dark: Boolean) = if (dark) Color(0xFFFFB866) else Color(0xFF9A5200)
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
