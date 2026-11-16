@@ -304,7 +304,7 @@ private fun FocusSheet(task: Task?, onDismiss: () -> Unit) {
                         }, shapes = ButtonDefaults.shapes()) {
                             Icon(Icons.Filled.Check, null, Modifier.size(ButtonDefaults.IconSize))
                             Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                            Text("Feito")
+                            Text("Concluído")
                         }
                     }
                 }

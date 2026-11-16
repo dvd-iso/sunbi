@@ -151,7 +151,7 @@ class BootReceiver : BroadcastReceiver() {
     }
 }
 
-/** Toca o alarme. Sem adiar: só "Feito" ou "Parar". */
+/** Toca o alarme. Sem adiar: só "Concluído" ou "Parar". */
 class RingService : Service() {
     companion object {
         const val START = "start"
@@ -219,7 +219,7 @@ class RingService : Service() {
             .setContentIntent(full)
             .setOngoing(true)
             .setColor(0xFFF5B301.toInt())
-            .addAction(0, "Feito ✓", action(DONE, task.id, 2))
+            .addAction(0, "Concluído ✓", action(DONE, task.id, 2))
             .addAction(0, "Parar", action(STOP, task.id, 3))
             .build()
         if (Build.VERSION.SDK_INT >= 29) {

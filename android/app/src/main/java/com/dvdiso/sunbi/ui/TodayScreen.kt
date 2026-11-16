@@ -30,14 +30,12 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItemDefaults
@@ -204,17 +202,10 @@ private fun NowCard(tasks: List<Task>, tick: Long, onFocus: (Task?) -> Unit, mod
                 if (t.step.isNotBlank()) {
                     Text("Comece por: ${t.step}", style = MaterialTheme.typography.bodyLarge)
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = { onFocus(t) }, shapes = ButtonDefaults.shapes(), modifier = Modifier.weight(1f)) {
-                        Icon(Icons.Filled.PlayArrow, null, Modifier.size(ButtonDefaults.IconSize))
-                        Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                        Text("Começar", maxLines = 1)
-                    }
-                    FilledTonalButton(onClick = { toggleTask(fb, d, t.id, true) }, shapes = ButtonDefaults.shapes(), modifier = Modifier.weight(1f)) {
-                        Icon(Icons.Filled.Check, null, Modifier.size(ButtonDefaults.IconSize))
-                        Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                        Text("Feito", maxLines = 1)
-                    }
+                Button(onClick = { toggleTask(fb, d, t.id, true) }, shapes = ButtonDefaults.shapes(), modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Filled.Check, null, Modifier.size(ButtonDefaults.IconSize))
+                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                    Text("Concluído", maxLines = 1)
                 }
             }
         }

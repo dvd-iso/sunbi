@@ -35,7 +35,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.dvdiso.sunbi.RingService
 
-/** Tela cheia do alarme. Sem adiar: só "Feito" ou "Parar". */
+/** Tela cheia do alarme. Sem adiar: só "Concluído" ou "Parar". */
 class AlarmActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -89,7 +89,7 @@ private fun AlarmScreen(time: String, label: String, step: String, onDone: () ->
         ) {
             Icon(Icons.Filled.Check, null, Modifier.size(ButtonDefaults.LargeIconSize))
             Spacer(Modifier.size(ButtonDefaults.iconSpacingFor(ButtonDefaults.LargeContainerHeight)))
-            Text("Feito", style = ButtonDefaults.textStyleFor(ButtonDefaults.LargeContainerHeight))
+            Text("Concluído", style = ButtonDefaults.textStyleFor(ButtonDefaults.LargeContainerHeight))
         }
         Spacer(Modifier.height(14.dp))
         OutlinedButton(
