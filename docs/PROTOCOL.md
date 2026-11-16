@@ -27,6 +27,9 @@ O estado é um mapa de **registros last-writer-wins (LWW)**:
 
 ### Regra de mesclagem
 
+Registros com `t` mais de 24 horas à frente do relógio de quem recebe são ignorados (um relógio
+errado ou adulterado ganharia de tudo para sempre), assim como chaves com mais de 200 caracteres.
+
 Para cada chave, vence o registro com o maior par `(t, d)`; empate em `t` é decidido
 pela comparação de texto de `d`. A regra é comutativa, associativa e idempotente,
 então qualquer ordem de trocas leva todos os aparelhos ao mesmo estado.
@@ -79,8 +82,9 @@ celular não chega, mostra uma de reserva que não é gravada nem enviada.
 - Registro TXT: `id=<device>`, `v=1`, `name=<nome legível>`.
 - Também é possível cadastrar pares manuais (`ip:porta`), útil com Tailscale/VPN.
 - A extensão não usa mDNS (navegadores não têm): a pessoa digita o endereço que o app mostra.
-  Se o endereço parar de responder, ela chama `GET /v1/hello` nos outros endereços da mesma
-  rede /24 (no máximo a cada 15 min) e fica com o que responder com o mesmo `device` e a mesma chave.
+  Se o endereço parar de responder, ela chama `GET /v1/ping` (sem o código) nos outros endereços
+  da mesma rede /24, no máximo a cada 15 min, e só volta a sincronizar com o que responder com o
+  mesmo `device` do celular pareado.
 
 ## HTTP
 
@@ -89,6 +93,7 @@ maiúsculas). Só o app abre servidor; a extensão é só cliente.
 
 | Rota | Descrição |
 | --- | --- |
+| `GET /v1/ping` | **sem o código**: `{"device", "v": 1}`, só o que o mDNS já anuncia. Serve para reencontrar um aparelho já pareado sem mandar o código a endereços desconhecidos |
 | `GET /v1/hello` | `{"device", "name", "v": 1}` |
 | `GET /v1/state` | estado completo |
 | `POST /v1/merge` | corpo = estado do chamador; o servidor mescla e responde com o estado completo já mesclado. Uma única ida e volta sincroniza os dois lados. |
@@ -131,6 +136,9 @@ A extensão guarda o estado em `chrome.storage.local` e continua funcionando sem
 perto: o que for marcado nela segue na próxima chamada que der certo.
 
 ## Segurança
+
+Um endereço que manda 8 códigos de pareamento errados fica 10 minutos sem ser atendido (resposta
+`429`). Com a sincronização desligada no app, as rotas `/v1/*` respondem `404`.
 
 O tráfego fica na rede local e **não é criptografado**. O código de pareamento impede que
 outros aparelhos da rede leiam ou escrevam os dados, mas não protege contra quem consegue
