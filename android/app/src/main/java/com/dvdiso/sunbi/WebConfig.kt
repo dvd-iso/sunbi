@@ -230,7 +230,7 @@ object WebConfig {
         }
         o.optJSONObject("prefs")?.let { p ->
             if (p.has("userName")) Prefs.userName = p.optString("userName")
-            if (p.has("focusArea")) Prefs.focusArea = p.optString("focusArea").takeIf { it in listOf("bipolar", "tdah", "both") } ?: "both"
+            if (p.has("focusArea")) Prefs.focusArea = p.optString("focusArea").takeIf { it in listOf("bipolar", "tdah", "both", "general") } ?: "general"
             if (p.has("alarms")) Prefs.alarmsEnabled = p.optBoolean("alarms")
             if (p.has("alarmSound")) Prefs.alarmSound = if (p.optString("alarmSound") == "girassol") "girassol" else "amanhecer"
             if (p.has("uiSounds")) Prefs.uiSounds = p.optBoolean("uiSounds")

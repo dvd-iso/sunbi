@@ -7,6 +7,9 @@ object Seed {
     fun clear() {
         Prefs.onboarded = true // os testes das abas já passaram pelo tour
         Prefs.userName = ""
+        Prefs.aiEnabled = true
+        Prefs.alarmsEnabled = true
+        Prefs.concerns = emptySet()
         Prefs.launcherNames = emptyMap()
         Prefs.launcherFavorites = emptyList()
         Prefs.launcherHidden = emptySet()

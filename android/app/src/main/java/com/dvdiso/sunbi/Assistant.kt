@@ -89,7 +89,7 @@ object Assistant {
     }
 
     /** Chave e consentimento dados: dá para perguntar. */
-    fun ready(): Boolean = Prefs.aiConsent && Prefs.aiModel.isNotBlank() && baseUrl().isNotBlank() &&
+    fun ready(): Boolean = Prefs.aiEnabled && Prefs.aiConsent && Prefs.aiModel.isNotBlank() && baseUrl().isNotBlank() &&
         (Prefs.aiKey.isNotBlank() || Prefs.aiProvider == "custom") // servidor próprio pode não pedir chave
 
     /**
@@ -161,7 +161,15 @@ object Assistant {
         val sb = StringBuilder()
         val off = Repo.offReason(today)
         if (Prefs.userName.isNotBlank()) sb.append("A pessoa se chama ${Prefs.userName}. ")
-        sb.append(when (Prefs.focusArea) { "bipolar" -> "Ela cuida do transtorno bipolar. "; "tdah" -> "Ela cuida do TDAH. "; else -> "Ela cuida de transtorno bipolar e TDAH. " })
+        val names = CONCERNS.toMap()
+        val cares = Prefs.concerns.filter { it != "routine" }.mapNotNull { names[it]?.lowercase() }
+        sb.append(when {
+            cares.isNotEmpty() -> "Ela usa o app para cuidar de: ${cares.joinToString(", ")}. "
+            Prefs.focusArea == "bipolar" -> "Ela cuida do transtorno bipolar. "
+            Prefs.focusArea == "tdah" -> "Ela cuida do TDAH. "
+            Prefs.focusArea == "both" -> "Ela cuida de transtorno bipolar e TDAH. "
+            else -> "Ela usa o app para organizar a rotina; não suponha nenhum diagnóstico. "
+        })
         sb.append("Hoje é ${d.dayOfWeek.getDisplayName(TextStyle.FULL, PT)}, $today, ${nowHm()}. ")
         sb.append(if (off == null) "Hoje vale a rotina de semana.\n" else "Hoje vale a rotina de folga (${off.name.lowercase()}).\n")
         Repo.vacationSince()?.let { sb.append("Modo férias ligado desde $it.\n") }
@@ -212,7 +220,7 @@ object Assistant {
 
     private fun system(): String {
         val who = name().takeIf { it != DEFAULT_NAME }?.let { " A pessoa escolheu te chamar de \"$it\": esse é o seu nome." } ?: ""
-        return "Você é a assistente do app SunBi.$who A pessoa usa o app para cuidar da rotina com transtorno bipolar e/ou TDAH.\n\n$RULES"
+        return "Você é a assistente do app SunBi.$who A pessoa usa o app para cuidar da rotina, do sono e do humor; o contexto abaixo diz do que ela cuida.\n\n$RULES"
     }
 
     private val RULES = """

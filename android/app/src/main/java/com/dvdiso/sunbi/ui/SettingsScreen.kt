@@ -83,7 +83,7 @@ import com.dvdiso.sunbi.WebConfig
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun SettingsScreen(contentPadding: PaddingValues, onBack: () -> Unit, onRoutine: () -> Unit, onAssistant: () -> Unit) {
+fun SettingsScreen(contentPadding: PaddingValues, onBack: () -> Unit, onRoutine: () -> Unit, onAssistant: () -> Unit, onAiEnabled: (Boolean) -> Unit = {}) {
     val ctx = LocalContext.current
     var sheet by rememberSaveable { mutableStateOf<String?>(null) }
     val peers by SyncManager.peers.collectAsState()
@@ -102,8 +102,11 @@ fun SettingsScreen(contentPadding: PaddingValues, onBack: () -> Unit, onRoutine:
         add(Item("look", "Aparência e sons", if (Prefs.uiSounds) "Sons e vibração ligados" else "Sons e vibração desligados") { sheet = "look" })
         add(Item("alarms", "Alarmes e lembretes", if (Prefs.alarmsEnabled) "Alarmes ligados neste aparelho" else "Alarmes desligados neste aparelho") { sheet = "alarms" })
         add(Item("routine", "Rotina e horários", "Semana ${Repo.tasks().size} · folga ${Repo.offTasks().size} tarefas") { onRoutine() })
-        add(Item("ai", com.dvdiso.sunbi.Assistant.name(), if (!com.dvdiso.sunbi.Assistant.ready()) "Configurar provedor e chave"
-            else "${com.dvdiso.sunbi.Assistant.provider().name.substringBefore(" (")} · ${Prefs.aiModel}") { onAssistant() })
+        add(Item("ai", "Assistente de IA", when {
+            !Prefs.aiEnabled -> "Desligada"
+            !com.dvdiso.sunbi.Assistant.ready() -> "Ligada · falta configurar"
+            else -> "${com.dvdiso.sunbi.Assistant.name()} · ${com.dvdiso.sunbi.Assistant.provider().name.substringBefore(" (")}"
+        }) { sheet = "ai" })
         add(Item("sync", "Sincronização", when (peers.size) { 0 -> "Nenhum aparelho"; 1 -> "1 aparelho"; else -> "${peers.size} aparelhos" }) { sheet = "sync" })
         add(Item("web", "Modo avançado", if (Prefs.webConfig) "Ligado" else "Configurar pelo computador") { sheet = "web" })
         add(Item("launcher", "Tela inicial", if (Launcher.isEnabled(ctx)) "Ligada" else "Usar o SunBi como tela inicial") { sheet = "launcher" })
@@ -152,6 +155,11 @@ fun SettingsScreen(contentPadding: PaddingValues, onBack: () -> Unit, onRoutine:
                 fixes.forEachIndexed { i, (title, fix) -> NavRow(title, "Toque para resolver", i, fixes.size) { Feedback.tap(); runCatching(fix) } }
             }
         }
+        "ai" -> EditorSheet(
+            "Assistente de IA",
+            "Opcional. O app funciona inteiro sem ela.",
+            { sheet = null },
+        ) { AiCard(onAiEnabled) { sheet = null; onAssistant() } }
         "look" -> EditorSheet("Aparência e sons", onDismiss = { sheet = null }) { LookCard() }
         "alarms" -> EditorSheet("Alarmes e lembretes", onDismiss = { sheet = null }) { AlarmsCard() }
         "sync" -> EditorSheet(
@@ -237,6 +245,34 @@ private fun LauncherCard() {
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+/** Liga ou desliga a IA no app inteiro. Desligada, a aba some e nenhum dado é enviado. */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun AiCard(onChanged: (Boolean) -> Unit, onOpen: () -> Unit) {
+    val ctx = LocalContext.current
+    var on by remember { mutableStateOf(Prefs.aiEnabled) }
+    val cs = MaterialTheme.colorScheme
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        SwitchRow("Usar a assistente de IA", "Conversa, resumo da semana e ajustes na rotina", on) {
+            Feedback.tick()
+            on = it
+            Prefs.aiEnabled = it
+            Reminders.schedule(ctx) // o resumo semanal depende dela
+            onChanged(it)
+        }
+        Text(
+            if (on) "Ela só recebe os seus registros depois que você escolher um provedor, colocar a sua chave e aceitar. Nunca mexe em remédios."
+            else "Com a IA desligada, a aba da assistente não aparece e nada do que você registra é enviado a serviços de IA. A chave e a conversa guardadas continuam no aparelho, para o caso de você ligar de novo.",
+            style = MaterialTheme.typography.bodyMedium, color = cs.onSurfaceVariant,
+        )
+        androidx.compose.animation.AnimatedVisibility(on) {
+            Button(onClick = { Feedback.tap(); onOpen() }, shapes = ButtonDefaults.shapes(), modifier = Modifier.fillMaxWidth().height(52.dp)) {
+                Text(if (com.dvdiso.sunbi.Assistant.ready()) "Abrir a conversa" else "Configurar")
             }
         }
     }

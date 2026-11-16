@@ -85,10 +85,10 @@ private val SUGGESTIONS = listOf(
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun AssistantScreen(contentPadding: PaddingValues, initial: String? = null, onInitialSent: () -> Unit = {}) {
+fun AssistantScreen(contentPadding: PaddingValues, initial: String? = null, onInitialSent: () -> Unit = {}, onDisable: () -> Unit = {}) {
     var ready by remember { mutableStateOf(Assistant.ready()) }
     if (!ready) {
-        AssistantSetup(contentPadding) { ready = true }
+        AssistantSetup(contentPadding, onDisable) { ready = true }
         return
     }
     AssistantChat(contentPadding, initial, onInitialSent, onDisconnect = { ready = false })
@@ -303,7 +303,7 @@ private fun Message(m: Assistant.Msg, onUndo: () -> Unit) {
 /** Primeira vez: explica o que é enviado, pede o nome, o provedor, a chave e o consentimento. */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun AssistantSetup(insets: PaddingValues, onReady: () -> Unit) {
+private fun AssistantSetup(insets: PaddingValues, onDisable: () -> Unit, onReady: () -> Unit) {
     val cs = MaterialTheme.colorScheme
     var agree by remember { mutableStateOf(false) }
     var more by remember { mutableStateOf(false) }
@@ -359,6 +359,8 @@ private fun AssistantSetup(insets: PaddingValues, onReady: () -> Unit) {
             shapes = ButtonDefaults.shapes(), modifier = Modifier.fillMaxWidth().height(56.dp).enterFromBelow(4),
         ) { Text("Ativar", style = MaterialTheme.typography.titleMedium) }
         Text("Tudo isso muda depois em ⋮ → Nome, provedor e modelo.", style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
+        // recusar é uma opção de verdade: a aba some e volta só se a pessoa ligar em Ajustes
+        TextButton(onClick = { Feedback.tap(); onDisable() }, modifier = Modifier.fillMaxWidth()) { Text("Não quero usar IA") }
     }
 }
 

@@ -151,7 +151,11 @@ internal fun Root(launch: Launch = Launch()) {
         return
     }
     var tab by rememberSaveable { mutableIntStateOf(0) }
-    LaunchedEffect(aiKickoff) { if (aiKickoff != null) tab = TAB_AI }
+    // a assistente de IA é opcional: desligada (no tour ou em Ajustes), a aba não existe
+    var aiOn by remember { mutableStateOf(Prefs.aiEnabled) }
+    val dests = DESTS.withIndex().filter { it.index != TAB_AI || aiOn }
+    LaunchedEffect(aiKickoff) { if (aiKickoff != null && aiOn) tab = TAB_AI }
+    LaunchedEffect(aiOn) { if (!aiOn && tab == TAB_AI) tab = 0 }
     var healthRationale by remember { mutableStateOf(false) }
     if (healthRationale) HealthRationaleSheet { healthRationale = false }
     var now by remember { mutableStateOf(today()) }
@@ -179,7 +183,7 @@ internal fun Root(launch: Launch = Launch()) {
     LaunchedEffect(launch.n) {
         if (launch.n == 0L) return@LaunchedEffect
         if (launch.checkin) checkin = today() to 0
-        launch.tab?.let { if (it in 0..TAB_PLAN) tab = it }
+        launch.tab?.let { if (it in 0..TAB_PLAN && (it != TAB_AI || aiOn)) tab = it }
         if (launch.healthRationale) healthRationale = true
     }
 
@@ -209,7 +213,7 @@ internal fun Root(launch: Launch = Launch()) {
                     Surface(color = barColor) {
                         Column(Modifier.navigationBarsPadding()) {
                             ShortNavigationBar(containerColor = barColor, windowInsets = WindowInsets(0, 0, 0, 0)) {
-                                DESTS.forEachIndexed { i, d ->
+                                dests.forEach { (i, d) ->
                                     ShortNavigationBarItem(
                                         selected = tab == i, onClick = { if (tab != i) fb.tick(); tab = i },
                                         // sem o título, o nome da aba vira a descrição do ícone (leitor de tela)
@@ -238,7 +242,7 @@ internal fun Root(launch: Launch = Launch()) {
                 if (wide) {
                     NavigationRail(Modifier.padding(inner)) {
                         Spacer(Modifier.weight(1f))
-                        DESTS.forEachIndexed { i, d ->
+                        dests.forEach { (i, d) ->
                             NavigationRailItem(
                                 selected = tab == i, onClick = { if (tab != i) fb.tick(); tab = i },
                                 icon = { Icon(d.icon, null) }, label = { Text(d.label) },
@@ -276,11 +280,13 @@ internal fun Root(launch: Launch = Launch()) {
                                 onAchievements = { achievements = true },
                             )
                             1 -> HistoryScreen(now, pad, onSettings = openSettings)
-                            TAB_AI -> AssistantScreen(chatPad, initial = aiKickoff, onInitialSent = { aiKickoff = null })
+                            TAB_AI -> AssistantScreen(chatPad, initial = aiKickoff, onInitialSent = { aiKickoff = null },
+                                onDisable = { Prefs.aiEnabled = false; aiOn = false })
                             TAB_PLAN -> PlanScreen(pad, crisisRequest, { crisisRequest = false }, onSettings = openSettings)
                             ROUTINE -> RoutineScreen(pad) { tab = routineBack }
                             else -> SettingsScreen(pad, onBack = { tab = prevTab },
-                                onRoutine = { routineBack = SETTINGS; tab = ROUTINE }, onAssistant = { tab = TAB_AI })
+                                onRoutine = { routineBack = SETTINGS; tab = ROUTINE }, onAssistant = { tab = TAB_AI },
+                                onAiEnabled = { aiOn = it })
                         }
                     }
                 }

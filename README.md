@@ -1,6 +1,7 @@
 # 🌻 SunBi
 
-**Um companheiro de rotina para quem vive com transtorno bipolar e TDAH.**
+**Um companheiro de rotina, pensado com cuidado para quem vive com transtorno bipolar, TDAH,
+depressão ou ansiedade, e útil para qualquer pessoa que queira dias mais regulares.**
 
 O SunBi lembra você do que fazer em cada hora do dia, guarda como você está em menos de um
 minuto e ajuda a perceber cedo quando o humor começa a mudar. É gratuito, não tem anúncios e
@@ -19,8 +20,9 @@ não pede cadastro.
 
 ## O que ele faz
 
-- **Monta a sua rotina.** Você responde oito perguntas simples (que horas acorda, se toma
-  remédio, o que ocupa o seu dia) e o app cria a rotina. Dá para mudar tudo depois.
+- **Monta a sua rotina.** Você responde onze perguntas simples (que horas acorda, quando é a
+  sua folga, se toma remédio, o que ocupa o seu dia) e o app cria a rotina. Nenhuma pergunta
+  exige um diagnóstico, e dá para mudar tudo depois.
 - **Avisa na hora certa.** Um alarme para cada tarefa, com som suave. Não tem soneca: ou você
   fez, ou você para o alarme.
 - **Mostra uma coisa de cada vez.** A tela principal mostra só a tarefa de agora e o primeiro
@@ -53,7 +55,7 @@ O app tem quatro abas embaixo:
 | --- | --- |
 | **Hoje** | A tarefa de agora, com o botão **Concluído**, e o registro do dia |
 | **Histórico** | Seus gráficos de humor e sono, e o relatório para a consulta |
-| **Assistente** | Uma conversa com uma inteligência artificial (opcional, veja abaixo) |
+| **Assistente** | Uma conversa com uma inteligência artificial. Só aparece se você quiser (veja abaixo) |
 | **Plano** | O botão de ajuda, seus sinais de alerta e o que fazer quando o humor sobe ou desce |
 
 A engrenagem, no alto, abre os **Ajustes**.
@@ -94,7 +96,10 @@ rede, nada se perde: os dois se acertam quando ele voltar.
 O SunBi tem uma assistente de inteligência artificial. Ela resume a sua semana, dá ideias e
 pode ajustar a rotina quando você pede. Você escolhe **como chamar** ela.
 
-Ela só funciona se você quiser, e precisa de uma **chave** de um serviço de IA, que você cria
+**Você decide se quer.** O app pergunta na primeira vez, e quem responde "Não quero IA" não vê
+a aba nem recebe convites. Para ligar ou desligar depois: **Ajustes → Assistente de IA**.
+
+Se quiser usar, ela precisa de uma **chave** de um serviço de IA, que você cria
 no site do serviço. O app aceita **OpenAI**, **OpenRouter**, **OpenCode Go**, **Groq**,
 **DeepSeek** e outros parecidos. Esses serviços costumam cobrar pelo uso.
 
@@ -106,7 +111,7 @@ rotina pode ser desfeito com um toque.
 - Tudo fica **no seu celular**. Não existe conta nem servidor do SunBi.
 - O celular e o computador conversam **direto um com o outro**, pelo Wi-Fi da sua casa.
 - A assistente só recebe os seus registros se você ligar e aceitar. Aí eles vão para o serviço
-  de IA que você escolheu.
+  de IA que você escolheu. Com a IA desligada, nada é enviado.
 - O relatório só sai do seu celular quando você manda.
 - O código do app é aberto: qualquer pessoa pode conferir o que ele faz.
 

@@ -64,6 +64,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.dvdiso.sunbi.Answers
+import com.dvdiso.sunbi.CONCERNS
 import com.dvdiso.sunbi.EXTRAS
 import com.dvdiso.sunbi.Prefs
 import com.dvdiso.sunbi.RoutineBuilder
@@ -71,10 +72,13 @@ import com.dvdiso.sunbi.SyncManager
 import com.dvdiso.sunbi.Task
 import java.time.LocalTime
 
-private const val LAST = 9
+/** Número de perguntas; o passo seguinte é a revisão da rotina. */
+private const val QUESTIONS = 11
+private const val LAST = QUESTIONS + 1
 
 /**
- * Tour inicial: perguntas curtas que viram a rotina de semana e a de folga.
+ * Tour inicial: perguntas curtas que viram a rotina de semana, a de folga e os ajustes do app.
+ * Serve para qualquer pessoa: nenhuma pergunta supõe um diagnóstico, um emprego ou o uso de IA.
  * Quem já usa o SunBi em outro aparelho só digita o código de pareamento.
  * [onDone] recebe a pergunta para abrir a assistente (ou null para ir direto para Hoje).
  */
@@ -87,6 +91,7 @@ fun OnboardingScreen(onDone: (aiKickoff: String?) -> Unit) {
     val progress by animateFloatAsState(if (pairing) 1f else step.toFloat() / LAST, MaterialTheme.motionScheme.defaultSpatialSpec(), label = "tour")
     BackHandler(enabled = step > 0 || pairing) { if (pairing) pairing = false else step-- }
     val next: () -> Unit = { Feedback.step(); step += 1 }
+    val ctx = LocalContext.current
 
     Column(Modifier.fillMaxSize().safeDrawingPadding().imePadding(), horizontalAlignment = Alignment.CenterHorizontally) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -112,19 +117,23 @@ fun OnboardingScreen(onDone: (aiKickoff: String?) -> Unit) {
                     -1 -> PairStep { onDone(null) }
                     0 -> Welcome(onStart = next, onPair = { pairing = true })
                     1 -> NameStep(a, { a = it }, next)
-                    2 -> FocusStep(a, { a = it }, next)
+                    2 -> ConcernsStep(a, { a = it }, next)
                     3 -> SleepStep(a, { a = it }, next)
-                    4 -> WeekendStep(a, { a = it }, next)
-                    5 -> MedsStep(a, { a = it }, next)
-                    6 -> DayStep(a, { a = it }, next)
-                    7 -> MealsStep(a, { a = it }, next)
-                    8 -> ExtrasStep(a, { a = it }, next)
+                    4 -> OffDaysStep(a, { a = it }, next)
+                    5 -> WeekendStep(a, { a = it }, next)
+                    6 -> MedsStep(a, { a = it }, next)
+                    7 -> DayStep(a, { a = it }, next)
+                    8 -> MealsStep(a, { a = it }, next)
+                    9 -> ExtrasStep(a, { a = it }, next)
+                    10 -> RemindersStep(a, { a = it }, next)
+                    11 -> AssistantStep(a, { a = it }, next)
                     else -> ReviewStep(a, onFinish = { ai ->
                         RoutineBuilder.apply(a)
+                        com.dvdiso.sunbi.Reminders.schedule(ctx)
                         Prefs.onboarded = true
                         Prefs.seenLevel = 1
                         Feedback.toggle(true, completesDay = true)
-                        onDone(if (ai) RoutineBuilder.kickoff(a) else null)
+                        onDone(if (ai && a.ai) RoutineBuilder.kickoff(a) else null)
                     })
                 }
                 Spacer(Modifier.height(24.dp))
@@ -157,11 +166,11 @@ private fun Welcome(onStart: () -> Unit, onPair: () -> Unit) {
         Spacer(Modifier.height(8.dp))
         Text("Oi! Eu sou o SunBi.", style = MaterialTheme.typography.headlineMediumEmphasized, textAlign = TextAlign.Center)
         Text(
-            "Vou te fazer umas perguntas rápidas e montar a sua rotina. Dá para mudar tudo depois.",
+            "Vou te fazer umas perguntas rápidas e montar uma rotina do seu jeito. Dá para mudar tudo depois.",
             style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center,
         )
         Text(
-            "Horários regulares protegem o humor e ajudam a começar as coisas. É isso que a gente vai cuidar juntos.",
+            "Horários regulares fazem bem para o sono, o humor e a disposição, e ajudam a começar as coisas. É disso que a gente vai cuidar.",
             style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(16.dp))
@@ -170,38 +179,39 @@ private fun Welcome(onStart: () -> Unit, onPair: () -> Unit) {
     }
 }
 
+private fun kicker(n: Int) = "$n de $QUESTIONS"
+
 @Composable
 private fun NameStep(a: Answers, set: (Answers) -> Unit, next: () -> Unit) {
-    Title("1 de 8", "Como posso te chamar?", "Pode ser só o primeiro nome. Também vale pular.")
+    Title(kicker(1), "Como posso te chamar?", "Pode ser só o primeiro nome. Também vale pular.")
     OutlinedTextField(
         a.name, { set(a.copy(name = it)) }, label = { Text("Seu nome") }, singleLine = true,
         modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large,
-        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
-    )
-    // o app tem uma assistente opcional (IA); a pessoa escolhe o nome dela já aqui
-    OutlinedTextField(
-        a.assistant, { set(a.copy(assistant = it.take(24))) }, label = { Text("E a assistente do app, como quer chamar?") },
-        placeholder = { Text(com.dvdiso.sunbi.Assistant.DEFAULT_NAME) }, singleLine = true,
-        modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large,
-        supportingText = { Text("Ela é opcional: resume a semana e ajuda a ajustar a rotina. Em branco, fica \"Assistente\".") },
         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Done),
     )
-    Next(if (a.name.isBlank() && a.assistant.isBlank()) "Pular" else "Continuar", onClick = next)
+    Next(if (a.name.isBlank()) "Pular" else "Continuar", onClick = next)
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun FocusStep(a: Answers, set: (Answers) -> Unit, next: () -> Unit) {
-    Title("2 de 8", "Do que você quer cuidar?", "Isso muda o que a assistente e os avisos olham primeiro.")
-    OptionList(
-        listOf("bipolar" to "Bipolaridade", "tdah" to "TDAH", "both" to "Os dois"),
-        a.focus, { set(a.copy(focus = it)) },
-    )
+private fun ConcernsStep(a: Answers, set: (Answers) -> Unit, next: () -> Unit) {
+    Title(kicker(2), "O que te trouxe aqui?", "Marque quantos quiser, ou nenhum. Isso só muda o que os avisos olham primeiro; o app não diagnostica nada.")
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        for ((id, label) in CONCERNS) {
+            val on = id in a.concerns
+            FilterChip(
+                selected = on,
+                onClick = { Feedback.tick(); set(a.copy(concerns = if (on) a.concerns - id else a.concerns + id)) },
+                label = { Text(label, Modifier.padding(vertical = 6.dp)) }, shape = MaterialTheme.shapes.large,
+            )
+        }
+    }
     Next(onClick = next)
 }
 
 @Composable
 private fun SleepStep(a: Answers, set: (Answers) -> Unit, next: () -> Unit) {
-    Title("3 de 8", "Nos dias de semana, que horas você…", "Levantar e deitar são as duas âncoras mais importantes do ritmo.")
+    Title(kicker(3), "Nos dias comuns, que horas você…", "Levantar e deitar são os dois horários que mais seguram o resto do dia.")
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         TimeTile("Levanta", a.wake, Modifier.weight(1f)) { set(a.copy(wake = it)) }
         TimeTile("Deita", a.bed, Modifier.weight(1f)) { set(a.copy(bed = it)) }
@@ -215,12 +225,28 @@ private fun sleepHint(wake: String, bed: String): String {
     val b = LocalTime.parse(bed).toSecondOfDay() / 60
     var h = (w - b + 24 * 60) % (24 * 60) / 60.0
     if (h == 0.0) h = 24.0
-    return "Isso dá cerca de ${"%.1f".format(h).replace('.', ',')} h de sono." + if (h < 7) " Menos de 7 h costuma mexer com o humor; vale conversar com sua equipe." else ""
+    return "Isso dá cerca de ${"%.1f".format(h).replace('.', ',')} h de sono." + if (h < 7) " Menos de 7 h costuma pesar no humor e na disposição." else ""
+}
+
+@Composable
+private fun OffDaysStep(a: Answers, set: (Answers) -> Unit, next: () -> Unit) {
+    Title(kicker(4), "Quando é a sua folga?", "Nos dias de folga vale uma rotina mais solta. Quem trabalha em escala pode marcar a folga dia a dia, tocando na flor.")
+    val pick = when {
+        a.offWeekends && a.offHolidays -> "both"
+        a.offWeekends -> "weekends"
+        a.offHolidays -> "holidays"
+        else -> "none"
+    }
+    OptionList(
+        listOf("both" to "Fins de semana e feriados", "weekends" to "Só fins de semana", "holidays" to "Só feriados", "none" to "Não tenho folga fixa"),
+        pick, { set(a.copy(offWeekends = it == "both" || it == "weekends", offHolidays = it == "both" || it == "holidays")) },
+    )
+    Next(onClick = next)
 }
 
 @Composable
 private fun WeekendStep(a: Answers, set: (Answers) -> Unit, next: () -> Unit) {
-    Title("4 de 8", "E na folga, você acorda…", "Fim de semana, feriado e férias usam uma rotina mais solta.")
+    Title(kicker(5), "E na folga, você acorda…", "Vale também para as férias.")
     OptionList(
         listOf(0 to "No mesmo horário", 60 to "Até 1 hora depois", 120 to "Umas 2 horas depois"),
         a.weekendDelta, { set(a.copy(weekendDelta = it)) },
@@ -233,27 +259,31 @@ private fun WeekendStep(a: Answers, set: (Answers) -> Unit, next: () -> Unit) {
     Next(onClick = next)
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun MedsStep(a: Answers, set: (Answers) -> Unit, next: () -> Unit) {
-    Title("5 de 8", "Você toma remédio em horário fixo?", "Eles viram alarmes sem soneca e entram no relatório. A assistente nunca mexe neles.")
-    OptionList(
-        listOf("none" to "Não", "am" to "De manhã", "pm" to "À noite", "both" to "Manhã e noite"),
-        a.meds, { set(a.copy(meds = it)) },
-    )
-    if (a.meds != "none") {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (a.meds == "am" || a.meds == "both") TimeTile("Remédio da manhã", a.medAm, Modifier.weight(1f)) { set(a.copy(medAm = it)) }
-            if (a.meds == "pm" || a.meds == "both") TimeTile("Remédio da noite", a.medPm, Modifier.weight(1f)) { set(a.copy(medPm = it)) }
+    Title(kicker(6), "Você toma remédio em horário fixo?", "Se sim, marque quando. Eles viram alarmes e entram no relatório. Se não, é só continuar.")
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        for ((id, label) in listOf("am" to "De manhã", "mid" to "À tarde", "pm" to "À noite")) {
+            val on = id in a.meds
+            FilterChip(
+                selected = on,
+                onClick = { Feedback.tick(); set(a.copy(meds = if (on) a.meds - id else a.meds + id)) },
+                label = { Text(label, Modifier.padding(vertical = 6.dp)) }, shape = MaterialTheme.shapes.large,
+            )
         }
     }
-    Next(onClick = next)
+    if ("am" in a.meds) TimeTile("Remédio da manhã", a.medAm, Modifier.fillMaxWidth()) { set(a.copy(medAm = it)) }
+    if ("mid" in a.meds) TimeTile("Remédio da tarde", a.medMid, Modifier.fillMaxWidth()) { set(a.copy(medMid = it)) }
+    if ("pm" in a.meds) TimeTile("Remédio da noite", a.medPm, Modifier.fillMaxWidth()) { set(a.copy(medPm = it)) }
+    Next(if (a.meds.isEmpty()) "Não tomo" else "Continuar", onClick = next)
 }
 
 @Composable
 private fun DayStep(a: Answers, set: (Answers) -> Unit, next: () -> Unit) {
-    Title("6 de 8", "O que ocupa o seu dia?", "\"Começar o dia\" é outra âncora: ter um horário para isso ajuda a não travar.")
+    Title(kicker(7), "O que ocupa o seu dia?", "Ter uma hora para começar o dia ajuda a não travar, mesmo sem horário de entrada.")
     OptionList(
-        listOf("work" to "Trabalho", "study" to "Estudo", "both" to "Trabalho e estudo", "home" to "Fico em casa"),
+        listOf("work" to "Trabalho", "study" to "Estudo", "both" to "Trabalho e estudo", "care" to "Cuido da casa ou da família", "home" to "Sem horário fixo no momento"),
         a.dayKind, { set(a.copy(dayKind = it)) },
     )
     TimeTile("Começa às", a.start, Modifier.fillMaxWidth()) { set(a.copy(start = it)) }
@@ -262,7 +292,8 @@ private fun DayStep(a: Answers, set: (Answers) -> Unit, next: () -> Unit) {
 
 @Composable
 private fun MealsStep(a: Answers, set: (Answers) -> Unit, next: () -> Unit) {
-    Title("7 de 8", "Que horas você almoça e janta?", "Comer em horário regular também é âncora. O jantar vale mais.")
+    Title(kicker(8), "E as refeições?", "Comer em horário regular também dá ritmo ao dia.")
+    ToggleRow("Tomo café da manhã", a.breakfast) { set(a.copy(breakfast = it)) }
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         TimeTile("Almoço", a.lunch, Modifier.weight(1f)) { set(a.copy(lunch = it)) }
         TimeTile("Jantar", a.dinner, Modifier.weight(1f)) { set(a.copy(dinner = it)) }
@@ -273,7 +304,7 @@ private fun MealsStep(a: Answers, set: (Answers) -> Unit, next: () -> Unit) {
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ExtrasStep(a: Answers, set: (Answers) -> Unit, next: () -> Unit) {
-    Title("8 de 8", "O que mais você quer na rotina?", "Marque o que faz sentido. Tudo pode mudar depois.")
+    Title(kicker(9), "O que mais você quer na rotina?", "Marque o que faz sentido. Menos é mais: dá para acrescentar depois.")
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         for ((id, label) in EXTRAS) {
             val on = id in a.extras
@@ -284,7 +315,61 @@ private fun ExtrasStep(a: Answers, set: (Answers) -> Unit, next: () -> Unit) {
             )
         }
     }
+    Next(onClick = next)
+}
+
+@Composable
+private fun RemindersStep(a: Answers, set: (Answers) -> Unit, next: () -> Unit) {
+    Title(kicker(10), "Como você quer ser lembrado?", "Tudo isso muda depois em Ajustes.")
+    ToggleRow("Alarme na hora de cada tarefa", a.alarms, "Toca até você marcar Concluído ou Parar. Desligado, a rotina fica só na tela.") { set(a.copy(alarms = it)) }
+    ToggleRow("Lembrete do registro às 21h", a.checkinReminder, "Só se você ainda não tiver registrado o dia.") { set(a.copy(checkinReminder = it)) }
+    ToggleRow("Sons e vibração no app", a.sounds) { set(a.copy(sounds = it)) }
+    Next(onClick = next)
+}
+
+/** A IA é uma escolha: quem recusa não vê a aba nem recebe convites; dá para ligar depois. */
+@Composable
+private fun AssistantStep(a: Answers, set: (Answers) -> Unit, next: () -> Unit) {
+    Title(kicker(11), "Quer uma assistente de IA?", "Ela conversa, resume a sua semana e ajuda a ajustar a rotina. É opcional e o app funciona inteiro sem ela.")
+    OptionList(
+        listOf(false to "Não quero IA", true to "Quero usar"),
+        a.ai, { set(a.copy(ai = it)) },
+    )
+    if (a.ai) {
+        OutlinedTextField(
+            a.assistant, { set(a.copy(assistant = it.take(24))) }, label = { Text("Como quer chamar a assistente?") },
+            placeholder = { Text(com.dvdiso.sunbi.Assistant.DEFAULT_NAME) }, singleLine = true,
+            modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large,
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Done),
+        )
+        Text(
+            "Ela precisa de uma chave de um serviço de IA (OpenAI, OpenRouter, OpenCode Go…), que costuma ser pago, e só recebe os seus registros depois que você aceitar.",
+            style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    } else {
+        Text(
+            "Sem IA, nada do que você registra sai do aparelho e a aba da assistente não aparece. Se mudar de ideia: Ajustes → Assistente.",
+            style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
     Next("Montar minha rotina", onClick = next)
+}
+
+@Composable
+private fun ToggleRow(title: String, checked: Boolean, subtitle: String? = null, onChange: (Boolean) -> Unit) {
+    val cs = MaterialTheme.colorScheme
+    Row(
+        Modifier.fillMaxWidth().clip(MaterialTheme.shapes.large).background(cs.surfaceContainerHigh)
+            .bouncyClick { Feedback.tick(); onChange(!checked) }.padding(horizontal = 18.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleMedium, color = cs.onSurface)
+            if (subtitle != null) Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = cs.onSurfaceVariant)
+        }
+        Spacer(Modifier.width(12.dp))
+        androidx.compose.material3.Switch(checked = checked, onCheckedChange = { Feedback.tick(); onChange(it) })
+    }
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -293,19 +378,17 @@ private fun ReviewStep(a: Answers, onFinish: (ai: Boolean) -> Unit) {
     val week = remember(a) { RoutineBuilder.weekdays(a) }
     val off = remember(a) { RoutineBuilder.offDays(a) }
     val cs = MaterialTheme.colorScheme
-    Title("Pronto", if (a.name.isBlank()) "Sua rotina" else "Sua rotina, ${a.name}", "${week.size} tarefas na semana e ${off.size} na folga. Toque em Editar em Hoje para ajustar quando quiser.")
+    Title("Pronto", if (a.name.isBlank()) "Sua rotina" else "Sua rotina, ${a.name}", "${week.size} tarefas nos dias comuns e ${off.size} na folga. Toque em Editar em Hoje para ajustar quando quiser.")
     SectionCard("Dias de semana") { for ((i, t) in week.withIndex()) PreviewRow(t, i) }
     SectionCard("Folga e férias", container = cs.surfaceContainer) { for ((i, t) in off.withIndex()) PreviewRow(t, i) }
     Next("Começar", onClick = { onFinish(false) })
-    OutlinedButton(onClick = { onFinish(true) }, shapes = ButtonDefaults.shapes(), modifier = Modifier.fillMaxWidth().height(52.dp)) {
-        SunBiMark(size = 22.dp)
-        Spacer(Modifier.width(10.dp))
-        Text("Refinar com ${a.assistant.ifBlank { "a assistente" }}")
+    if (a.ai) {
+        OutlinedButton(onClick = { onFinish(true) }, shapes = ButtonDefaults.shapes(), modifier = Modifier.fillMaxWidth().height(52.dp)) {
+            SunBiMark(size = 22.dp)
+            Spacer(Modifier.width(10.dp))
+            Text("Refinar com ${a.assistant.ifBlank { "a assistente" }}")
+        }
     }
-    Text(
-        "A assistente usa a sua chave de um provedor de IA (OpenAI, OpenRouter, OpenCode Go…) e pede consentimento antes de ver os seus dados.",
-        style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth(),
-    )
 }
 
 @Composable

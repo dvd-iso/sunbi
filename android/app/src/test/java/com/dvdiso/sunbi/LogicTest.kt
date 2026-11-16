@@ -289,7 +289,7 @@ class LogicTest {
     // ── tour inicial ────────────────────────────────────────────────────────
 
     @Test fun routineBuilderFollowsAnswers() {
-        val a = Answers(name = "Davi", wake = "06:30", bed = "23:00", weekendDelta = 60, meds = "both", medAm = "07:00", medPm = "22:30",
+        val a = Answers(name = "Davi", wake = "06:30", bed = "23:00", weekendDelta = 60, meds = setOf("am", "pm"), medAm = "07:00", medPm = "22:30",
             dayKind = "study", start = "08:00", lunch = "12:00", dinner = "19:00", extras = setOf("contact", "dim"))
         val w = RoutineBuilder.weekdays(a)
         assertEquals(5, w.count { it.anchor })
@@ -308,6 +308,37 @@ class LogicTest {
         assertEquals("Davi", Prefs.userName)
         assertEquals(w, Repo.tasks())
         assertTrue(RoutineBuilder.kickoff(a).contains("06:30"))
+    }
+
+    @Test fun routineBuilderIsGeneric() {
+        // sem diagnóstico, sem remédio, sem café da manhã, cuidando da casa, sem folga fixa e sem IA
+        val a = Answers(concerns = setOf("routine"), meds = emptySet(), breakfast = false, dayKind = "care",
+            offWeekends = false, offHolidays = false, extras = setOf("hygiene", "tidy", "fun", "plan"), alarms = false, ai = false)
+        val w = RoutineBuilder.weekdays(a)
+        assertEquals(0, w.count { it.med })
+        assertNull(w.firstOrNull { it.id == "breakfast" })
+        assertEquals("Começar as tarefas da casa", w.first { it.id == "start" }.label)
+        assertTrue(w.map { it.id }.containsAll(listOf("hygiene", "tidy", "fun", "plan")))
+        assertEquals(w.map { it.time }.sorted(), w.map { it.time })
+        assertEquals(w.size, w.map { it.id }.toSet().size)
+        assertEquals("general", a.focus)
+        RoutineBuilder.apply(a)
+        assertEquals(false, Prefs.aiEnabled)
+        assertEquals(false, Assistant.ready())
+        assertEquals(false, Prefs.alarmsEnabled)
+        assertEquals(false, Repo.offWeekends())
+        assertNull(Repo.offReason("2026-11-14")) // sábado sem folga fixa
+        assertTrue(Assistant.context().contains("não suponha nenhum diagnóstico"))
+        // três remédios e os dois diagnósticos
+        val b = Answers(concerns = setOf("bipolar", "tdah", "anxiety"), meds = setOf("am", "mid", "pm"))
+        assertEquals(3, RoutineBuilder.weekdays(b).count { it.med })
+        assertEquals(3, RoutineBuilder.offDays(b).count { it.med })
+        assertEquals("both", b.focus)
+        Prefs.aiEnabled = true
+        Prefs.alarmsEnabled = true
+        Prefs.concerns = emptySet()
+        Repo.set("off/weekends", true)
+        Repo.set("off/holidays", true)
     }
 
     @Test fun freshInstallHasNoRoutineUntilTour() {

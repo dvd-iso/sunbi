@@ -174,24 +174,35 @@ class ScreenshotTest {
         rule.onNodeWithText("Vamos lá").performClick()
         save("tour-2-nome")
         rule.onNodeWithText("Pular").performClick()
-        rule.onNodeWithText("Continuar").performClick() // cuidar de
+        rule.onNodeWithText("TDAH").performClick()
+        save("tour-2b-motivo")
+        rule.onNodeWithText("Continuar").performClick() // o que te trouxe
         save("tour-3-sono")
         rule.onNodeWithText("Continuar").performClick()
+        rule.onNodeWithText("Continuar").performClick() // dias de folga
         save("tour-4-folga")
         rule.onNodeWithText("Continuar").performClick()
-        rule.onNodeWithText("Manhã e noite").performClick()
+        rule.onNodeWithText("De manhã").performClick()
+        rule.onNodeWithText("À noite").performClick()
         save("tour-5-remedios")
         rule.onNodeWithText("Continuar").performClick()
         rule.onNodeWithText("Continuar").performClick() // dia
         rule.onNodeWithText("Continuar").performClick() // refeições
         save("tour-6-extras")
+        rule.onNodeWithText("Continuar").performClick()
+        save("tour-6b-lembretes")
+        rule.onNodeWithText("Continuar").performClick()
+        save("tour-6c-assistente")
         rule.onNodeWithText("Montar minha rotina").performClick()
         save("tour-7-pronto")
         rule.onNodeWithText("Começar").performClick()
         rule.waitUntil(5000) { rule.onAllNodesWithText("Histórico").fetchSemanticsNodes().isNotEmpty() }
         assertTrue(Prefs.onboarded)
         assertTrue(Repo.tasks().any { it.med })
+        // a IA foi recusada (padrão): a aba não existe
+        assertTrue(rule.onAllNodesWithText("Assistente").fetchSemanticsNodes().isEmpty())
         save("tour-8-hoje")
+        Prefs.aiEnabled = true
     }
 
     /** Conquistas e a comemoração de uma conquista nova. */

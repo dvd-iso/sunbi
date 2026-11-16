@@ -70,7 +70,15 @@ object Prefs {
     var userName: String
         get() = sp.getString("userName", "")!!
         set(v) = sp.edit().putString("userName", v.trim()).apply()
-    /** O que a pessoa cuida: "bipolar", "tdah" ou "both". */
+    /** O que a pessoa marcou no tour (ids de CONCERNS). Vazio em instalações antigas: vale [focusArea]. */
+    var concerns: Set<String>
+        get() = sp.getStringSet("concerns", emptySet())!!.toSet()
+        set(v) = sp.edit().putStringSet("concerns", v).apply()
+    /** A pessoa quer a assistente de IA no app. Desligado, a aba some e nada é enviado. */
+    var aiEnabled: Boolean
+        get() = sp.getBoolean("aiEnabled", true)
+        set(v) = sp.edit().putBoolean("aiEnabled", v).apply()
+    /** Resumo antigo de [concerns]: "bipolar", "tdah", "both" ou "general". */
     var focusArea: String
         get() = sp.getString("focusArea", "both")!!
         set(v) = sp.edit().putString("focusArea", v).apply()

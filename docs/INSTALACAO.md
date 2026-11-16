@@ -7,8 +7,9 @@ Guia técnico do SunBi. A apresentação do app está no [README](../README.md).
 1. Na aba **Releases** do repositório, baixe o `sunbi.apk` mais recente. (Builds de teste ficam
    na aba **Actions**, no artefato **sunbi-apk**.)
 2. Abra o APK e permita instalar de fontes desconhecidas.
-3. Abra o app: o **tour inicial** monta a sua rotina em oito perguntas (e já pergunta como você
-   quer chamar a assistente). Depois, em **Ajustes**, resolva os avisos de permissão
+3. Abra o app: o **tour inicial** monta a sua rotina em onze perguntas (o que te trouxe, sono,
+   folga, remédios, o que ocupa o dia, refeições, extras, lembretes e se você quer a assistente
+   de IA). Depois, em **Ajustes**, resolva os avisos de permissão
    (notificações, alarmes exatos e tela cheia).
 
 Todo APK das Releases instala por cima do anterior, porque é assinado sempre com a mesma chave privada.
@@ -84,7 +85,8 @@ que é GPL-3.0 e por isso não foi copiado.
 - **Sono do relógio:** precisa do app Health Connect (embutido no Android 14+) e de um relógio
   ou pulseira que grave sessões de sono nele. A permissão de leitura é pedida no primeiro
   "Puxar do relógio". Não foi testado em aparelho real nesta versão.
-- **Assistente:** funciona com qualquer API no formato da OpenAI. O app traz OpenCode Go,
+- **Assistente:** é opcional. Recusada no tour ou desligada em **Ajustes → Assistente de IA**,
+  a aba some e nada é enviado. Ligada, funciona com qualquer API no formato da OpenAI. O app traz OpenCode Go,
   OpenAI, OpenRouter, Groq e DeepSeek prontos, e a opção **Outro** aceita um endereço próprio
   (Ollama, LM Studio, LiteLLM, Mistral, Together...). Cada provedor guarda a própria chave e o
   próprio modelo; "Buscar os modelos da minha conta" lista o que a chave enxerga. Modelos sem
